@@ -6,12 +6,33 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers";
 
 const sectorOptions = [
+  "Advanced Manufacturing",
+  "Aerospace & Defense",
+  "Agtech",
+  "Animal Health",
+  "Brand & Retail",
+  "Crypto & Digital Assets",
+  "Deeptech",
+  "Energy",
+  "Enterprise & AI",
   "Fintech",
-  "SaaS",
+  "Food & Beverage",
+  "GOAL",
   "Health",
-  "EdTech",
-  "E-commerce",
-  "Other",
+  "Insurtech",
+  "Lifetech",
+  "Maritime",
+  "Media & Advertising",
+  "Medtech",
+  "Mobility & Physical AI",
+  "New Materials & Packaging",
+  "Real Estate & Construction",
+  "Semiconductors",
+  "Smart Cities",
+  "Sportstech",
+  "Supply Chain",
+  "Sustainability",
+  "Travel & Hospitality",
 ];
 
 const employeeBands = ["1-10", "11-50", "51-200", "201-500", "500+"];
@@ -32,26 +53,47 @@ const hearAboutOptions = [
   "Other",
 ];
 const yearsOptions = ["Less than 1 year", "1-3 years", "3-5 years", "5+ years"];
-const askCategoryOptions = [
-  "Funding / Investment capital",
-  "Business partners / Co-founders",
-  "Clients / Customers",
-  "Suppliers / Vendors",
-  "Strategic advisors",
-  "Distribution / Sales channels",
-  "Joint venture opportunities",
-  "Industry connections",
-];
-const offerCategoryOptions = [
-  "Capital / Funding",
-  "Industry expertise",
-  "Network / Connections",
-  "Technology / Systems",
-  "Distribution channels",
-  "Operational capacity",
-  "Client base / Market access",
-  "Mentorship / Advisory",
-];
+const asksByRole: Record<string, string[]> = {
+  investor: [
+    "Deal flow / Investment opportunities",
+    "Co-investors / Syndicate partners",
+    "Portfolio companies seeking support",
+    "Due diligence expertise",
+    "Market intelligence",
+    "Exit opportunities",
+  ],
+  startup: [
+    "Funding / Investment capital",
+    "Business partners / Co-founders",
+    "Clients / Customers",
+    "Suppliers / Vendors",
+    "Strategic advisors",
+    "Distribution / Sales channels",
+    "Joint venture opportunities",
+    "Industry connections",
+  ],
+};
+
+const offersByRole: Record<string, string[]> = {
+  investor: [
+    "Capital / Funding",
+    "Board advisory",
+    "Industry expertise",
+    "Network / Connections",
+    "Mentorship & guidance",
+    "Portfolio synergies",
+  ],
+  startup: [
+    "Technology / Product",
+    "Market access",
+    "Operational capacity",
+    "Client base",
+    "Distribution channels",
+    "Industry expertise",
+    "Network / Connections",
+    "Innovation & IP",
+  ],
+};
 
 function Req() {
   return (
@@ -92,6 +134,7 @@ export default function OnboardingForm() {
     sector: "",
     employee_band: "",
     annual_revenue_estimate: "",
+    member_role: "",
     ask_categories: [] as string[],
     offer_categories: [] as string[],
     pdpa_matching_consent: false,
@@ -116,7 +159,7 @@ export default function OnboardingForm() {
         const { data: profile } = await supabase
           .from("profiles")
           .select(
-            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,ask_categories,offer_categories,asks_summary,offers_summary,pdpa_matching_consent,additional_notes",
+            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,member_role,ask_categories,offer_categories,asks_summary,offers_summary,pdpa_matching_consent,additional_notes",
           )
           .eq("id", userId)
           .single();
@@ -143,6 +186,7 @@ export default function OnboardingForm() {
             employee_band: profile.employee_band ?? prev.employee_band,
             annual_revenue_estimate:
               profile.annual_revenue_estimate ?? prev.annual_revenue_estimate,
+            member_role: profile.member_role ?? prev.member_role,
             ask_categories: profile.ask_categories ?? prev.ask_categories,
             offer_categories: profile.offer_categories ?? prev.offer_categories,
             pdpa_matching_consent:
@@ -257,6 +301,11 @@ export default function OnboardingForm() {
       setLoading(false);
       return;
     }
+    if (!isAdminView && !form.member_role) {
+      setError("Please select your member role (Investor or Startup).");
+      setLoading(false);
+      return;
+    }
     if (!isAdminView && form.ask_categories.length === 0) {
       setError("Please select at least one ASK category.");
       setLoading(false);
@@ -276,6 +325,7 @@ export default function OnboardingForm() {
     try {
       const payload = {
         full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
+        member_role: form.member_role || undefined,
         business_name: form.business_name.trim(),
         role_title: form.role_title.trim() || undefined,
         city: form.city.trim() || undefined,
@@ -449,7 +499,7 @@ export default function OnboardingForm() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label htmlFor="role_title" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 Role / title <Opt />
@@ -472,29 +522,38 @@ export default function OnboardingForm() {
                 onChange={(e) => handleChange("city", e.target.value)}
               />
             </div>
-            <div>
-              <label htmlFor="sector" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                Sector <Req />
-              </label>
-              <select
-                id="sector"
-                className="gn-input mt-1"
-                value={form.sector}
-                onChange={(e) => handleChange("sector", e.target.value)}
-              >
-                <option value="">Choose sector</option>
-                {sectorOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+          </div>
+
+          <div>
+            <p className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              Sector <Req />
+            </p>
+            {form.sector && (
+              <p className="mt-1 text-xs text-[var(--color-muted)]">
+                Selected: <span className="font-600 text-[var(--color-primary)]">{form.sector}</span>
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {sectorOptions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleChange("sector", form.sector === s ? "" : s)}
+                  className={`rounded-full border px-3 py-1 text-xs font-500 transition-colors ${
+                    form.sector === s
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                      : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
           </div>
 
           <div>
             <label htmlFor="short_bio" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-              Short bio (1â€“2 sentences) <Opt />
+              Short bio (1–2 sentences) <Opt />
             </label>
             <textarea
               id="short_bio"
@@ -548,86 +607,126 @@ export default function OnboardingForm() {
           {!isAdminView && (
             <>
               <div>
-                <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  What are you currently looking for? (Pick up to 3) <Req />
-                </h3>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {askCategoryOptions.map((option) => {
-                    const selected = form.ask_categories.includes(option);
-                    return (
-                      <label
-                        key={option}
-                        className="flex items-start gap-2 text-sm text-[var(--color-body)]"
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={selected}
-                          onChange={() => toggleCategory("ask_categories", option)}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    );
-                  })}
+                <p className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  Member role <Req />
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-muted)]">
+                  Your role determines which asks and offers are relevant to you.
+                </p>
+                <div className="mt-2 flex gap-3">
+                  {(["investor", "startup"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          member_role: r,
+                          ask_categories: [],
+                          offer_categories: [],
+                        }))
+                      }
+                      className={`rounded-full border px-5 py-1.5 text-sm font-500 capitalize transition-colors ${
+                        form.member_role === r
+                          ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                          : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                      }`}
+                    >
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div>
-                <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  What do you bring to the table? (Pick up to 3) <Req />
-                </h3>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {offerCategoryOptions.map((option) => {
-                    const selected = form.offer_categories.includes(option);
-                    return (
-                      <label
-                        key={option}
-                        className="flex items-start gap-2 text-sm text-[var(--color-body)]"
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={selected}
-                          onChange={() => toggleCategory("offer_categories", option)}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+              {form.member_role ? (
+                <>
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                      What are you currently looking for? (Pick up to 3) <Req />
+                    </h3>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {(asksByRole[form.member_role] ?? []).map((option) => {
+                        const selected = form.ask_categories.includes(option);
+                        return (
+                          <label
+                            key={option}
+                            className="flex items-start gap-2 text-sm text-[var(--color-body)]"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={selected}
+                              onChange={() => toggleCategory("ask_categories", option)}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              <div>
-                <label htmlFor="asks_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  ASKS summary <Opt />
-                </label>
-                <p className="text-xs text-[var(--color-muted)]">
-                  Describe in 1-2 sentences what you are currently looking for.
-                </p>
-                <textarea
-                  id="asks_summary"
-                  className="gn-input mt-2 h-28"
-                  value={form.asks_summary}
-                  onChange={(e) => handleChange("asks_summary", e.target.value)}
-                  placeholder="For example: We are looking for strategic advisors and a distribution partner..."
-                />
-              </div>
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                      What do you bring to the table? (Pick up to 3) <Req />
+                    </h3>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {(offersByRole[form.member_role] ?? []).map((option) => {
+                        const selected = form.offer_categories.includes(option);
+                        return (
+                          <label
+                            key={option}
+                            className="flex items-start gap-2 text-sm text-[var(--color-body)]"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={selected}
+                              onChange={() => toggleCategory("offer_categories", option)}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              <div>
-                <label htmlFor="offers_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  OFFERS summary <Opt />
-                </label>
-                <p className="text-xs text-[var(--color-muted)]">
-                  Describe in 1-2 sentences what you bring to the table.
+                  <div>
+                    <label htmlFor="asks_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                      ASKS summary <Opt />
+                    </label>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      Optional but recommended — a clear summary significantly improves your match quality.
+                    </p>
+                    <textarea
+                      id="asks_summary"
+                      className="gn-input mt-2 h-28"
+                      value={form.asks_summary}
+                      onChange={(e) => handleChange("asks_summary", e.target.value)}
+                      placeholder="For example: We are looking for strategic advisors and a distribution partner..."
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="offers_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                      OFFERS summary <Opt />
+                    </label>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      Optional but recommended — a clear summary significantly improves your match quality.
+                    </p>
+                    <textarea
+                      id="offers_summary"
+                      className="gn-input mt-2 h-28"
+                      value={form.offers_summary}
+                      onChange={(e) => handleChange("offers_summary", e.target.value)}
+                      placeholder="For example: We bring enterprise clients, operational expertise, and a strong partner network..."
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="rounded-lg bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-muted)]">
+                  Select your member role above to see the relevant asks and offers.
                 </p>
-                <textarea
-                  id="offers_summary"
-                  className="gn-input mt-2 h-28"
-                  value={form.offers_summary}
-                  onChange={(e) => handleChange("offers_summary", e.target.value)}
-                  placeholder="For example: We bring enterprise clients, operational expertise, and a strong partner network..."
-                />
-              </div>
+              )}
             </>
           )}
 

@@ -15,6 +15,7 @@ type OnboardingPayload = {
   sector?: string;
   employee_band?: string;
   annual_revenue_estimate?: string;
+  member_role?: string;
   ask_categories?: string[];
   offer_categories?: string[];
   asks_summary?: string;
@@ -85,20 +86,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isAdminView && !body.asks_summary?.trim()) {
-      return NextResponse.json(
-        { error: "ASKS summary is required" },
-        { status: 400 },
-      );
-    }
-
-    if (!isAdminView && !body.offers_summary?.trim()) {
-      return NextResponse.json(
-        { error: "OFFERS summary is required" },
-        { status: 400 },
-      );
-    }
-
     if (!body.pdpa_matching_consent) {
       return NextResponse.json(
         { error: "PDPA matching consent is required" },
@@ -146,13 +133,14 @@ export async function POST(request: Request) {
           phone_whatsapp: body.phone_whatsapp.trim(),
           years_in_operation: body.years_in_operation,
           sector: body.sector ?? null,
+          member_role: body.member_role ?? null,
           employee_band: body.employee_band ?? null,
           annual_revenue_estimate: body.annual_revenue_estimate?.trim() ?? null,
           stage: "1",
           ask_categories: normalizedAskCategories,
           offer_categories: normalizedOfferCategories,
-          asks_summary: body.asks_summary.trim(),
-          offers_summary: body.offers_summary.trim(),
+          asks_summary: body.asks_summary?.trim() ?? null,
+          offers_summary: body.offers_summary?.trim() ?? null,
           pdpa_matching_consent: body.pdpa_matching_consent,
           additional_notes: body.additional_notes?.trim() ?? null,
         },

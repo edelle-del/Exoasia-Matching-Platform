@@ -328,6 +328,7 @@ export default function AdvisorMemberDetailPage() {
             <DetailField label="Phone / WhatsApp" value={profile.phone_whatsapp} />
             <DetailField label="City" value={profile.city} />
             <DetailField label="Sector" value={profile.sector} />
+            <DetailField label="Member role" value={profile.member_role} />
             <DetailField label="Role / Title" value={profile.role_title} />
             <DetailField label="Years in operation" value={profile.years_in_operation} />
             <DetailField label="Employee band" value={profile.employee_band} />

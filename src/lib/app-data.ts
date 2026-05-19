@@ -24,6 +24,7 @@ export type AdvisorMemberDetailRecord = {
   sector: string | null;
   employee_band: string | null;
   annual_revenue_estimate: string | null;
+  member_role: string | null;
   stage: string;
   verification_status: string;
   account_status: string;
@@ -195,7 +196,7 @@ export async function fetchDashboardSummary(
       .limit(20),
   ]);
 
-  const adCredits = (creditRows ?? []).reduce(
+  const credits = (creditRows ?? []).reduce(
     (sum, row) => sum + Number(row.change_amount ?? 0),
     0,
   );
@@ -247,7 +248,7 @@ export async function fetchDashboardSummary(
   return {
     pendingMatches: pendingMatches ?? 0,
     activeDeals: (dealCardCount ?? 0) + (acceptedMatchCount ?? 0),
-    adCredits,
+    credits,
     profile: (profile ?? null) as DashboardProfile | null,
     recentMatches,
     sectorAvgDeals,
@@ -637,7 +638,7 @@ export async function fetchAdvisorMemberDetail(
     supabase
       .from("profiles")
       .select(
-        "id, full_name, business_name, email, role_title, city, short_bio, sector, employee_band, annual_revenue_estimate, stage, verification_status, account_status, phone_whatsapp, years_in_operation, ask_categories, offer_categories, asks_summary, offers_summary, how_heard_about, referred_by, additional_notes, pdpa_matching_consent, created_at, updated_at",
+        "id, full_name, business_name, email, role_title, city, short_bio, sector, employee_band, annual_revenue_estimate, member_role, stage, verification_status, account_status, phone_whatsapp, years_in_operation, ask_categories, offer_categories, asks_summary, offers_summary, how_heard_about, referred_by, additional_notes, pdpa_matching_consent, created_at, updated_at",
       )
       .eq("id", memberId)
       .single(),

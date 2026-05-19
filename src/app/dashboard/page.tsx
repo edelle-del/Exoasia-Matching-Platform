@@ -147,7 +147,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState({
     pendingMatches: 0,
     activeDeals: 0,
-    adCredits: 0,
+    credits: 0,
     profile: null as null | DashboardProfile,
     recentMatches: [] as DashboardMatch[],
     sectorAvgDeals: 0,
@@ -348,7 +348,7 @@ export default function DashboardPage() {
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard label="Pending matches" value={isLoading ? "..." : String(summary.pendingMatches)} valueColor="text-amber-500"   />
           <MetricCard label="Active deals"    value={isLoading ? "..." : String(summary.activeDeals)}    valueColor="text-emerald-600" />
-          <MetricCard label="Ad credits"      value={isLoading ? "..." : String(summary.adCredits)}      valueColor="text-blue-600"    />
+          <MetricCard label="Credits"      value={isLoading ? "..." : String(summary.credits)}      valueColor="text-blue-600"    />
           <BenchmarkingChart data={benchmarkData} label="Active deals" />
         </section>
 

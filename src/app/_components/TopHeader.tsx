@@ -121,7 +121,6 @@ export default function TopHeader() {
           <>
             <NavLink href="/matches"    label="Matches"    icon={ICONS.matches}   />
             <NavLink href="/deal-board" label="Deal board" icon={ICONS.dealBoard} />
-            <NavLink href="/documents"  label="Documents"  icon={ICONS.documents} />
             <NavLink href="/events"     label="Events"     icon={ICONS.events}    />
           </>
         )}

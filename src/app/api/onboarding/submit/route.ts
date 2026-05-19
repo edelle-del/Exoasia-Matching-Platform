@@ -19,9 +19,6 @@ type OnboardingPayload = {
   offer_categories?: string[];
   asks_summary?: string;
   offers_summary?: string;
-  open_to_new_business_conversations?: string;
-  primary_goal?: string;
-  attend_monthly_dinner?: string;
   pdpa_matching_consent?: boolean;
   additional_notes?: string;
   asks?: string[];
@@ -102,29 +99,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!body.open_to_new_business_conversations) {
-      return NextResponse.json(
-        {
-          error: "Missing required field: open_to_new_business_conversations",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (!body.primary_goal) {
-      return NextResponse.json(
-        { error: "Missing required field: primary_goal" },
-        { status: 400 },
-      );
-    }
-
-    if (!body.attend_monthly_dinner) {
-      return NextResponse.json(
-        { error: "Missing required field: attend_monthly_dinner" },
-        { status: 400 },
-      );
-    }
-
     if (!body.pdpa_matching_consent) {
       return NextResponse.json(
         { error: "PDPA matching consent is required" },
@@ -179,10 +153,6 @@ export async function POST(request: Request) {
           offer_categories: normalizedOfferCategories,
           asks_summary: body.asks_summary.trim(),
           offers_summary: body.offers_summary.trim(),
-          open_to_new_business_conversations:
-            body.open_to_new_business_conversations,
-          primary_goal: body.primary_goal,
-          attend_monthly_dinner: body.attend_monthly_dinner,
           pdpa_matching_consent: body.pdpa_matching_consent,
           additional_notes: body.additional_notes?.trim() ?? null,
         },

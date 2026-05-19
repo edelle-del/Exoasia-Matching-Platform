@@ -33,11 +33,8 @@ export type AdvisorMemberDetailRecord = {
   offer_categories: string[];
   asks_summary: string | null;
   offers_summary: string | null;
-  primary_goal: string | null;
   how_heard_about: string | null;
   referred_by: string | null;
-  attend_monthly_dinner: string | null;
-  open_to_new_business_conversations: string | null;
   additional_notes: string | null;
   pdpa_matching_consent: boolean;
   created_at: string;
@@ -640,7 +637,7 @@ export async function fetchAdvisorMemberDetail(
     supabase
       .from("profiles")
       .select(
-        "id, full_name, business_name, email, role_title, city, short_bio, sector, employee_band, annual_revenue_estimate, stage, verification_status, account_status, phone_whatsapp, years_in_operation, ask_categories, offer_categories, asks_summary, offers_summary, primary_goal, how_heard_about, referred_by, attend_monthly_dinner, open_to_new_business_conversations, additional_notes, pdpa_matching_consent, created_at, updated_at",
+        "id, full_name, business_name, email, role_title, city, short_bio, sector, employee_band, annual_revenue_estimate, stage, verification_status, account_status, phone_whatsapp, years_in_operation, ask_categories, offer_categories, asks_summary, offers_summary, how_heard_about, referred_by, additional_notes, pdpa_matching_consent, created_at, updated_at",
       )
       .eq("id", memberId)
       .single(),

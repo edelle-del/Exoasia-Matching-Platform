@@ -332,14 +332,8 @@ export default function AdvisorMemberDetailPage() {
             <DetailField label="Years in operation" value={profile.years_in_operation} />
             <DetailField label="Employee band" value={profile.employee_band} />
             <DetailField label="Annual revenue estimate" value={profile.annual_revenue_estimate} />
-            <DetailField label="Primary goal" value={profile.primary_goal} />
             <DetailField label="How heard about" value={profile.how_heard_about} />
             <DetailField label="Referred by" value={profile.referred_by} />
-            <DetailField label="Attend monthly dinner" value={profile.attend_monthly_dinner} />
-            <DetailField
-              label="Open to new conversations"
-              value={profile.open_to_new_business_conversations}
-            />
             <DetailField
               label="PDPA consent"
               value={profile.pdpa_matching_consent}

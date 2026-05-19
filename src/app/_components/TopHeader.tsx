@@ -91,6 +91,9 @@ export default function TopHeader() {
     .slice(0, 2)
     .map((p: string) => p[0]?.toUpperCase() ?? "")
     .join("");
+  const firstName = displayName.includes("@")
+    ? "Account"
+    : (displayName.split(" ")[0] || "Account");
 
   return (
     <>
@@ -146,7 +149,7 @@ export default function TopHeader() {
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 text-[10px] font-semibold text-white">
                 {initials || "?"}
               </div>
-              <Label>{displayName || "Account"}</Label>
+              <Label>{firstName}</Label>
             </Link>
 
             <button

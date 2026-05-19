@@ -52,15 +52,6 @@ const offerCategoryOptions = [
   "Client base / Market access",
   "Mentorship / Advisory",
 ];
-const businessConversationOptions = ["Yes", "Not yet", "Just exploring"];
-const goalOptions = [
-  "Close a specific deal",
-  "Find a long-term partner",
-  "Access capital",
-  "Expand my network",
-  "Learn and grow",
-];
-const dinnerOptions = ["Yes", "Maybe", "No"];
 
 function Req() {
   return (
@@ -103,9 +94,6 @@ export default function OnboardingForm() {
     annual_revenue_estimate: "",
     ask_categories: [] as string[],
     offer_categories: [] as string[],
-    open_to_new_business_conversations: "",
-    primary_goal: "",
-    attend_monthly_dinner: "",
     pdpa_matching_consent: false,
     additional_notes: "",
     asks_summary: "",
@@ -128,7 +116,7 @@ export default function OnboardingForm() {
         const { data: profile } = await supabase
           .from("profiles")
           .select(
-            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,ask_categories,offer_categories,asks_summary,offers_summary,open_to_new_business_conversations,primary_goal,attend_monthly_dinner,pdpa_matching_consent,additional_notes",
+            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,ask_categories,offer_categories,asks_summary,offers_summary,pdpa_matching_consent,additional_notes",
           )
           .eq("id", userId)
           .single();
@@ -157,12 +145,6 @@ export default function OnboardingForm() {
               profile.annual_revenue_estimate ?? prev.annual_revenue_estimate,
             ask_categories: profile.ask_categories ?? prev.ask_categories,
             offer_categories: profile.offer_categories ?? prev.offer_categories,
-            open_to_new_business_conversations:
-              profile.open_to_new_business_conversations ??
-              prev.open_to_new_business_conversations,
-            primary_goal: profile.primary_goal ?? prev.primary_goal,
-            attend_monthly_dinner:
-              profile.attend_monthly_dinner ?? prev.attend_monthly_dinner,
             pdpa_matching_consent:
               profile.pdpa_matching_consent ?? prev.pdpa_matching_consent,
             additional_notes: profile.additional_notes ?? prev.additional_notes,
@@ -215,7 +197,7 @@ export default function OnboardingForm() {
     setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -285,23 +267,6 @@ export default function OnboardingForm() {
       setLoading(false);
       return;
     }
-    if (!form.open_to_new_business_conversations) {
-      setError("Please tell us if you're open to new business conversations.");
-      setLoading(false);
-      return;
-    }
-    if (!form.primary_goal) {
-      setError("Please choose your primary goal for joining.");
-      setLoading(false);
-      return;
-    }
-    if (!form.attend_monthly_dinner) {
-      setError(
-        "Please tell us if you are willing to attend the monthly dinner.",
-      );
-      setLoading(false);
-      return;
-    }
     if (!form.pdpa_matching_consent) {
       setError("You must agree to the data privacy consent to continue.");
       setLoading(false);
@@ -324,10 +289,6 @@ export default function OnboardingForm() {
         annual_revenue_estimate: form.annual_revenue_estimate,
         ask_categories: form.ask_categories,
         offer_categories: form.offer_categories,
-        open_to_new_business_conversations:
-          form.open_to_new_business_conversations,
-        primary_goal: form.primary_goal,
-        attend_monthly_dinner: form.attend_monthly_dinner,
         pdpa_matching_consent: form.pdpa_matching_consent,
         additional_notes: form.additional_notes.trim() || undefined,
         asks_summary: form.asks_summary.trim() || undefined,
@@ -345,6 +306,7 @@ export default function OnboardingForm() {
         throw new Error(data?.error || "Save failed");
       }
 
+      await supabase.auth.refreshSession();
       setSuccess("Profile and matching signals saved.");
       setTimeout(() => router.push("/dashboard"), 900);
     } catch (err: any) {
@@ -358,7 +320,7 @@ export default function OnboardingForm() {
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
         <h1 className="text-2xl font-700 text-[var(--color-ink)]">
-          Get started â€” complete your matching profile
+          Complete your profile
         </h1>
         <p className="mt-2 text-sm text-[var(--color-body)]">
           Provide the key details we use to generate curated strategic matches
@@ -668,74 +630,6 @@ export default function OnboardingForm() {
               </div>
             </>
           )}
-
-          <div>
-            <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-              Are you currently open to new business conversations? <Req />
-            </h3>
-            <div className="mt-3 flex flex-wrap gap-4">
-              {businessConversationOptions.map((option) => (
-                <label
-                  key={option}
-                  className="flex items-center gap-2 text-sm text-[var(--color-body)]"
-                >
-                  <input
-                    type="radio"
-                    name="open_to_new_business_conversations"
-                    checked={form.open_to_new_business_conversations === option}
-                    onChange={() =>
-                      handleChange("open_to_new_business_conversations", option)
-                    }
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label htmlFor="primary_goal" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                What is your primary goal for joining? <Req />
-              </label>
-              <select
-                id="primary_goal"
-                className="gn-input mt-1"
-                value={form.primary_goal}
-                onChange={(e) => handleChange("primary_goal", e.target.value)}
-              >
-                <option value="">Select one</option>
-                {goalOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                Are you willing to attend a monthly in-person dinner event? <Req />
-              </label>
-              <div className="mt-3 flex flex-wrap gap-4">
-                {dinnerOptions.map((option) => (
-                  <label
-                    key={option}
-                    className="flex items-center gap-2 text-sm text-[var(--color-body)]"
-                  >
-                    <input
-                      type="radio"
-                      name="attend_monthly_dinner"
-                      checked={form.attend_monthly_dinner === option}
-                      onChange={() =>
-                        handleChange("attend_monthly_dinner", option)
-                      }
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
 
           <div className="space-y-2 rounded-lg bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-body)]">
             <label className="flex items-start gap-2">

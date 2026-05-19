@@ -40,8 +40,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (match.status !== "approved") {
-      return NextResponse.json({ error: "Match is not approved yet" }, { status: 400 });
+    if (!["pending", "approved"].includes(match.status)) {
+      return NextResponse.json({ error: "Match cannot be responded to" }, { status: 400 });
     }
 
     const nextMemberAStatus = isMemberA ? decision : match.member_a_status;

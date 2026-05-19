@@ -17,6 +17,7 @@ export default function MatchesPage() {
   const [matches, setMatches] = useState<UIMatch[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [confirmMatch, setConfirmMatch] = useState<UIMatch | null>(null);
 
   const loadMatches = async () => {
     if (!user?.id) return;
@@ -51,6 +52,17 @@ export default function MatchesPage() {
       return;
     }
     await loadMatches();
+  };
+
+  const handleAcceptClick = (match: UIMatch) => {
+    setConfirmMatch(match);
+  };
+
+  const handleConfirmAccept = async () => {
+    if (!confirmMatch) return;
+    const match = confirmMatch;
+    setConfirmMatch(null);
+    await handleDecision(match, "accepted");
   };
 
   const handleGenerateAIMatches = async () => {
@@ -136,39 +148,50 @@ export default function MatchesPage() {
                   Counterpart: {match.counterpart_name || "Verified member"}
                 </p>
                 {(() => {
-                    const myStatus =
-                      match.member_a_id === user?.id
-                        ? match.member_a_status
-                        : match.member_b_status;
+                    const isA = match.member_a_id === user?.id;
+                    const myStatus = isA ? match.member_a_status : match.member_b_status;
+                    const counterpartStatus = isA ? match.member_b_status : match.member_a_status;
                     const canRespond =
-                      match.status === "approved" && myStatus === "pending";
+                      ["pending", "approved"].includes(match.status) &&
+                      myStatus === "pending";
                     return (
-                      <div className="mt-5 flex flex-wrap items-center gap-3">
-                        <button
-                          disabled={!canRespond || busyId === match.id}
-                          onClick={() => handleDecision(match, "accepted")}
-                          className="gn-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-                          type="button"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          disabled={!canRespond || busyId === match.id}
-                          onClick={() => handleDecision(match, "declined")}
-                          className="gn-btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                          type="button"
-                        >
-                          Decline
-                        </button>
-                        {myStatus === "accepted" && (
-                          <span className="text-sm font-semibold text-green-600">
-                            ✓ You accepted
-                          </span>
+                      <div className="mt-5 space-y-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            disabled={!canRespond || busyId === match.id}
+                            onClick={() => handleAcceptClick(match)}
+                            className="gn-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+                            type="button"
+                          >
+                            {busyId === match.id ? "Saving..." : "Accept"}
+                          </button>
+                          <button
+                            disabled={!canRespond || busyId === match.id}
+                            onClick={() => handleDecision(match, "declined")}
+                            className="gn-btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                            type="button"
+                          >
+                            Decline
+                          </button>
+                          {myStatus === "accepted" && (
+                            <span className="text-sm font-semibold text-green-600">
+                              ✓ You accepted
+                            </span>
+                          )}
+                          {myStatus === "declined" && (
+                            <span className="text-sm font-semibold text-gray-400">
+                              ✕ You declined
+                            </span>
+                          )}
+                        </div>
+                        {counterpartStatus === "accepted" && (
+                          <p className="text-xs font-medium text-green-600">✓ The other party has accepted</p>
                         )}
-                        {myStatus === "declined" && (
-                          <span className="text-sm font-semibold text-gray-400">
-                            ✕ You declined
-                          </span>
+                        {counterpartStatus === "declined" && (
+                          <p className="text-xs font-medium text-gray-400">✕ The other party has declined</p>
+                        )}
+                        {counterpartStatus === "pending" && (
+                          <p className="text-xs font-medium text-amber-500">Awaiting the other party's response</p>
                         )}
                       </div>
                     );
@@ -178,6 +201,38 @@ export default function MatchesPage() {
           })
         )}
       </div>
+
+      {confirmMatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-(--color-ink)">
+              Accept this match?
+            </h2>
+            <p className="mt-2 text-sm text-(--color-body)">
+              {confirmMatch.summary || "Strategic compatibility match"}
+            </p>
+            <p className="mt-1 text-sm text-(--color-muted)">
+              Counterpart: {confirmMatch.counterpart_name || "Verified member"}
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={handleConfirmAccept}
+                className="gn-btn-primary"
+              >
+                Yes, accept
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmMatch(null)}
+                className="gn-btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

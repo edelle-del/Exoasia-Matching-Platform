@@ -41,7 +41,7 @@ export async function POST() {
     const { data: subjectProfile, error: subjectError } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, business_name, role_title, city, short_bio, how_heard_about, referred_by, phone_whatsapp, years_in_operation, sector, employee_band, annual_revenue_estimate, ask_categories, offer_categories, asks_summary, offers_summary, open_to_new_business_conversations, primary_goal, attend_monthly_dinner, additional_notes, stage, verification_status",
+        "id, full_name, business_name, role_title, city, short_bio, how_heard_about, referred_by, phone_whatsapp, years_in_operation, sector, employee_band, annual_revenue_estimate, ask_categories, offer_categories, asks_summary, offers_summary, additional_notes, stage, verification_status",
       )
       .eq("id", user.id)
       .single();
@@ -62,7 +62,7 @@ export async function POST() {
     const { data: candidateProfiles } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, business_name, role_title, city, short_bio, how_heard_about, referred_by, phone_whatsapp, years_in_operation, sector, employee_band, annual_revenue_estimate, ask_categories, offer_categories, asks_summary, offers_summary, open_to_new_business_conversations, primary_goal, attend_monthly_dinner, additional_notes, stage, verification_status",
+        "id, full_name, business_name, role_title, city, short_bio, how_heard_about, referred_by, phone_whatsapp, years_in_operation, sector, employee_band, annual_revenue_estimate, ask_categories, offer_categories, asks_summary, offers_summary, additional_notes, stage, verification_status",
       )
       .neq("id", user.id)
       .in("verification_status", ["pending", "verified"])
@@ -121,7 +121,7 @@ export async function POST() {
       .from("matches")
       .delete()
       .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`)
-      .eq("status", "pending");
+      .in("status", ["pending", "approved"]);
     console.log("Recommendations from Gemini:", recommendations);
     const rows = recommendations
       .map((rec) => {
@@ -131,7 +131,7 @@ export async function POST() {
           fit_score: rec.fit_score,
           summary: rec.summary,
           rationale: rec.rationale,
-          status: "pending",
+          status: "approved",
           member_a_status: "pending",
           member_b_status: "pending",
         };

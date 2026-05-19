@@ -308,6 +308,9 @@ export default function DashboardPage() {
 
   // ─── Member view ────────────────────────────────────────────────────────────
 
+  const rawName = displayName || summary.profile?.full_name || "";
+  const firstName = rawName.includes("@") ? "there" : (rawName.split(" ")[0] || "there");
+
   const { percent: profilePercent, nextStep: profileNextStep } =
     computeProfileStrength(summary.profile);
 
@@ -332,7 +335,7 @@ export default function DashboardPage() {
           <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
             Hello,{" "}
             <span className="text-(--color-primary)">
-              {displayName || summary.profile?.full_name || "there"}
+              {firstName}
             </span>
           </h1>
           <p className="mt-2 text-sm text-(--color-body)">

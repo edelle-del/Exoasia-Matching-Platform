@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "../providers";
 import logo from "../logo.png";
 import { FullPageLoader } from "./FullPageLoader";
@@ -79,7 +79,6 @@ function NavLink({
 }
 
 export default function TopHeader() {
-  const router = useRouter();
   const { signedIn, signOut, role, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 

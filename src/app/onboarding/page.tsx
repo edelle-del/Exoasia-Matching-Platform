@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,15 @@ const sectorOptions = [
 ];
 
 const employeeBands = ["1-10", "11-50", "51-200", "201-500", "500+"];
+const revenueRanges = [
+  "Under ₱1M",
+  "₱1M – ₱5M",
+  "₱5M – ₱20M",
+  "₱20M – ₱50M",
+  "₱50M – ₱100M",
+  "₱100M – ₱500M",
+  "₱500M+",
+];
 const hearAboutOptions = [
   "Masterclass",
   "Referred by a member",
@@ -53,6 +62,22 @@ const goalOptions = [
 ];
 const dinnerOptions = ["Yes", "Maybe", "No"];
 
+function Req() {
+  return (
+    <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-red-50 text-red-500">
+      Required
+    </span>
+  );
+}
+
+function Opt() {
+  return (
+    <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-gray-100 text-gray-400">
+      Optional
+    </span>
+  );
+}
+
 export default function OnboardingForm() {
   const router = useRouter();
   const supabase = createClient();
@@ -63,7 +88,8 @@ export default function OnboardingForm() {
   const [success, setSuccess] = useState("");
 
   const [form, setForm] = useState({
-    full_name: "",
+    first_name: "",
+    last_name: "",
     business_name: "",
     role_title: "",
     city: "",
@@ -108,10 +134,14 @@ export default function OnboardingForm() {
           .single();
 
         if (profile && mounted) {
+          const existingName = (profile.full_name ?? metadataFullName) || "";
+          const spaceIdx = existingName.indexOf(" ");
+          const loadedFirst = spaceIdx >= 0 ? existingName.slice(0, spaceIdx) : existingName;
+          const loadedLast = spaceIdx >= 0 ? existingName.slice(spaceIdx + 1) : "";
           setForm((prev) => ({
             ...prev,
-            full_name:
-              (profile.full_name ?? metadataFullName) || prev.full_name,
+            first_name: loadedFirst || prev.first_name,
+            last_name: loadedLast || prev.last_name,
             business_name: profile.business_name ?? prev.business_name,
             role_title: profile.role_title ?? prev.role_title,
             city: profile.city ?? prev.city,
@@ -143,13 +173,13 @@ export default function OnboardingForm() {
         }
 
         if (mounted && metadataFullName) {
+          const spaceIdx = metadataFullName.indexOf(" ");
+          const metaFirst = spaceIdx >= 0 ? metadataFullName.slice(0, spaceIdx) : metadataFullName;
+          const metaLast = spaceIdx >= 0 ? metadataFullName.slice(spaceIdx + 1) : "";
           setForm((prev) =>
-            prev.full_name.trim()
+            prev.first_name.trim()
               ? prev
-              : {
-                  ...prev,
-                  full_name: metadataFullName,
-                },
+              : { ...prev, first_name: metaFirst, last_name: metaLast },
           );
         }
       } catch (err) {
@@ -185,15 +215,25 @@ export default function OnboardingForm() {
     setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess("");
 
     // Client-side validation
-    if (!form.full_name.trim()) {
-      setError("Full name is required.");
+    if (!form.first_name.trim()) {
+      setError("First name is required.");
+      setLoading(false);
+      return;
+    }
+    if (!form.last_name.trim()) {
+      setError("Last name is required.");
+      setLoading(false);
+      return;
+    }
+    if (!form.business_name.trim()) {
+      setError("Business name is required.");
       setLoading(false);
       return;
     }
@@ -222,6 +262,16 @@ export default function OnboardingForm() {
     }
     if (!form.years_in_operation) {
       setError("Please select your years in operation.");
+      setLoading(false);
+      return;
+    }
+    if (!form.employee_band) {
+      setError("Please select your employee band.");
+      setLoading(false);
+      return;
+    }
+    if (!form.annual_revenue_estimate) {
+      setError("Please select your annual revenue range.");
       setLoading(false);
       return;
     }
@@ -260,8 +310,8 @@ export default function OnboardingForm() {
 
     try {
       const payload = {
-        full_name: form.full_name.trim(),
-        business_name: form.business_name.trim() || undefined,
+        full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
+        business_name: form.business_name.trim(),
         role_title: form.role_title.trim() || undefined,
         city: form.city.trim() || undefined,
         short_bio: form.short_bio.trim() || undefined,
@@ -270,9 +320,8 @@ export default function OnboardingForm() {
         phone_whatsapp: form.phone_whatsapp.trim(),
         years_in_operation: form.years_in_operation,
         sector: form.sector || undefined,
-        employee_band: form.employee_band || undefined,
-        annual_revenue_estimate:
-          form.annual_revenue_estimate.trim() || undefined,
+        employee_band: form.employee_band,
+        annual_revenue_estimate: form.annual_revenue_estimate,
         ask_categories: form.ask_categories,
         offer_categories: form.offer_categories,
         open_to_new_business_conversations:
@@ -309,7 +358,7 @@ export default function OnboardingForm() {
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
         <h1 className="text-2xl font-700 text-[var(--color-ink)]">
-          Get started — complete your matching profile
+          Get started â€” complete your matching profile
         </h1>
         <p className="mt-2 text-sm text-[var(--color-body)]">
           Provide the key details we use to generate curated strategic matches
@@ -330,34 +379,47 @@ export default function OnboardingForm() {
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="full_name" className="block text-sm font-600 text-[var(--color-ink)]">
-                Full name
+              <label htmlFor="first_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                First name <Req />
               </label>
               <input
-                id="full_name"
+                id="first_name"
                 className="gn-input mt-1"
-                value={form.full_name}
-                onChange={(e) => handleChange("full_name", e.target.value)}
+                value={form.first_name}
+                onChange={(e) => handleChange("first_name", e.target.value)}
                 required
               />
             </div>
             <div>
-              <label htmlFor="business_name" className="block text-sm font-600 text-[var(--color-ink)]">
-                Business name
+              <label htmlFor="last_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Last name <Req />
               </label>
               <input
-                id="business_name"
+                id="last_name"
                 className="gn-input mt-1"
-                value={form.business_name}
-                onChange={(e) => handleChange("business_name", e.target.value)}
+                value={form.last_name}
+                onChange={(e) => handleChange("last_name", e.target.value)}
+                required
               />
             </div>
           </div>
 
+          <div>
+            <label htmlFor="business_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              Business name <Req />
+            </label>
+            <input
+              id="business_name"
+              className="gn-input mt-1"
+              value={form.business_name}
+              onChange={(e) => handleChange("business_name", e.target.value)}
+            />
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="how_heard_about" className="block text-sm font-600 text-[var(--color-ink)]">
-                How did you hear about The Growth Network?
+              <label htmlFor="how_heard_about" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                How did you hear about The Growth Network? <Req />
               </label>
               <select
                 id="how_heard_about"
@@ -376,8 +438,9 @@ export default function OnboardingForm() {
               </select>
             </div>
             <div>
-              <label htmlFor="referred_by" className="block text-sm font-600 text-[var(--color-ink)]">
-                If referred, who referred you?
+              <label htmlFor="referred_by" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                If referred, who referred you?{" "}
+                {form.how_heard_about === "Referred by a member" ? <Req /> : <Opt />}
               </label>
               <input
                 id="referred_by"
@@ -391,8 +454,8 @@ export default function OnboardingForm() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="phone_whatsapp" className="block text-sm font-600 text-[var(--color-ink)]">
-                Phone Number / WhatsApp
+              <label htmlFor="phone_whatsapp" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Phone Number / WhatsApp <Req />
               </label>
               <input
                 id="phone_whatsapp"
@@ -403,8 +466,8 @@ export default function OnboardingForm() {
               />
             </div>
             <div>
-              <label htmlFor="years_in_operation" className="block text-sm font-600 text-[var(--color-ink)]">
-                Years in Operation
+              <label htmlFor="years_in_operation" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Years in Operation <Req />
               </label>
               <select
                 id="years_in_operation"
@@ -426,8 +489,8 @@ export default function OnboardingForm() {
 
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <label htmlFor="role_title" className="block text-sm font-600 text-[var(--color-ink)]">
-                Role / title
+              <label htmlFor="role_title" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Role / title <Opt />
               </label>
               <input
                 id="role_title"
@@ -437,8 +500,8 @@ export default function OnboardingForm() {
               />
             </div>
             <div>
-              <label htmlFor="city" className="block text-sm font-600 text-[var(--color-ink)]">
-                City
+              <label htmlFor="city" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                City <Opt />
               </label>
               <input
                 id="city"
@@ -448,8 +511,8 @@ export default function OnboardingForm() {
               />
             </div>
             <div>
-              <label htmlFor="sector" className="block text-sm font-600 text-[var(--color-ink)]">
-                Sector
+              <label htmlFor="sector" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Sector <Req />
               </label>
               <select
                 id="sector"
@@ -468,8 +531,8 @@ export default function OnboardingForm() {
           </div>
 
           <div>
-            <label htmlFor="short_bio" className="block text-sm font-600 text-[var(--color-ink)]">
-              Short bio (1–2 sentences)
+            <label htmlFor="short_bio" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              Short bio (1â€“2 sentences) <Opt />
             </label>
             <textarea
               id="short_bio"
@@ -481,8 +544,8 @@ export default function OnboardingForm() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="employee_band" className="block text-sm font-600 text-[var(--color-ink)]">
-                Employee band
+              <label htmlFor="employee_band" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Employee band <Req />
               </label>
               <select
                 id="employee_band"
@@ -499,25 +562,32 @@ export default function OnboardingForm() {
               </select>
             </div>
             <div>
-              <label htmlFor="annual_revenue_estimate" className="block text-sm font-600 text-[var(--color-ink)]">
-                Annual revenue (estimate)
+              <label htmlFor="annual_revenue_estimate" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Annual revenue (estimate) <Req />
               </label>
-              <input
+              <select
                 id="annual_revenue_estimate"
                 className="gn-input mt-1"
                 value={form.annual_revenue_estimate}
                 onChange={(e) =>
                   handleChange("annual_revenue_estimate", e.target.value)
                 }
-              />
+              >
+                <option value="">Choose range</option>
+                {revenueRanges.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
           {!isAdminView && (
             <>
               <div>
-                <h3 className="text-sm font-600 text-[var(--color-ink)]">
-                  What are you currently looking for? (Pick up to 3)
+                <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  What are you currently looking for? (Pick up to 3) <Req />
                 </h3>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   {askCategoryOptions.map((option) => {
@@ -541,8 +611,8 @@ export default function OnboardingForm() {
               </div>
 
               <div>
-                <h3 className="text-sm font-600 text-[var(--color-ink)]">
-                  What do you bring to the table? (Pick up to 3)
+                <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  What do you bring to the table? (Pick up to 3) <Req />
                 </h3>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   {offerCategoryOptions.map((option) => {
@@ -566,8 +636,8 @@ export default function OnboardingForm() {
               </div>
 
               <div>
-                <label htmlFor="asks_summary" className="block text-sm font-600 text-[var(--color-ink)]">
-                  ASKS summary
+                <label htmlFor="asks_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  ASKS summary <Opt />
                 </label>
                 <p className="text-xs text-[var(--color-muted)]">
                   Describe in 1-2 sentences what you are currently looking for.
@@ -582,8 +652,8 @@ export default function OnboardingForm() {
               </div>
 
               <div>
-                <label htmlFor="offers_summary" className="block text-sm font-600 text-[var(--color-ink)]">
-                  OFFERS summary
+                <label htmlFor="offers_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  OFFERS summary <Opt />
                 </label>
                 <p className="text-xs text-[var(--color-muted)]">
                   Describe in 1-2 sentences what you bring to the table.
@@ -600,8 +670,8 @@ export default function OnboardingForm() {
           )}
 
           <div>
-            <h3 className="text-sm font-600 text-[var(--color-ink)]">
-              Are you currently open to new business conversations?
+            <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              Are you currently open to new business conversations? <Req />
             </h3>
             <div className="mt-3 flex flex-wrap gap-4">
               {businessConversationOptions.map((option) => (
@@ -625,8 +695,8 @@ export default function OnboardingForm() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="primary_goal" className="block text-sm font-600 text-[var(--color-ink)]">
-                What is your primary goal for joining?
+              <label htmlFor="primary_goal" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                What is your primary goal for joining? <Req />
               </label>
               <select
                 id="primary_goal"
@@ -643,8 +713,8 @@ export default function OnboardingForm() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-600 text-[var(--color-ink)]">
-                Are you willing to attend a monthly in-person dinner event?
+              <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Are you willing to attend a monthly in-person dinner event? <Req />
               </label>
               <div className="mt-3 flex flex-wrap gap-4">
                 {dinnerOptions.map((option) => (
@@ -689,8 +759,8 @@ export default function OnboardingForm() {
           </div>
 
           <div>
-            <label htmlFor="additional_notes" className="block text-sm font-600 text-[var(--color-ink)]">
-              Anything else you&apos;d like us to know?
+            <label htmlFor="additional_notes" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              Anything else you&apos;d like us to know? <Opt />
             </label>
             <textarea
               id="additional_notes"
@@ -705,16 +775,10 @@ export default function OnboardingForm() {
             <button type="submit" className="gn-btn-primary" disabled={loading}>
               {loading ? "Saving..." : "Save and continue"}
             </button>
-            <button
-              type="button"
-              className="gn-btn-secondary"
-              onClick={() => router.push("/dashboard")}
-            >
-              Skip for now
-            </button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+

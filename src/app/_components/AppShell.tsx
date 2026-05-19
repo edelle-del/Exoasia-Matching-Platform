@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import TopHeader from "./TopHeader";
 
-const NO_SIDEBAR_PATHS = ["/", "/sign-in", "/accept-invite", "/get-invited", "/not-authorized"];
+const NO_SIDEBAR_PATHS = ["/", "/sign-in", "/sign-up", "/accept-invite", "/get-invited", "/not-authorized"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -69,6 +69,24 @@ export async function middleware(request: NextRequest) {
       redirectUrl.pathname = "/not-authorized";
       return NextResponse.redirect(redirectUrl);
     }
+
+    // Block members from accessing the app until onboarding is complete
+    const isOnboardingPath = pathname === "/onboarding";
+    const isMemberRole = !role || !["advisor", "admin", "staff"].includes(role);
+    if (!isOnboardingPath && isMemberRole) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, sector")
+        .eq("id", user.id)
+        .single();
+
+      const needsOnboarding = !profile?.full_name || !profile?.sector;
+      if (needsOnboarding) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/onboarding";
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
   }
 
   return response;

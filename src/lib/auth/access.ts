@@ -3,6 +3,7 @@ export type AppRole = string | null | undefined;
 export const PUBLIC_PATHS = [
   "/",
   "/sign-in",
+  "/sign-up",
   "/onboarding",
   "/accept-invite",
   "/get-invited",

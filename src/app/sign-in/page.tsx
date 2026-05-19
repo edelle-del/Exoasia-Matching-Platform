@@ -189,12 +189,12 @@ export default function SignInPage() {
 
           <div className="text-center">
             <p className="text-sm text-[var(--color-muted)]">
-              Need an invite?{" "}
+              Don&apos;t have an account?{" "}
               <Link
-                href="/get-invited"
+                href="/sign-up"
                 className="text-[var(--color-primary)] hover:underline"
               >
-                View invite process
+                Sign up
               </Link>
             </p>
           </div>

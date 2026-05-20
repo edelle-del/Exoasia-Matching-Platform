@@ -77,16 +77,22 @@ export default function Home() {
 
             <div className="space-y-4">
               <Link
-                href="/get-invited"
+                href="/sign-up"
                 className="block w-full gn-btn-primary text-center"
               >
-                How Invitations Work →
+                Sign Up →
               </Link>
               <Link
                 href="/sign-in"
                 className="block w-full gn-btn-secondary text-center"
               >
                 Member Login
+              </Link>
+              <Link
+                href="/get-invited"
+                className="block w-full text-center text-sm text-[var(--color-muted)] hover:text-[var(--color-body)] transition-colors"
+              >
+                How Invitations Work →
               </Link>
             </div>
 

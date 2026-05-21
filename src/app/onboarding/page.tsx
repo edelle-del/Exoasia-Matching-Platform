@@ -27,7 +27,6 @@ const hearAboutOptions = [
 ];
 const yearsOptions = ["Less than 1 year", "1-3 years", "3-5 years", "5+ years"];
 
-// Shared matching taxonomy — same strings for investor & startup (critical for matching)
 const REGIONS = [
   "Global", "United States", "Canada", "United Kingdom", "Europe",
   "Israel", "Latin America", "Middle East", "Africa", "Asia Pacific", "Other regions",
@@ -47,7 +46,8 @@ const STAGES = [
   "Pre-IPO / Late-Stage", "Public Companies",
 ];
 
-// Investor-specific
+const PRODUCT_STAGES = ["Working Prototype", "MVP", "Traction"];
+
 const INVESTOR_TYPES = [
   "Technology Business Incubators (TBIs)",
   "Corporate Incubators",
@@ -147,7 +147,6 @@ function Field({
   );
 }
 
-// Multi-select pill toggle (for smaller fixed lists that don't need search)
 function PillToggle({
   options,
   value,
@@ -186,7 +185,33 @@ function PillToggle({
   );
 }
 
-// Searchable multi-select with removable pills
+function YesNoToggle({
+  value,
+  onChange,
+}: {
+  value: "" | "yes" | "no";
+  onChange: (v: "yes" | "no") => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      {(["yes", "no"] as const).map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={`rounded-full border px-5 py-1.5 text-xs font-semibold transition-colors ${
+            value === opt
+              ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+              : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          }`}
+        >
+          {opt === "yes" ? "Yes" : "No"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SearchableMultiSelect({
   options,
   value,
@@ -304,7 +329,6 @@ function SearchableMultiSelect({
   );
 }
 
-// Side-by-side min/max check size inputs
 function CheckSizePair({
   label,
   minValue,
@@ -347,8 +371,6 @@ function CheckSizePair({
     </Field>
   );
 }
-
-// ─── Role card ────────────────────────────────────────────────────────────────
 
 function RoleCard({
   value,
@@ -414,6 +436,14 @@ type ExtendedFields = {
   fundraising_stage: string;
   target_raise_min: string;
   target_raise_max: string;
+  // Startup — product & team
+  product_stage: string;
+  total_cofounders: string;
+  has_technical_founder: "" | "yes" | "no";
+  pitch_deck_url: string;
+  // Investor — engagement
+  anp_affiliated: boolean;
+  demo_day_judge: "" | "yes" | "no";
 };
 
 const EMPTY_EXTENDED: ExtendedFields = {
@@ -430,6 +460,12 @@ const EMPTY_EXTENDED: ExtendedFields = {
   fundraising_stage: "",
   target_raise_min: "",
   target_raise_max: "",
+  product_stage: "",
+  total_cofounders: "",
+  has_technical_founder: "",
+  pitch_deck_url: "",
+  anp_affiliated: false,
+  demo_day_judge: "",
 };
 
 function parseExtended(raw: string | null | undefined): ExtendedFields {
@@ -452,6 +488,7 @@ export default function OnboardingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [pitchDeckFile, setPitchDeckFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     first_name: "",
@@ -553,6 +590,7 @@ export default function OnboardingForm() {
 
   const handleRoleSelect = (r: "investor" | "startup") => {
     setForm((prev) => ({ ...prev, member_role: r, ...EMPTY_EXTENDED }));
+    setPitchDeckFile(null);
     setError("");
   };
 
@@ -562,7 +600,6 @@ export default function OnboardingForm() {
     setError("");
     setSuccess("");
 
-    // Validation
     if (!form.first_name.trim()) return fail("First name is required.");
     if (!form.last_name.trim()) return fail("Last name is required.");
     if (!form.business_name.trim()) return fail("Business name is required.");
@@ -599,9 +636,12 @@ export default function OnboardingForm() {
       if (!form.target_regions.length) return fail("Please select at least one target region.");
       if (!form.target_industries.length) return fail("Please select at least one target industry.");
       if (!form.fundraising_stage) return fail("Please select your current fundraising stage.");
+      if (!form.product_stage) return fail("Please select your product stage.");
+      if (!form.total_cofounders.trim()) return fail("Please enter the number of co-founders.");
       if (!form.target_raise_min.trim()) return fail("Please enter a minimum target raise amount.");
       if (!form.target_raise_max.trim()) return fail("Please enter a maximum target raise amount.");
     }
+
     if (!form.pdpa_matching_consent)
       return fail("You must agree to the data privacy consent to continue.");
 
@@ -612,7 +652,24 @@ export default function OnboardingForm() {
     }
 
     try {
-      // Derive backward-compat ask/offer categories
+      // Upload pitch deck if a new file was selected
+      let pitchDeckUrl = form.pitch_deck_url;
+      if (pitchDeckFile) {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
+        if (userId) {
+          const ext = pitchDeckFile.name.split(".").pop() ?? "pdf";
+          const path = `${userId}/${Date.now()}.${ext}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("pitch-decks")
+            .upload(path, pitchDeckFile, { upsert: true });
+          if (!uploadError && uploadData) {
+            const { data: urlData } = supabase.storage.from("pitch-decks").getPublicUrl(path);
+            pitchDeckUrl = urlData?.publicUrl ?? "";
+          }
+        }
+      }
+
       const ask_categories =
         form.member_role === "investor"
           ? ["Deal flow / Investment opportunities"]
@@ -627,7 +684,6 @@ export default function OnboardingForm() {
           ? ["Technology / Product"]
           : ["Industry expertise"];
 
-      // Serialize extended profile data into asks_summary for zero-migration persistence
       const extendedPayload =
         form.member_role === "investor"
           ? {
@@ -642,6 +698,8 @@ export default function OnboardingForm() {
               lp_check_max: form.lp_check_max,
               direct_check_min: form.direct_check_min,
               direct_check_max: form.direct_check_max,
+              anp_affiliated: form.anp_affiliated,
+              demo_day_judge: form.demo_day_judge,
             }
           : form.member_role === "startup"
           ? {
@@ -649,6 +707,10 @@ export default function OnboardingForm() {
               target_regions: form.target_regions,
               target_industries: form.target_industries,
               fundraising_stage: form.fundraising_stage,
+              product_stage: form.product_stage,
+              total_cofounders: form.total_cofounders,
+              has_technical_founder: form.has_technical_founder,
+              pitch_deck_url: pitchDeckUrl,
               target_raise_min: form.target_raise_min,
               target_raise_max: form.target_raise_max,
             }
@@ -698,6 +760,8 @@ export default function OnboardingForm() {
   const showLpFields = form.investment_interests.some(
     (i) => i.includes("Funds") || i.includes("Fund Manager"),
   );
+  const showAnpBadge =
+    form.investor_type === "Angel Networks" || form.entity_class.includes("Angel");
 
   return (
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
@@ -887,7 +951,6 @@ export default function OnboardingForm() {
               {form.member_role === "investor" && (
                 <div className="space-y-4">
 
-                  {/* Section A: Profile & Type */}
                   <SectionCard label="Section A — Profile & Type">
                     <FieldRow>
                       <Field label="Type of Investor" req>
@@ -900,21 +963,6 @@ export default function OnboardingForm() {
                           <option value="">Select type</option>
                           {INVESTOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
-                        {form.investor_type === "Angel Networks" && (
-                          <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 shrink-0 text-violet-500">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-                            </svg>
-                            <div>
-                              <p className="text-sm font-semibold text-violet-800">
-                                ANP Affiliation Applied
-                              </p>
-                              <p className="mt-0.5 text-xs text-violet-700">
-                                Your profile will be automatically affiliated with the <strong>Angel Network of the Philippines (ANP)</strong>. This gives you access to ANP deal flow and co-investment opportunities within the platform.
-                              </p>
-                            </div>
-                          </div>
-                        )}
                       </Field>
 
                       <Field label="Entity Class / Office Type" req>
@@ -926,9 +974,35 @@ export default function OnboardingForm() {
                         />
                       </Field>
                     </FieldRow>
+
+                    {/* ANP affiliation — shown for Angel Networks type or Angel entity class */}
+                    {showAnpBadge && (
+                      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={form.anp_affiliated}
+                          onChange={(e) => setForm((prev) => ({ ...prev, anp_affiliated: e.target.checked }))}
+                          className="mt-0.5 h-4 w-4 accent-violet-600"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-violet-800">
+                            Associate profile with ANP – Bit Angels (Manila Chapter)
+                          </p>
+                          <p className="mt-0.5 text-xs text-violet-600">
+                            Link your profile to the Angel Network Philippines Bit Angels chapter for shared deal flow and co-investment visibility.
+                          </p>
+                        </div>
+                      </label>
+                    )}
+
+                    <Field label="Interested in participating as a Demo Day Pitch Judge">
+                      <YesNoToggle
+                        value={form.demo_day_judge as "" | "yes" | "no"}
+                        onChange={(v) => set("demo_day_judge", v)}
+                      />
+                    </Field>
                   </SectionCard>
 
-                  {/* Section B: Investment Focus */}
                   <SectionCard label="Section B — Investment Focus">
                     <Field label="Investment Interests" req>
                       <p className="mb-2 text-xs text-[var(--color-muted)]">Select all that apply.</p>
@@ -970,7 +1044,6 @@ export default function OnboardingForm() {
                     </Field>
                   </SectionCard>
 
-                  {/* Section C: Financials */}
                   <SectionCard
                     label="Section C — Financials"
                     description="Approximate check sizes in USD. Used for matching precision only."
@@ -1042,9 +1115,75 @@ export default function OnboardingForm() {
                         ))}
                       </div>
                     </Field>
+
+                    <Field label="Product Stage" req>
+                      <PillToggle
+                        options={PRODUCT_STAGES}
+                        value={form.product_stage ? [form.product_stage] : []}
+                        onChange={(v) => set("product_stage", v[v.length - 1] ?? "")}
+                        singleSelect
+                      />
+                    </Field>
+
+                    <FieldRow>
+                      <Field label="Total Co-founders" req>
+                        <input
+                          type="number"
+                          min={1}
+                          className="gn-input"
+                          placeholder="e.g. 2"
+                          value={form.total_cofounders}
+                          onChange={(e) => set("total_cofounders", e.target.value)}
+                        />
+                        <p className="mt-1 text-xs text-[var(--color-muted)]">
+                          Minimum 2 required for Demo Day tracking.
+                        </p>
+                      </Field>
+
+                      <Field label="Includes a Technical Founder">
+                        <YesNoToggle
+                          value={form.has_technical_founder as "" | "yes" | "no"}
+                          onChange={(v) => set("has_technical_founder", v)}
+                        />
+                      </Field>
+                    </FieldRow>
+
+                    <Field label="Pitch Deck">
+                      <label className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-[var(--color-hairline)] px-4 py-3 transition hover:border-[var(--color-primary)]/40">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0 text-[var(--color-muted)]">
+                          <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-[var(--color-ink)]">
+                            {pitchDeckFile
+                              ? pitchDeckFile.name
+                              : form.pitch_deck_url
+                              ? "Deck on file ✓ — click to replace"
+                              : "Upload pitch deck (PDF or PPTX)"}
+                          </p>
+                          <p className="text-xs text-[var(--color-muted)]">
+                            Max 10 slides aligning with standard evaluation criteria.
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          accept=".pdf,.pptx,.ppt"
+                          className="sr-only"
+                          onChange={(e) => setPitchDeckFile(e.target.files?.[0] ?? null)}
+                        />
+                      </label>
+                      {(pitchDeckFile || form.pitch_deck_url) && (
+                        <button
+                          type="button"
+                          onClick={() => { setPitchDeckFile(null); set("pitch_deck_url", ""); }}
+                          className="mt-1 text-xs text-red-500 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </Field>
                   </SectionCard>
 
-                  {/* Section B: Financials */}
                   <SectionCard
                     label="Section B — Financials"
                     description="Approximate raise target in USD. Used for matching precision only."
@@ -1062,7 +1201,6 @@ export default function OnboardingForm() {
                 </div>
               )}
 
-              {/* Prompt if no role selected */}
               {!form.member_role && (
                 <p className="rounded-lg bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-muted)]">
                   Select your role above to see the relevant matching fields.

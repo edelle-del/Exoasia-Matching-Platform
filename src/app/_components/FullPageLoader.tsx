@@ -33,7 +33,7 @@ export function FullPageLoader({ message = "Loading..." }: FullPageLoaderProps) 
           />
           <circle
             cx="20" cy="20" r="16"
-            stroke="#460479"
+            stroke="#1a2744"
             strokeWidth="4"
             strokeDasharray="80"
             strokeDashoffset="60"

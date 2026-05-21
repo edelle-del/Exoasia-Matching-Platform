@@ -44,7 +44,7 @@ export function HeroSection({ name, stage, verificationStatus, nextStep }: HeroS
       <div>
         <p className="text-sm font-medium text-gray-400">{greeting}</p>
         <h1 className="mt-1 text-4xl font-bold tracking-tight text-gray-900">
-          {name || "there"} <span className="text-[#460479]">👋</span>
+          {name || "there"} <span className="text-[#1a2744]">👋</span>
         </h1>
         <div className="mt-3 flex items-center gap-2">
           <span
@@ -70,11 +70,11 @@ export function HeroSection({ name, stage, verificationStatus, nextStep }: HeroS
       {/* Right — Next Step nudge */}
       {nextStep && (
         <div className="flex shrink-0 items-start gap-3 rounded-2xl bg-[#F7F3FF] px-5 py-4 sm:max-w-xs">
-          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#460479]/10">
-            <ArrowRight className="h-4 w-4 text-[#460479]" />
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1a2744]/10">
+            <ArrowRight className="h-4 w-4 text-[#1a2744]" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#460479]/70">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#1a2744]/70">
               Next step
             </p>
             <p className="mt-0.5 text-sm font-medium text-gray-700">{nextStep}</p>
@@ -192,8 +192,8 @@ export function MatchFactorsChart({ fitData }: MatchFactorsChartProps) {
             />
             <Radar
               dataKey="value"
-              stroke="#460479"
-              fill="#460479"
+              stroke="#1a2744"
+              fill="#1a2744"
               fillOpacity={0.08}
               strokeWidth={1.5}
             />
@@ -253,7 +253,7 @@ export function BenchmarkingChart({ data, label = "Active deals" }: Benchmarking
               {data.map((entry) => (
                 <Cell
                   key={entry.name}
-                  fill={entry.name === "You" ? "#460479" : "#E5E7EB"}
+                  fill={entry.name === "You" ? "#1a2744" : "#E5E7EB"}
                 />
               ))}
             </Bar>

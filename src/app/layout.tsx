@@ -12,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "The Growth Network - Marketplace",
-  description: "Discover verified homes, experiences, and services.",
+  title: "Founder's Arena Matching Platform",
+  description: "Where Philippine startups meet the capital that scales them.",
   icons: {
     icon: "/logo.ico",
   },

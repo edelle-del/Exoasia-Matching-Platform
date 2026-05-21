@@ -1,99 +1,87 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers";
 
+// ─── Static lists ────────────────────────────────────────────────────────────
+
 const sectorOptions = [
-  "Advanced Manufacturing",
-  "Aerospace & Defense",
-  "Agtech",
-  "Animal Health",
-  "Brand & Retail",
-  "Crypto & Digital Assets",
-  "Deeptech",
-  "Energy",
-  "Enterprise & AI",
-  "Fintech",
-  "Food & Beverage",
-  "GOAL",
-  "Health",
-  "Insurtech",
-  "Lifetech",
-  "Maritime",
-  "Media & Advertising",
-  "Medtech",
-  "Mobility & Physical AI",
-  "New Materials & Packaging",
-  "Real Estate & Construction",
-  "Semiconductors",
-  "Smart Cities",
-  "Sportstech",
-  "Supply Chain",
-  "Sustainability",
-  "Travel & Hospitality",
+  "Advanced Manufacturing", "Aerospace & Defense", "Agtech", "Animal Health",
+  "Brand & Retail", "Crypto & Digital Assets", "Deeptech", "Energy",
+  "Enterprise & AI", "Fintech", "Food & Beverage", "GOAL", "Health",
+  "Insurtech", "Lifetech", "Maritime", "Media & Advertising", "Medtech",
+  "Mobility & Physical AI", "New Materials & Packaging",
+  "Real Estate & Construction", "Semiconductors", "Smart Cities", "Sportstech",
+  "Supply Chain", "Sustainability", "Travel & Hospitality",
 ];
 
 const employeeBands = ["1-10", "11-50", "51-200", "201-500", "500+"];
 const revenueRanges = [
-  "Under ₱1M",
-  "₱1M – ₱5M",
-  "₱5M – ₱20M",
-  "₱20M – ₱50M",
-  "₱50M – ₱100M",
-  "₱100M – ₱500M",
-  "₱500M+",
+  "Under $20K", "$20K – $100K", "$100K – $350K", "$350K – $1M",
+  "$1M – $2M", "$2M – $10M", "$10M+",
 ];
 const hearAboutOptions = [
-  "Masterclass",
-  "Referred by a member",
-  "L&D Workshop",
-  "Social Media",
-  "Other",
+  "Masterclass", "Referred by a member", "L&D Workshop", "Social Media", "Other",
 ];
 const yearsOptions = ["Less than 1 year", "1-3 years", "3-5 years", "5+ years"];
-const asksByRole: Record<string, string[]> = {
-  investor: [
-    "Deal flow / Investment opportunities",
-    "Co-investors / Syndicate partners",
-    "Portfolio companies seeking support",
-    "Due diligence expertise",
-    "Market intelligence",
-    "Exit opportunities",
-  ],
-  startup: [
-    "Funding / Investment capital",
-    "Business partners / Co-founders",
-    "Clients / Customers",
-    "Suppliers / Vendors",
-    "Strategic advisors",
-    "Distribution / Sales channels",
-    "Joint venture opportunities",
-    "Industry connections",
-  ],
-};
 
-const offersByRole: Record<string, string[]> = {
-  investor: [
-    "Capital / Funding",
-    "Board advisory",
-    "Industry expertise",
-    "Network / Connections",
-    "Mentorship & guidance",
-    "Portfolio synergies",
-  ],
-  startup: [
-    "Technology / Product",
-    "Market access",
-    "Operational capacity",
-    "Client base",
-    "Distribution channels",
-    "Industry expertise",
-    "Network / Connections",
-    "Innovation & IP",
-  ],
-};
+// Shared matching taxonomy — same strings for investor & startup (critical for matching)
+const REGIONS = [
+  "Global", "United States", "Canada", "United Kingdom", "Europe",
+  "Israel", "Latin America", "Middle East", "Africa", "Asia Pacific", "Other regions",
+];
+
+const INDUSTRIES = [
+  "AI", "B2B SaaS", "B2C", "Fintech", "Healthcare", "Biotech", "ClimateTech",
+  "Energy", "Deep Tech", "Future of Work / HRtech", "Mobility & Transportation",
+  "E-com & Retail", "Cybersecurity", "AgriTech", "SpaceTech", "Blockchain / Crypto",
+  "PropTech / Real Estate", "Education", "InsurTech", "Marketing / Adtech",
+  "CPG", "Foodtech", "Hardware", "Tourism & Hospitality", "Sportstech",
+];
+
+const STAGES = [
+  "Pre-revenue Startups", "Cash-flow Businesses", "Dividend-paying Companies",
+  "Pre-seed", "Seed", "Series A", "Series B", "Series C",
+  "Pre-IPO / Late-Stage", "Public Companies",
+];
+
+// Investor-specific
+const INVESTOR_TYPES = [
+  "Technology Business Incubators (TBIs)",
+  "Corporate Incubators",
+  "Accelerators",
+  "Angel Networks",
+  "Venture Capital Firms",
+  "Multilateral / ASEAN Partners",
+];
+
+const ENTITY_CLASSES = [
+  "Single Family Office", "Multi Family Office", "Limited Partner", "Fund of Funds",
+  "High Net Worth Indiv. ($1M+)", "Ultra HNWI ($30M+)", "Angel", "VC Fund",
+  "Private Equity Fund", "Real Estate Fund", "Accelerator", "Venture Studio",
+  "Hedge Fund", "Crypto Fund", "Private Credit Fund", "Corporation / CVC",
+  "Fundraising Agent",
+];
+
+const INVESTMENT_INTERESTS = [
+  "Direct Investment in Startups",
+  "Invest in VC Funds",
+  "Invest in Real Estate Funds",
+  "Invest in Private Equity Funds",
+  "Invest in Venture Studios",
+  "Invest in Accelerators",
+  "Invest in Funds of Funds",
+  "Invest in Hedge Funds",
+  "Invest in Crypto Funds",
+  "Invest in Private Credit Funds",
+  "Invest in New Fund Managers (Fund I)",
+  "Invest in Emerging Fund Managers (Fund II)",
+  "Invest in Established Fund Managers (Fund III or later)",
+];
+
+// ─── UI primitives ────────────────────────────────────────────────────────────
 
 function Req() {
   return (
@@ -110,6 +98,351 @@ function Opt() {
     </span>
   );
 }
+
+function SectionCard({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-6">
+      <div className="mb-5">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+          {label}
+        </p>
+        {description && (
+          <p className="mt-0.5 text-xs text-[var(--color-muted)]">{description}</p>
+        )}
+      </div>
+      <div className="space-y-6">{children}</div>
+    </div>
+  );
+}
+
+function FieldRow({ children }: { children: React.ReactNode }) {
+  return <div className="grid gap-4 md:grid-cols-2">{children}</div>;
+}
+
+function Field({
+  label,
+  req,
+  children,
+}: {
+  label: React.ReactNode;
+  req?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+        {label}
+        {req ? <Req /> : <Opt />}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// Multi-select pill toggle (for smaller fixed lists that don't need search)
+function PillToggle({
+  options,
+  value,
+  onChange,
+  singleSelect = false,
+}: {
+  options: string[];
+  value: string[];
+  onChange: (v: string[]) => void;
+  singleSelect?: boolean;
+}) {
+  function toggle(opt: string) {
+    if (singleSelect) {
+      onChange(value[0] === opt ? [] : [opt]);
+    } else {
+      onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt]);
+    }
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => toggle(opt)}
+          className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            value.includes(opt)
+              ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+              : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          }`}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Searchable multi-select with removable pills
+function SearchableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Type to search…",
+  allowSelectAll = false,
+}: {
+  options: string[];
+  value: string[];
+  onChange: (v: string[]) => void;
+  placeholder?: string;
+  allowSelectAll?: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const available = options.filter(
+    (o) => !value.includes(o) && o.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  function add(opt: string) {
+    onChange([...value, opt]);
+    setQuery("");
+  }
+
+  function remove(opt: string) {
+    onChange(value.filter((v) => v !== opt));
+  }
+
+  const showAll = allowSelectAll && value.length === 0;
+
+  return (
+    <div ref={wrapRef} className="relative">
+      {value.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {value.map((v) => (
+            <span
+              key={v}
+              className="inline-flex items-center gap-1 rounded-full bg-[var(--color-primary)]/10 px-2.5 py-0.5 text-xs font-medium text-[var(--color-primary)]"
+            >
+              {v}
+              <button
+                type="button"
+                onClick={() => remove(v)}
+                className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-[10px] hover:bg-[var(--color-primary)] hover:text-white leading-none"
+                aria-label={`Remove ${v}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setOpen(true)}
+        placeholder={value.length > 0 ? "Add more…" : placeholder}
+        className="gn-input"
+        autoComplete="off"
+      />
+
+      {open && (available.length > 0 || showAll) && (
+        <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-[var(--color-hairline)] bg-white py-1 shadow-xl">
+          {showAll && (
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange([...options]);
+                setOpen(false);
+                setQuery("");
+              }}
+              className="w-full px-3 py-2 text-left text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5"
+            >
+              ✓ All Industries (Agnostic)
+            </button>
+          )}
+          {available.map((opt) => (
+            <button
+              type="button"
+              key={opt}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                add(opt);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-[var(--color-body)] hover:bg-[var(--color-surface-soft)]"
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && available.length === 0 && query.length > 0 && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-[var(--color-hairline)] bg-white px-3 py-2.5 shadow-xl">
+          <p className="text-sm text-[var(--color-muted)]">No results for &ldquo;{query}&rdquo;</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Side-by-side min/max check size inputs
+function CheckSizePair({
+  label,
+  minValue,
+  maxValue,
+  onMinChange,
+  onMaxChange,
+  req,
+}: {
+  label: string;
+  minValue: string;
+  maxValue: string;
+  onMinChange: (v: string) => void;
+  onMaxChange: (v: string) => void;
+  req?: boolean;
+}) {
+  return (
+    <Field label={label} req={req}>
+      <div className="flex gap-3 max-w-sm">
+        {(
+          [
+            { lbl: "Min", val: minValue, fn: onMinChange, ph: "100,000" },
+            { lbl: "Max", val: maxValue, fn: onMaxChange, ph: "1,000,000" },
+          ] as const
+        ).map(({ lbl, val, fn, ph }) => (
+          <div key={lbl} className="flex-1 min-w-0">
+            <p className="mb-1 text-xs text-[var(--color-muted)]">{lbl}</p>
+            <div className="flex items-center rounded-[8px] border border-[var(--color-hairline)] bg-[var(--color-canvas)] px-3 py-[13px] transition-colors focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(70,4,121,0.1)]">
+              <span className="select-none shrink-0 text-sm text-[var(--color-muted)] mr-1">$</span>
+              <input
+                type="text"
+                className="min-w-0 flex-1 bg-transparent text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-muted)]"
+                placeholder={ph}
+                value={val}
+                onChange={(e) => fn(e.target.value)}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+// ─── Role card ────────────────────────────────────────────────────────────────
+
+function RoleCard({
+  value,
+  current,
+  onSelect,
+  icon,
+  title,
+  description,
+}: {
+  value: "investor" | "startup";
+  current: string;
+  onSelect: (v: "investor" | "startup") => void;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(value)}
+      className={`relative flex w-full flex-col items-start gap-3 rounded-xl border-2 p-5 text-left transition-all ${
+        active
+          ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5"
+          : "border-[var(--color-hairline)] bg-[var(--color-canvas)] hover:border-[var(--color-primary)]/40"
+      }`}
+    >
+      {active && (
+        <span className="absolute right-4 top-4 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-[10px] text-white">
+          ✓
+        </span>
+      )}
+      <div
+        className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+          active
+            ? "bg-[var(--color-primary)] text-white"
+            : "bg-[var(--color-surface-soft)] text-[var(--color-muted)]"
+        }`}
+      >
+        {icon}
+      </div>
+      <div>
+        <p className="font-semibold text-[var(--color-ink)]">{title}</p>
+        <p className="mt-0.5 text-xs text-[var(--color-muted)]">{description}</p>
+      </div>
+    </button>
+  );
+}
+
+// ─── Extended form state type ─────────────────────────────────────────────────
+
+type ExtendedFields = {
+  target_regions: string[];
+  target_industries: string[];
+  investor_type: string;
+  entity_class: string[];
+  investment_interests: string[];
+  target_stages: string[];
+  lp_check_min: string;
+  lp_check_max: string;
+  direct_check_min: string;
+  direct_check_max: string;
+  fundraising_stage: string;
+  target_raise_min: string;
+  target_raise_max: string;
+};
+
+const EMPTY_EXTENDED: ExtendedFields = {
+  target_regions: [],
+  target_industries: [],
+  investor_type: "",
+  entity_class: [],
+  investment_interests: [],
+  target_stages: [],
+  lp_check_min: "",
+  lp_check_max: "",
+  direct_check_min: "",
+  direct_check_max: "",
+  fundraising_stage: "",
+  target_raise_min: "",
+  target_raise_max: "",
+};
+
+function parseExtended(raw: string | null | undefined): ExtendedFields {
+  try {
+    const parsed = JSON.parse(raw ?? "");
+    if (parsed?._v === 2) return { ...EMPTY_EXTENDED, ...parsed };
+  } catch {
+    /* legacy free-text asks_summary — ignore */
+  }
+  return EMPTY_EXTENDED;
+}
+
+// ─── Main form ────────────────────────────────────────────────────────────────
 
 export default function OnboardingForm() {
   const router = useRouter();
@@ -134,13 +467,11 @@ export default function OnboardingForm() {
     sector: "",
     employee_band: "",
     annual_revenue_estimate: "",
-    member_role: "",
-    ask_categories: [] as string[],
-    offer_categories: [] as string[],
+    member_role: "" as "" | "investor" | "startup",
     pdpa_matching_consent: false,
     additional_notes: "",
-    asks_summary: "",
     offers_summary: "",
+    ...EMPTY_EXTENDED,
   });
 
   useEffect(() => {
@@ -150,16 +481,16 @@ export default function OnboardingForm() {
         const { data } = await supabase.auth.getUser();
         const userId = data?.user?.id;
         if (!userId) return;
+
         const metadataFullName =
           typeof data.user?.user_metadata?.full_name === "string"
             ? data.user.user_metadata.full_name.trim()
             : "";
 
-        // Load existing profile if present
         const { data: profile } = await supabase
           .from("profiles")
           .select(
-            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,member_role,ask_categories,offer_categories,asks_summary,offers_summary,pdpa_matching_consent,additional_notes",
+            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,member_role,asks_summary,offers_summary,pdpa_matching_consent,additional_notes",
           )
           .eq("id", userId)
           .single();
@@ -169,6 +500,8 @@ export default function OnboardingForm() {
           const spaceIdx = existingName.indexOf(" ");
           const loadedFirst = spaceIdx >= 0 ? existingName.slice(0, spaceIdx) : existingName;
           const loadedLast = spaceIdx >= 0 ? existingName.slice(spaceIdx + 1) : "";
+          const extended = parseExtended(profile.asks_summary);
+
           setForm((prev) => ({
             ...prev,
             first_name: loadedFirst || prev.first_name,
@@ -180,20 +513,15 @@ export default function OnboardingForm() {
             how_heard_about: profile.how_heard_about ?? prev.how_heard_about,
             referred_by: profile.referred_by ?? prev.referred_by,
             phone_whatsapp: profile.phone_whatsapp ?? prev.phone_whatsapp,
-            years_in_operation:
-              profile.years_in_operation ?? prev.years_in_operation,
+            years_in_operation: profile.years_in_operation ?? prev.years_in_operation,
             sector: profile.sector ?? prev.sector,
             employee_band: profile.employee_band ?? prev.employee_band,
-            annual_revenue_estimate:
-              profile.annual_revenue_estimate ?? prev.annual_revenue_estimate,
-            member_role: profile.member_role ?? prev.member_role,
-            ask_categories: profile.ask_categories ?? prev.ask_categories,
-            offer_categories: profile.offer_categories ?? prev.offer_categories,
-            pdpa_matching_consent:
-              profile.pdpa_matching_consent ?? prev.pdpa_matching_consent,
+            annual_revenue_estimate: profile.annual_revenue_estimate ?? prev.annual_revenue_estimate,
+            member_role: (profile.member_role as "" | "investor" | "startup") ?? prev.member_role,
+            pdpa_matching_consent: profile.pdpa_matching_consent ?? prev.pdpa_matching_consent,
             additional_notes: profile.additional_notes ?? prev.additional_notes,
-            asks_summary: profile.asks_summary ?? prev.asks_summary,
             offers_summary: profile.offers_summary ?? prev.offers_summary,
+            ...extended,
           }));
           return;
         }
@@ -203,41 +531,28 @@ export default function OnboardingForm() {
           const metaFirst = spaceIdx >= 0 ? metadataFullName.slice(0, spaceIdx) : metadataFullName;
           const metaLast = spaceIdx >= 0 ? metadataFullName.slice(spaceIdx + 1) : "";
           setForm((prev) =>
-            prev.first_name.trim()
-              ? prev
-              : { ...prev, first_name: metaFirst, last_name: metaLast },
+            prev.first_name.trim() ? prev : { ...prev, first_name: metaFirst, last_name: metaLast },
           );
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [supabase]);
 
-  const handleChange = (field: string, value: string) => {
+  const set = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
   };
 
-  const toggleCategory = (
-    field: "ask_categories" | "offer_categories",
-    value: string,
-    maxSelected = 3,
-  ) => {
-    setForm((prev) => {
-      const selected = prev[field];
-      const exists = selected.includes(value);
-      if (exists) {
-        return { ...prev, [field]: selected.filter((item) => item !== value) };
-      }
-      if (selected.length >= maxSelected) {
-        return prev;
-      }
-      return { ...prev, [field]: [...selected, value] };
-    });
+  const setArr = (field: keyof ExtendedFields, value: string[]) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setError("");
+  };
+
+  const handleRoleSelect = (r: "investor" | "startup") => {
+    setForm((prev) => ({ ...prev, member_role: r, ...EMPTY_EXTENDED }));
     setError("");
   };
 
@@ -247,82 +562,98 @@ export default function OnboardingForm() {
     setError("");
     setSuccess("");
 
-    // Client-side validation
-    if (!form.first_name.trim()) {
-      setError("First name is required.");
-      setLoading(false);
-      return;
+    // Validation
+    if (!form.first_name.trim()) return fail("First name is required.");
+    if (!form.last_name.trim()) return fail("Last name is required.");
+    if (!form.business_name.trim()) return fail("Business name is required.");
+    if (!form.sector) return fail("Please choose a sector.");
+    if (!form.how_heard_about) return fail("Please tell us how you heard about Founder's Arena.");
+    if (form.how_heard_about === "Referred by a member" && !form.referred_by.trim())
+      return fail("Please add the name of the person who referred you.");
+    if (!form.phone_whatsapp.trim()) return fail("Phone Number / WhatsApp is required.");
+    if (!form.years_in_operation) return fail("Please select your years in operation.");
+    if (!form.employee_band) return fail("Please select your employee band.");
+    if (!form.annual_revenue_estimate) return fail("Please select your annual revenue range.");
+    if (!isAdminView && !form.member_role) return fail("Please select your role.");
+
+    const investorHasFundInterests = form.investment_interests.some(
+      (i) => i.includes("Funds") || i.includes("Fund Manager"),
+    );
+
+    if (!isAdminView && form.member_role === "investor") {
+      if (!form.investor_type) return fail("Please select your investor type.");
+      if (!form.entity_class.length) return fail("Please select at least one entity class.");
+      if (!form.investment_interests.length) return fail("Please select at least one investment interest.");
+      if (!form.target_regions.length) return fail("Please select at least one target region.");
+      if (!form.target_industries.length) return fail("Please select at least one target industry.");
+      if (!form.target_stages.length) return fail("Please select a target stage.");
+      if (investorHasFundInterests) {
+        if (!form.lp_check_min.trim()) return fail("Please enter a minimum LP investment check size.");
+        if (!form.lp_check_max.trim()) return fail("Please enter a maximum LP investment check size.");
+      }
+      if (!form.direct_check_min.trim()) return fail("Please enter a minimum direct startup check size.");
+      if (!form.direct_check_max.trim()) return fail("Please enter a maximum direct startup check size.");
     }
-    if (!form.last_name.trim()) {
-      setError("Last name is required.");
-      setLoading(false);
-      return;
+
+    if (!isAdminView && form.member_role === "startup") {
+      if (!form.target_regions.length) return fail("Please select at least one target region.");
+      if (!form.target_industries.length) return fail("Please select at least one target industry.");
+      if (!form.fundraising_stage) return fail("Please select your current fundraising stage.");
+      if (!form.target_raise_min.trim()) return fail("Please enter a minimum target raise amount.");
+      if (!form.target_raise_max.trim()) return fail("Please enter a maximum target raise amount.");
     }
-    if (!form.business_name.trim()) {
-      setError("Business name is required.");
+    if (!form.pdpa_matching_consent)
+      return fail("You must agree to the data privacy consent to continue.");
+
+    function fail(msg: string) {
+      setError(msg);
       setLoading(false);
-      return;
-    }
-    if (!form.sector) {
-      setError("Please choose a sector.");
-      setLoading(false);
-      return;
-    }
-    if (!form.how_heard_about) {
-      setError("Please tell us how you heard about The Growth Network.");
-      setLoading(false);
-      return;
-    }
-    if (
-      form.how_heard_about === "Referred by a member" &&
-      !form.referred_by.trim()
-    ) {
-      setError("Please add the name of the person who referred you.");
-      setLoading(false);
-      return;
-    }
-    if (!form.phone_whatsapp.trim()) {
-      setError("Phone Number / WhatsApp is required.");
-      setLoading(false);
-      return;
-    }
-    if (!form.years_in_operation) {
-      setError("Please select your years in operation.");
-      setLoading(false);
-      return;
-    }
-    if (!form.employee_band) {
-      setError("Please select your employee band.");
-      setLoading(false);
-      return;
-    }
-    if (!form.annual_revenue_estimate) {
-      setError("Please select your annual revenue range.");
-      setLoading(false);
-      return;
-    }
-    if (!isAdminView && !form.member_role) {
-      setError("Please select your member role (Investor or Startup).");
-      setLoading(false);
-      return;
-    }
-    if (!isAdminView && form.ask_categories.length === 0) {
-      setError("Please select at least one ASK category.");
-      setLoading(false);
-      return;
-    }
-    if (!isAdminView && form.offer_categories.length === 0) {
-      setError("Please select at least one OFFER category.");
-      setLoading(false);
-      return;
-    }
-    if (!form.pdpa_matching_consent) {
-      setError("You must agree to the data privacy consent to continue.");
-      setLoading(false);
-      return;
+      return undefined as never;
     }
 
     try {
+      // Derive backward-compat ask/offer categories
+      const ask_categories =
+        form.member_role === "investor"
+          ? ["Deal flow / Investment opportunities"]
+          : form.member_role === "startup"
+          ? ["Funding / Investment capital"]
+          : ["General networking"];
+
+      const offer_categories =
+        form.member_role === "investor"
+          ? ["Capital / Funding"]
+          : form.member_role === "startup"
+          ? ["Technology / Product"]
+          : ["Industry expertise"];
+
+      // Serialize extended profile data into asks_summary for zero-migration persistence
+      const extendedPayload =
+        form.member_role === "investor"
+          ? {
+              _v: 2,
+              investor_type: form.investor_type,
+              entity_class: form.entity_class,
+              investment_interests: form.investment_interests,
+              target_regions: form.target_regions,
+              target_industries: form.target_industries,
+              target_stages: form.target_stages,
+              lp_check_min: form.lp_check_min,
+              lp_check_max: form.lp_check_max,
+              direct_check_min: form.direct_check_min,
+              direct_check_max: form.direct_check_max,
+            }
+          : form.member_role === "startup"
+          ? {
+              _v: 2,
+              target_regions: form.target_regions,
+              target_industries: form.target_industries,
+              fundraising_stage: form.fundraising_stage,
+              target_raise_min: form.target_raise_min,
+              target_raise_max: form.target_raise_max,
+            }
+          : null;
+
       const payload = {
         full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
         member_role: form.member_role || undefined,
@@ -337,12 +668,12 @@ export default function OnboardingForm() {
         sector: form.sector || undefined,
         employee_band: form.employee_band,
         annual_revenue_estimate: form.annual_revenue_estimate,
-        ask_categories: form.ask_categories,
-        offer_categories: form.offer_categories,
+        ask_categories,
+        offer_categories,
+        asks_summary: extendedPayload ? JSON.stringify(extendedPayload) : undefined,
+        offers_summary: form.offers_summary.trim() || undefined,
         pdpa_matching_consent: form.pdpa_matching_consent,
         additional_notes: form.additional_notes.trim() || undefined,
-        asks_summary: form.asks_summary.trim() || undefined,
-        offers_summary: form.offers_summary.trim() || undefined,
       };
 
       const res = await fetch("/api/onboarding/submit", {
@@ -351,68 +682,53 @@ export default function OnboardingForm() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Save failed");
-      }
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData?.error || "Save failed");
 
       await supabase.auth.refreshSession();
       setSuccess("Profile and matching signals saved.");
       setTimeout(() => router.push("/dashboard"), 900);
-    } catch (err: any) {
-      setError(err?.message ?? "Save failed.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Save failed.");
     } finally {
       setLoading(false);
     }
   };
 
+  const showLpFields = form.investment_interests.some(
+    (i) => i.includes("Funds") || i.includes("Fund Manager"),
+  );
+
   return (
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
-        <h1 className="text-2xl font-700 text-[var(--color-ink)]">
-          Complete your profile
-        </h1>
+        <h1 className="text-2xl font-700 text-[var(--color-ink)]">Complete your profile</h1>
         <p className="mt-2 text-sm text-[var(--color-body)]">
-          Provide the key details we use to generate curated strategic matches
-          for you.
+          Provide the key details we use to generate curated strategic matches for you.
         </p>
 
         {error && (
-          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
         {success && (
-          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-            {success}
-          </div>
+          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+
+          {/* Basic profile fields */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label htmlFor="first_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 First name <Req />
               </label>
-              <input
-                id="first_name"
-                className="gn-input mt-1"
-                value={form.first_name}
-                onChange={(e) => handleChange("first_name", e.target.value)}
-                required
-              />
+              <input id="first_name" className="gn-input mt-1" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} required />
             </div>
             <div>
               <label htmlFor="last_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 Last name <Req />
               </label>
-              <input
-                id="last_name"
-                className="gn-input mt-1"
-                value={form.last_name}
-                onChange={(e) => handleChange("last_name", e.target.value)}
-                required
-              />
+              <input id="last_name" className="gn-input mt-1" value={form.last_name} onChange={(e) => set("last_name", e.target.value)} required />
             </div>
           </div>
 
@@ -420,33 +736,17 @@ export default function OnboardingForm() {
             <label htmlFor="business_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
               Business name <Req />
             </label>
-            <input
-              id="business_name"
-              className="gn-input mt-1"
-              value={form.business_name}
-              onChange={(e) => handleChange("business_name", e.target.value)}
-            />
+            <input id="business_name" className="gn-input mt-1" value={form.business_name} onChange={(e) => set("business_name", e.target.value)} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label htmlFor="how_heard_about" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                How did you hear about The Growth Network? <Req />
+                How did you hear about Founder&apos;s Arena? <Req />
               </label>
-              <select
-                id="how_heard_about"
-                className="gn-input mt-1"
-                value={form.how_heard_about}
-                onChange={(e) =>
-                  handleChange("how_heard_about", e.target.value)
-                }
-              >
+              <select id="how_heard_about" className="gn-input mt-1" value={form.how_heard_about} onChange={(e) => set("how_heard_about", e.target.value)}>
                 <option value="">Select one</option>
-                {hearAboutOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
+                {hearAboutOptions.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
             <div>
@@ -454,13 +754,7 @@ export default function OnboardingForm() {
                 If referred, who referred you?{" "}
                 {form.how_heard_about === "Referred by a member" ? <Req /> : <Opt />}
               </label>
-              <input
-                id="referred_by"
-                className="gn-input mt-1"
-                value={form.referred_by}
-                onChange={(e) => handleChange("referred_by", e.target.value)}
-                placeholder="Referral name"
-              />
+              <input id="referred_by" className="gn-input mt-1" value={form.referred_by} onChange={(e) => set("referred_by", e.target.value)} placeholder="Referral name" />
             </div>
           </div>
 
@@ -469,32 +763,15 @@ export default function OnboardingForm() {
               <label htmlFor="phone_whatsapp" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 Phone Number / WhatsApp <Req />
               </label>
-              <input
-                id="phone_whatsapp"
-                className="gn-input mt-1"
-                value={form.phone_whatsapp}
-                onChange={(e) => handleChange("phone_whatsapp", e.target.value)}
-                placeholder="+63..."
-              />
+              <input id="phone_whatsapp" className="gn-input mt-1" value={form.phone_whatsapp} onChange={(e) => set("phone_whatsapp", e.target.value)} placeholder="+63…" />
             </div>
             <div>
               <label htmlFor="years_in_operation" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 Years in Operation <Req />
               </label>
-              <select
-                id="years_in_operation"
-                className="gn-input mt-1"
-                value={form.years_in_operation}
-                onChange={(e) =>
-                  handleChange("years_in_operation", e.target.value)
-                }
-              >
+              <select id="years_in_operation" className="gn-input mt-1" value={form.years_in_operation} onChange={(e) => set("years_in_operation", e.target.value)}>
                 <option value="">Select one</option>
-                {yearsOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
+                {yearsOptions.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
           </div>
@@ -504,23 +781,13 @@ export default function OnboardingForm() {
               <label htmlFor="role_title" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 Role / title <Opt />
               </label>
-              <input
-                id="role_title"
-                className="gn-input mt-1"
-                value={form.role_title}
-                onChange={(e) => handleChange("role_title", e.target.value)}
-              />
+              <input id="role_title" className="gn-input mt-1" value={form.role_title} onChange={(e) => set("role_title", e.target.value)} />
             </div>
             <div>
               <label htmlFor="city" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 City <Opt />
               </label>
-              <input
-                id="city"
-                className="gn-input mt-1"
-                value={form.city}
-                onChange={(e) => handleChange("city", e.target.value)}
-              />
+              <input id="city" className="gn-input mt-1" value={form.city} onChange={(e) => set("city", e.target.value)} />
             </div>
           </div>
 
@@ -535,10 +802,7 @@ export default function OnboardingForm() {
             )}
             <div className="mt-2 flex flex-wrap gap-2">
               {sectorOptions.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => handleChange("sector", form.sector === s ? "" : s)}
+                <button key={s} type="button" onClick={() => set("sector", form.sector === s ? "" : s)}
                   className={`rounded-full border px-3 py-1 text-xs font-500 transition-colors ${
                     form.sector === s
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
@@ -555,12 +819,7 @@ export default function OnboardingForm() {
             <label htmlFor="short_bio" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
               Short bio (1–2 sentences) <Opt />
             </label>
-            <textarea
-              id="short_bio"
-              className="gn-input mt-1 h-24"
-              value={form.short_bio}
-              onChange={(e) => handleChange("short_bio", e.target.value)}
-            />
+            <textarea id="short_bio" className="gn-input mt-1 h-24" value={form.short_bio} onChange={(e) => set("short_bio", e.target.value)} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -568,185 +827,262 @@ export default function OnboardingForm() {
               <label htmlFor="employee_band" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 Employee band <Req />
               </label>
-              <select
-                id="employee_band"
-                className="gn-input mt-1"
-                value={form.employee_band}
-                onChange={(e) => handleChange("employee_band", e.target.value)}
-              >
+              <select id="employee_band" className="gn-input mt-1" value={form.employee_band} onChange={(e) => set("employee_band", e.target.value)}>
                 <option value="">Choose band</option>
-                {employeeBands.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
+                {employeeBands.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor="annual_revenue_estimate" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                 Annual revenue (estimate) <Req />
               </label>
-              <select
-                id="annual_revenue_estimate"
-                className="gn-input mt-1"
-                value={form.annual_revenue_estimate}
-                onChange={(e) =>
-                  handleChange("annual_revenue_estimate", e.target.value)
-                }
-              >
+              <select id="annual_revenue_estimate" className="gn-input mt-1" value={form.annual_revenue_estimate} onChange={(e) => set("annual_revenue_estimate", e.target.value)}>
                 <option value="">Choose range</option>
-                {revenueRanges.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
+                {revenueRanges.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
           </div>
 
+          {/* ─── Role selection ──────────────────────────────────────────── */}
           {!isAdminView && (
             <>
               <div>
                 <p className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  Member role <Req />
+                  Role <Req />
                 </p>
                 <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  Your role determines which asks and offers are relevant to you.
+                  Your role determines what matching criteria we collect.
                 </p>
-                <div className="mt-2 flex gap-3">
-                  {(["investor", "startup"] as const).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          member_role: r,
-                          ask_categories: [],
-                          offer_categories: [],
-                        }))
-                      }
-                      className={`rounded-full border px-5 py-1.5 text-sm font-500 capitalize transition-colors ${
-                        form.member_role === r
-                          ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                          : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-                      }`}
-                    >
-                      {r.charAt(0).toUpperCase() + r.slice(1)}
-                    </button>
-                  ))}
+
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <RoleCard
+                    value="investor"
+                    current={form.member_role}
+                    onSelect={handleRoleSelect}
+                    title="Investor / Ecosystem Partner"
+                    description="I deploy capital and seek deal flow"
+                    icon={
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                        <path d="M12 6v6l4 2" />
+                      </svg>
+                    }
+                  />
+                  <RoleCard
+                    value="startup"
+                    current={form.member_role}
+                    onSelect={handleRoleSelect}
+                    title="Startup / Founder"
+                    description="I'm building a company and raising capital"
+                    icon={
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    }
+                  />
                 </div>
               </div>
 
-              {form.member_role ? (
-                <>
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                      What are you currently looking for? (Pick up to 3) <Req />
-                    </h3>
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
-                      {(asksByRole[form.member_role] ?? []).map((option) => {
-                        const selected = form.ask_categories.includes(option);
-                        return (
-                          <label
-                            key={option}
-                            className="flex items-start gap-2 text-sm text-[var(--color-body)]"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-1"
-                              checked={selected}
-                              onChange={() => toggleCategory("ask_categories", option)}
-                            />
-                            <span>{option}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
+              {/* ─── Investor sections ─────────────────────────────────────── */}
+              {form.member_role === "investor" && (
+                <div className="space-y-4">
 
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                      What do you bring to the table? (Pick up to 3) <Req />
-                    </h3>
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
-                      {(offersByRole[form.member_role] ?? []).map((option) => {
-                        const selected = form.offer_categories.includes(option);
-                        return (
-                          <label
-                            key={option}
-                            className="flex items-start gap-2 text-sm text-[var(--color-body)]"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-1"
-                              checked={selected}
-                              onChange={() => toggleCategory("offer_categories", option)}
-                            />
-                            <span>{option}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {/* Section A: Profile & Type */}
+                  <SectionCard label="Section A — Profile & Type">
+                    <FieldRow>
+                      <Field label="Type of Investor" req>
+                        <select
+                          aria-label="Type of Investor"
+                          className="gn-input"
+                          value={form.investor_type}
+                          onChange={(e) => set("investor_type", e.target.value)}
+                        >
+                          <option value="">Select type</option>
+                          {INVESTOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {form.investor_type === "Angel Networks" && (
+                          <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                            <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 shrink-0 text-violet-500">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                            </svg>
+                            <div>
+                              <p className="text-sm font-semibold text-violet-800">
+                                ANP Affiliation Applied
+                              </p>
+                              <p className="mt-0.5 text-xs text-violet-700">
+                                Your profile will be automatically affiliated with the <strong>Angel Network of the Philippines (ANP)</strong>. This gives you access to ANP deal flow and co-investment opportunities within the platform.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </Field>
 
-                  <div>
-                    <label htmlFor="asks_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                      ASKS summary <Opt />
-                    </label>
-                    <p className="text-xs text-[var(--color-muted)]">
-                      Optional but recommended — a clear summary significantly improves your match quality.
-                    </p>
-                    <textarea
-                      id="asks_summary"
-                      className="gn-input mt-2 h-28"
-                      value={form.asks_summary}
-                      onChange={(e) => handleChange("asks_summary", e.target.value)}
-                      placeholder="For example: We are looking for strategic advisors and a distribution partner..."
+                      <Field label="Entity Class / Office Type" req>
+                        <SearchableMultiSelect
+                          options={ENTITY_CLASSES}
+                          value={form.entity_class}
+                          onChange={(v) => setArr("entity_class", v)}
+                          placeholder="Search entity class…"
+                        />
+                      </Field>
+                    </FieldRow>
+                  </SectionCard>
+
+                  {/* Section B: Investment Focus */}
+                  <SectionCard label="Section B — Investment Focus">
+                    <Field label="Investment Interests" req>
+                      <p className="mb-2 text-xs text-[var(--color-muted)]">Select all that apply.</p>
+                      <PillToggle
+                        options={INVESTMENT_INTERESTS}
+                        value={form.investment_interests}
+                        onChange={(v) => setArr("investment_interests", v)}
+                      />
+                    </Field>
+
+                    <FieldRow>
+                      <Field label="Target Regions" req>
+                        <SearchableMultiSelect
+                          options={REGIONS}
+                          value={form.target_regions}
+                          onChange={(v) => setArr("target_regions", v)}
+                          placeholder="Search regions…"
+                        />
+                      </Field>
+
+                      <Field label="Target Industries" req>
+                        <SearchableMultiSelect
+                          options={INDUSTRIES}
+                          value={form.target_industries}
+                          onChange={(v) => setArr("target_industries", v)}
+                          placeholder="Search industries…"
+                          allowSelectAll
+                        />
+                      </Field>
+                    </FieldRow>
+
+                    <Field label="Target Stages" req>
+                      <PillToggle
+                        options={STAGES}
+                        value={form.target_stages}
+                        onChange={(v) => setArr("target_stages", v)}
+                        singleSelect
+                      />
+                    </Field>
+                  </SectionCard>
+
+                  {/* Section C: Financials */}
+                  <SectionCard
+                    label="Section C — Financials"
+                    description="Approximate check sizes in USD. Used for matching precision only."
+                  >
+                    {showLpFields && (
+                      <CheckSizePair
+                        label="LP Investment Check Size"
+                        minValue={form.lp_check_min}
+                        maxValue={form.lp_check_max}
+                        onMinChange={(v) => set("lp_check_min", v)}
+                        onMaxChange={(v) => set("lp_check_max", v)}
+                        req
+                      />
+                    )}
+                    <CheckSizePair
+                      label="Direct Startup Check Size"
+                      minValue={form.direct_check_min}
+                      maxValue={form.direct_check_max}
+                      onMinChange={(v) => set("direct_check_min", v)}
+                      onMaxChange={(v) => set("direct_check_max", v)}
+                      req
                     />
-                  </div>
+                  </SectionCard>
 
-                  <div>
-                    <label htmlFor="offers_summary" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                      OFFERS summary <Opt />
-                    </label>
-                    <p className="text-xs text-[var(--color-muted)]">
-                      Optional but recommended — a clear summary significantly improves your match quality.
-                    </p>
-                    <textarea
-                      id="offers_summary"
-                      className="gn-input mt-2 h-28"
-                      value={form.offers_summary}
-                      onChange={(e) => handleChange("offers_summary", e.target.value)}
-                      placeholder="For example: We bring enterprise clients, operational expertise, and a strong partner network..."
+                </div>
+              )}
+
+              {/* ─── Startup sections ──────────────────────────────────────── */}
+              {form.member_role === "startup" && (
+                <div className="space-y-4">
+
+                  <SectionCard label="Section A — Fundraising Target">
+                    <FieldRow>
+                      <Field label="Target Regions" req>
+                        <SearchableMultiSelect
+                          options={REGIONS}
+                          value={form.target_regions}
+                          onChange={(v) => setArr("target_regions", v)}
+                          placeholder="Search regions…"
+                        />
+                      </Field>
+
+                      <Field label="Primary & Secondary Industries" req>
+                        <SearchableMultiSelect
+                          options={INDUSTRIES}
+                          value={form.target_industries}
+                          onChange={(v) => setArr("target_industries", v)}
+                          placeholder="Search industries…"
+                          allowSelectAll
+                        />
+                      </Field>
+                    </FieldRow>
+
+                    <Field label="Current Fundraising Stage" req>
+                      <div className="flex flex-wrap gap-2">
+                        {STAGES.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => set("fundraising_stage", form.fundraising_stage === s ? "" : s)}
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                              form.fundraising_stage === s
+                                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                                : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </SectionCard>
+
+                  {/* Section B: Financials */}
+                  <SectionCard
+                    label="Section B — Financials"
+                    description="Approximate raise target in USD. Used for matching precision only."
+                  >
+                    <CheckSizePair
+                      label="Target Raise Amount"
+                      minValue={form.target_raise_min}
+                      maxValue={form.target_raise_max}
+                      onMinChange={(v) => set("target_raise_min", v)}
+                      onMaxChange={(v) => set("target_raise_max", v)}
+                      req
                     />
-                  </div>
-                </>
-              ) : (
+                  </SectionCard>
+
+                </div>
+              )}
+
+              {/* Prompt if no role selected */}
+              {!form.member_role && (
                 <p className="rounded-lg bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-muted)]">
-                  Select your member role above to see the relevant asks and offers.
+                  Select your role above to see the relevant matching fields.
                 </p>
               )}
             </>
           )}
 
+          {/* ─── PDPA consent ─────────────────────────────────────────────── */}
           <div className="space-y-2 rounded-lg bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-body)]">
             <label className="flex items-start gap-2">
               <input
                 type="checkbox"
                 checked={form.pdpa_matching_consent}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    pdpa_matching_consent: event.target.checked,
-                  }))
-                }
+                onChange={(e) => setForm((prev) => ({ ...prev, pdpa_matching_consent: e.target.checked }))}
                 className="mt-1"
               />
               <span>
-                I agree to have my professional data used for the purpose of
-                business matching in compliance with the Data Privacy Act of the
-                Philippines (PDPA).
+                I agree to have my professional data used for the purpose of business matching in
+                compliance with the Data Privacy Act of the Philippines (PDPA).
               </span>
             </label>
           </div>
@@ -759,19 +1095,19 @@ export default function OnboardingForm() {
               id="additional_notes"
               className="gn-input mt-1 h-28"
               value={form.additional_notes}
-              onChange={(e) => handleChange("additional_notes", e.target.value)}
+              onChange={(e) => set("additional_notes", e.target.value)}
               placeholder="Optional details that may help with matching"
             />
           </div>
 
           <div className="flex items-center gap-3">
             <button type="submit" className="gn-btn-primary" disabled={loading}>
-              {loading ? "Saving..." : "Save and continue"}
+              {loading ? "Saving…" : "Save and continue"}
             </button>
           </div>
+
         </form>
       </div>
     </div>
   );
 }
-

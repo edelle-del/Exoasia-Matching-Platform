@@ -610,6 +610,35 @@ export async function fetchAdvisorDocumentQueue(supabase: SupabaseClient): Promi
   };
 }
 
+export type CommunityMemberRecord = {
+  id: string;
+  full_name: string | null;
+  business_name: string | null;
+  sector: string | null;
+  city: string | null;
+  short_bio: string | null;
+  stage: string;
+  verification_status: string;
+  account_status: string;
+  member_role: string | null;
+  ask_categories: string[];
+  offer_categories: string[];
+};
+
+export async function fetchCommunityMembers(
+  supabase: SupabaseClient,
+): Promise<CommunityMemberRecord[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      "id, full_name, business_name, sector, city, short_bio, stage, verification_status, account_status, member_role, ask_categories, offer_categories",
+    )
+    .order("full_name", { ascending: true });
+
+  if (error) return [];
+  return (data ?? []) as CommunityMemberRecord[];
+}
+
 export async function fetchAdvisorMemberList(
   supabase: SupabaseClient,
 ): Promise<AdvisorMemberListRecord[]> {

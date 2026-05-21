@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "seed:invited": "node scripts/seed-invited-account.mjs",
-    "create:account": "node scripts/create-account.mjs"
+    "create:account": "node scripts/create-account.mjs",
+    "seed:test-members": "node scripts/seed-test-member.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

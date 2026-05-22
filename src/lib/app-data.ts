@@ -529,6 +529,33 @@ export async function createAskOffer(
   return { error: error?.message ?? null };
 }
 
+export type ProjectRecord = {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  stage: string | null;
+  sector: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function fetchUserProjects(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<ProjectRecord[]> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, owner_id, name, description, stage, sector, is_active, created_at, updated_at")
+    .eq("owner_id", userId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+  if (error) return [];
+  return (data ?? []) as ProjectRecord[];
+}
+
 export async function deleteAskOffer(supabase: SupabaseClient, id: string) {
   const { error } = await supabase
     .from("member_asks_offers")

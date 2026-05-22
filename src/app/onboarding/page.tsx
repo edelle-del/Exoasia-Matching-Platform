@@ -111,14 +111,25 @@ function Opt() {
   );
 }
 
+const projectStages = ["Ideation", "MVP", "Growth", "Scaling", "Revenue-Generating"];
+
 export default function OnboardingForm() {
   const router = useRouter();
   const supabase = createClient();
   const { role } = useAuth();
   const isAdminView = ["advisor", "admin"].includes(role ?? "");
+  const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [projectForm, setProjectForm] = useState({
+    name: "",
+    description: "",
+    stage: "",
+    sector: "",
+  });
+  const [projectLoading, setProjectLoading] = useState(false);
+  const [projectError, setProjectError] = useState("");
 
   const [form, setForm] = useState({
     first_name: "",
@@ -357,8 +368,15 @@ export default function OnboardingForm() {
       }
 
       await supabase.auth.refreshSession();
-      setSuccess("Profile and matching signals saved.");
-      setTimeout(() => router.push("/dashboard"), 900);
+      setSuccess("Profile saved.");
+      if (form.member_role === "startup") {
+        setTimeout(() => {
+          setSuccess("");
+          setStep(2);
+        }, 600);
+      } else {
+        setTimeout(() => router.push("/dashboard"), 900);
+      }
     } catch (err: any) {
       setError(err?.message ?? "Save failed.");
     } finally {
@@ -366,9 +384,145 @@ export default function OnboardingForm() {
     }
   };
 
+  const handleProjectSubmit = async (skip = false) => {
+    if (skip) {
+      router.push("/dashboard");
+      return;
+    }
+    if (!projectForm.name.trim()) {
+      setProjectError("Project name is required.");
+      return;
+    }
+    setProjectLoading(true);
+    setProjectError("");
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: projectForm.name.trim(),
+        description: projectForm.description.trim() || undefined,
+        stage: projectForm.stage || undefined,
+        sector: projectForm.sector || undefined,
+      }),
+    });
+    setProjectLoading(false);
+    if (!res.ok) {
+      const data = await res.json();
+      setProjectError(data?.error ?? "Failed to create project.");
+      return;
+    }
+    router.push("/dashboard");
+  };
+
+  if (step === 2) {
+    return (
+      <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+        <div className="mx-auto max-w-[700px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+            Step 2 of 2
+          </div>
+          <h1 className="text-2xl font-700 text-[var(--color-ink)]">
+            Add your first project
+          </h1>
+          <p className="mt-2 text-sm text-[var(--color-body)]">
+            Tell investors what you&apos;re building. You get 1 free project slot — upgrade to add more.
+          </p>
+
+          {projectError && (
+            <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {projectError}
+            </div>
+          )}
+
+          <div className="mt-6 space-y-5">
+            <div>
+              <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Project name <Req />
+              </label>
+              <input
+                className="gn-input mt-1"
+                value={projectForm.name}
+                onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g. SmartSupply PH"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                Description <Opt />
+              </label>
+              <textarea
+                className="gn-input mt-1 h-24"
+                value={projectForm.description}
+                onChange={(e) => setProjectForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Brief description of what the project does and the problem it solves."
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  Project stage <Opt />
+                </label>
+                <select
+                  className="gn-input mt-1"
+                  value={projectForm.stage}
+                  onChange={(e) => setProjectForm((p) => ({ ...p, stage: e.target.value }))}
+                >
+                  <option value="">Select stage</option>
+                  {projectStages.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  Sector <Opt />
+                </label>
+                <select
+                  className="gn-input mt-1"
+                  value={projectForm.sector}
+                  onChange={(e) => setProjectForm((p) => ({ ...p, sector: e.target.value }))}
+                >
+                  <option value="">Select sector</option>
+                  {sectorOptions.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => handleProjectSubmit(false)}
+              disabled={projectLoading}
+              className="gn-btn-primary disabled:opacity-50"
+            >
+              {projectLoading ? "Saving..." : "Save project"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleProjectSubmit(true)}
+              className="text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] underline"
+            >
+              Skip for now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
+        {!isAdminView && form.member_role === "startup" && (
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+            Step 1 of 2
+          </div>
+        )}
         <h1 className="text-2xl font-700 text-[var(--color-ink)]">
           Complete your profile
         </h1>

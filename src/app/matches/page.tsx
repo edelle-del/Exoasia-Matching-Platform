@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase/client";
-import { fetchUserMatches, type MatchRecord } from "@/lib/app-data";
+import { fetchUserMatches, fetchUserProjects, type MatchRecord, type ProjectRecord } from "@/lib/app-data";
 import { getHomePathForRole } from "@/lib/auth/access";
 
 type UIMatch = MatchRecord & { counterpart_name: string | null };
@@ -15,6 +15,8 @@ export default function MatchesPage() {
   const { user, role } = useAuth();
   const router = useRouter();
   const [matches, setMatches] = useState<UIMatch[]>([]);
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [confirmMatch, setConfirmMatch] = useState<UIMatch | null>(null);
@@ -32,6 +34,9 @@ export default function MatchesPage() {
     }
 
     void loadMatches();
+    if (user?.id) {
+      fetchUserProjects(supabase, user.id).then(setProjects);
+    }
   }, [role, router, user?.id]);
 
   const handleDecision = async (
@@ -145,8 +150,59 @@ export default function MatchesPage() {
                   {match.summary || "Strategic compatibility match"}
                 </h2>
                 <p className="mt-2 text-sm text-(--color-body)">
-                  Counterpart: {match.counterpart_name || "Verified member"}
+                  Matched with: {match.counterpart_name || "Verified member"}
                 </p>
+
+                {projects.length > 0 && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedProjects((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(match.id)) next.delete(match.id);
+                          else next.add(match.id);
+                          return next;
+                        })
+                      }
+                      className="text-xs font-medium text-(--color-primary) hover:underline"
+                    >
+                      {expandedProjects.has(match.id) ? "Hide your projects ▲" : "View your projects for this match ▼"}
+                    </button>
+
+                    {expandedProjects.has(match.id) && (
+                      <div className="mt-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-4">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
+                          Your Projects
+                        </p>
+                        <div className="space-y-2">
+                          {projects.map((p) => (
+                            <div key={p.id} className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-medium text-(--color-ink)">{p.name}</p>
+                                {p.stage && (
+                                  <span className="mt-0.5 inline-block rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">
+                                    {p.stage}
+                                  </span>
+                                )}
+                                {p.description && (
+                                  <p className="mt-1 text-xs text-(--color-body) line-clamp-2">{p.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <a
+                          href="/projects/new"
+                          className="mt-3 block text-xs text-(--color-muted) hover:text-(--color-primary) hover:underline"
+                        >
+                          + Add another project
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {(() => {
                     const isA = match.member_a_id === user?.id;
                     const myStatus = isA ? match.member_a_status : match.member_b_status;

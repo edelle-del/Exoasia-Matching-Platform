@@ -177,7 +177,11 @@ export default function MatchesPage() {
                         </p>
                         <div className="space-y-2">
                           {projects.map((p) => (
-                            <div key={p.id} className="flex items-start justify-between gap-2">
+                            <Link
+                              key={p.id}
+                              href={`/projects/${p.id}`}
+                              className="flex items-start justify-between gap-2 rounded-lg p-2 hover:bg-(--color-canvas) transition-colors"
+                            >
                               <div>
                                 <p className="text-sm font-medium text-(--color-ink)">{p.name}</p>
                                 {p.stage && (
@@ -189,7 +193,7 @@ export default function MatchesPage() {
                                   <p className="mt-1 text-xs text-(--color-body) line-clamp-2">{p.description}</p>
                                 )}
                               </div>
-                            </div>
+                            </Link>
                           ))}
                         </div>
                         <a

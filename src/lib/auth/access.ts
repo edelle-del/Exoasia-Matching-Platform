@@ -19,6 +19,7 @@ export const MEMBER_PATH_PREFIXES = [
   "/events",
   "/payments",
   "/community",
+  "/projects",
   "/stage-1",
   "/stage-2",
   "/stage-3",

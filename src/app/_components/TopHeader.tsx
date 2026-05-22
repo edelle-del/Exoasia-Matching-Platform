@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../providers";
-import { createClient } from "@/lib/supabase/client";
 import logo from "../logo.png";
 import { FullPageLoader } from "./FullPageLoader";
 
@@ -28,8 +27,6 @@ function Icon({ d, className = "" }: { d: string; className?: string }) {
 const ICONS = {
   dashboard:     "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
   projects:      "M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z",
-  chevronDown:   "M19 9l-7 7-7-7",
-  chevronUp:     "M5 15l7-7 7 7",
   matches:       "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z",
   dealBoard:     "M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7",
   documents:     "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
@@ -83,78 +80,6 @@ function NavLink({
   );
 }
 
-function ProjectsNavSection({ userId }: { userId: string }) {
-  const supabase = useMemo(() => createClient(), []);
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
-
-  useEffect(() => {
-    supabase
-      .from("projects")
-      .select("id, name")
-      .eq("owner_id", userId)
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setProjects(data ?? []));
-  }, [userId, supabase]);
-
-  const isActive = pathname.startsWith("/projects");
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-          isActive
-            ? "bg-white/20 text-white"
-            : "text-white/70 hover:bg-white/10 hover:text-white"
-        }`}
-      >
-        <Icon d={ICONS.projects} />
-        <span className="max-w-0 flex-1 overflow-hidden whitespace-nowrap text-left opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[120px] group-hover/sidebar:opacity-100">
-          Projects
-        </span>
-        <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[16px] group-hover/sidebar:opacity-100">
-          <Icon d={open ? ICONS.chevronUp : ICONS.chevronDown} className="h-3 w-3" />
-        </span>
-      </button>
-
-      {open && (
-        <div className="ml-8 space-y-0.5">
-          {projects.map((p) => (
-            <Link
-              key={p.id}
-              href={`/projects/${p.id}`}
-              className={`flex items-center rounded-xl px-3 py-1.5 text-xs transition-colors ${
-                pathname === `/projects/${p.id}`
-                  ? "bg-white/20 text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[120px] group-hover/sidebar:opacity-100 truncate">
-                {p.name}
-              </span>
-            </Link>
-          ))}
-          <Link
-            href="/projects/new"
-            className={`flex items-center rounded-xl px-3 py-1.5 text-xs transition-colors ${
-              pathname === "/projects/new"
-                ? "bg-white/20 text-white"
-                : "text-white/40 hover:bg-white/10 hover:text-white/80"
-            }`}
-          >
-            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[120px] group-hover/sidebar:opacity-100">
-              + Add project
-            </span>
-          </Link>
-        </div>
-      )}
-    </>
-  );
-}
 
 export default function TopHeader() {
   const { signedIn, signOut, role, user } = useAuth();
@@ -199,7 +124,7 @@ export default function TopHeader() {
           <>
             <NavLink href="/matches"    label="Matches"    icon={ICONS.matches}   />
             <NavLink href="/deal-board" label="Deal board" icon={ICONS.dealBoard} />
-            <ProjectsNavSection userId={user?.id ?? ""} />
+            <NavLink href="/projects"   label="Projects"   icon={ICONS.projects}  />
             <NavLink href="/events"     label="Events"     icon={ICONS.events}    />
             <NavLink href="/community"  label="Community"  icon={ICONS.community} />
           </>

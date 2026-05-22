@@ -37,16 +37,22 @@ export default function SignInPage() {
     }
 
     const supabase = createClient();
-    supabase
-      .from("profiles")
-      .select("id, full_name, sector")
-      .eq("id", userId)
-      .single()
-      .then(({ data: profile }) => {
+    const fetchProfile = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, full_name, sector")
+          .eq("id", userId)
+          .single();
+
         const needsOnboarding = !profile || !profile.full_name || !profile.sector;
         router.replace(getSignedInRedirectPath({ role, isInvitedAccount, needsOnboarding }));
-      })
-      .catch(() => router.replace("/dashboard"));
+      } catch {
+        router.replace("/dashboard");
+      }
+    };
+
+    fetchProfile();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn]);
 

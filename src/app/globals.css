@@ -9,28 +9,32 @@
   --color-surface-card: #ffffff;
 
   /* Primary Brand */
-  --color-primary: #460479;
-  --color-primary-active: #36035d;
-  --color-primary-disabled: #8c6aa8;
+  --color-primary: #1a2744;
+  --color-primary-active: #0f1a30;
+  --color-primary-disabled: #6b7fa0;
+
+  /* Gold Accent */
+  --color-accent-gold: #f5a623;
+  --color-accent-gold-active: #d98e0f;
 
   /* Text Colors */
-  --color-ink: #222222;
-  --color-body: #3f3f3f;
-  --color-muted: #6a6a6a;
-  --color-muted-soft: #929292;
+  --color-ink: #1a2744;
+  --color-body: #3f4d63;
+  --color-muted: #6a7a94;
+  --color-muted-soft: #9aaabf;
   --color-on-primary: #ffffff;
   --color-on-dark: #ffffff;
 
   /* Borders & Lines */
-  --color-hairline: #dddddd;
-  --color-hairline-soft: #ebebeb;
-  --color-border-strong: #c1c1c1;
+  --color-hairline: #dde3ee;
+  --color-hairline-soft: #edf0f7;
+  --color-border-strong: #b8c2d4;
 
   /* Accents */
-  --color-luxe: #460479;
-  --color-plus: #92174d;
-  --color-star-rating: #222222;
-  --color-legal-link: #460479;
+  --color-luxe: #1a2744;
+  --color-plus: #f5a623;
+  --color-star-rating: #1a2744;
+  --color-legal-link: #1a2744;
   --color-error-text: #c13515;
 
   /* Legacy aliases for compatibility */
@@ -167,7 +171,7 @@ body {
 .gn-input:focus {
   border-color: var(--color-primary);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(70, 4, 121, 0.1);
+  box-shadow: 0 0 0 3px rgba(26, 39, 68, 0.12);
 }
 
 /* Primary Button */
@@ -236,14 +240,14 @@ body {
 
 .gn-nav-link:hover,
 .gn-nav-link:focus-visible {
-  background: rgba(70, 4, 121, 0.08);
+  background: rgba(26, 39, 68, 0.08);
   color: var(--color-primary);
   outline: none;
   transform: translateY(-1px);
 }
 
 .gn-nav-link-active {
-  background: rgba(70, 4, 121, 0.12);
+  background: rgba(26, 39, 68, 0.12);
   color: var(--color-primary);
   box-shadow: inset 0 -2px 0 0 var(--color-primary);
 }

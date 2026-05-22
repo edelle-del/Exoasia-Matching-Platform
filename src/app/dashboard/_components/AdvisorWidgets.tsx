@@ -54,7 +54,7 @@ export function SystemPulseHeader({ displayName, role, urgentCount }: SystemPuls
           </p>
           <h1 className="mt-1 text-4xl font-bold tracking-tight text-gray-900">
             Hello,{" "}
-            <span className="text-[#460479]">{displayName || "there"}</span>
+            <span className="text-[#1a2744]">{displayName || "there"}</span>
           </h1>
           <p className="mt-1 text-sm text-gray-400">
             Managing as{" "}
@@ -253,7 +253,7 @@ export function MatchingFunnelPanel({ companies, isLoading }: MatchingFunnelPane
         </div>
         <Link
           href="/advisor/manual-match"
-          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#460479] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#370360]"
+          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#1a2744] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#370360]"
         >
           <Zap className="h-3.5 w-3.5" />
           Manual match

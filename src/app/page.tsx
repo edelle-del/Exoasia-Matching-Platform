@@ -65,22 +65,22 @@ export default function Home() {
           <div className="space-y-8">
             <div>
               <h1 className="font-display text-4xl font-700 text-[var(--color-ink)]">
-                The Growth Network
+                Founder's Arena
               </h1>
               <p className="mt-4 text-lg text-[var(--color-body)]">
-                AI-powered matching platform for serious entrepreneurs
+                Where Philippine startups meet the capital that scales them
               </p>
               <p className="mt-2 text-sm text-[var(--color-muted)]">
-                Where verified introductions become real deals
+                AI-powered matching platform for Web3 &amp; AI founders
               </p>
             </div>
 
             <div className="space-y-4">
               <Link
-                href="/get-invited"
+                href="/sign-up"
                 className="block w-full gn-btn-primary text-center"
               >
-                How Invitations Work →
+                Sign Up →
               </Link>
               <Link
                 href="/sign-in"
@@ -91,16 +91,28 @@ export default function Home() {
             </div>
 
             <div className="rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-6 text-left">
-              <h3 className="font-600 text-[var(--color-ink)]">
-                Platform Access
-              </h3>
-              <ul className="mt-4 space-y-2 text-sm text-[var(--color-body)]">
-                <li>• Invitation-only membership</li>
-                <li>• Invited accounts must claim access before activation</li>
-                <li>• Stage-based progression (1→2→3→4)</li>
-                <li>• Credit-based matching system</li>
-                <li>• Advisor-reviewed introductions</li>
-                <li>• Document verification required</li>
+              <h3 className="font-600 text-[var(--color-ink)]">Platform Access</h3>
+              <ul className="mt-4 space-y-3 text-sm text-[var(--color-body)]">
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-[var(--color-primary)]">→</span>
+                  <span>Open to <strong>startups</strong> and <strong>investors</strong> operating in the Philippine tech and innovation ecosystem</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-[var(--color-primary)]">→</span>
+                  <span>AI-curated matches based on your investment thesis, sector focus, and funding stage</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-[var(--color-primary)]">→</span>
+                  <span>Every introduction is reviewed and approved by a Founder's Arena advisor before it reaches you</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-[var(--color-primary)]">→</span>
+                  <span>Members progress through four stages as trust and deal activity is established</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 text-[var(--color-primary)]">→</span>
+                  <span>Backed by <strong>Exoasia Innovation Hub</strong> — presented at Philippine Blockchain Week</span>
+                </li>
               </ul>
             </div>
           </div>

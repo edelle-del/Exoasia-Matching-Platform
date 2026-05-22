@@ -177,10 +177,10 @@ export default function StageThreePage() {
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Legal positioning</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 text-[12px] text-[var(--color-text-secondary)]">
-            The Growth Network does not offer securities, solicit investments,
+            Founder's Arena does not offer securities, solicit investments,
             or provide financial advice. All investment decisions and
             transactions are initiated and executed solely by participating
-            members. The Network provides structured facilitation,
+            members. The platform provides structured facilitation,
             infrastructure, and verified introductions only. Participation does
             not guarantee capital allocation, partnership formation, or
             transaction completion.

@@ -11,72 +11,57 @@ import { FullPageLoader } from "../_components/FullPageLoader";
 
 export default function SignInPage() {
   const router = useRouter();
-  const { signedIn, signInWithPassword, isInvitedAccount } = useAuth();
+  const { signedIn, signInWithPassword, isInvitedAccount, session, user } = useAuth();
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [loginError, setLoginError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  // Handles the case where the user is already signed in when they land on this page
   useEffect(() => {
-    if (!signedIn) return;
+    if (!signedIn || isRedirecting) return;
 
-    const redirectBasedOnProfile = async () => {
-      setIsRedirecting(true);
-      if (isInvitedAccount) {
-        router.replace("/accept-invite");
-        return;
-      }
+    setIsRedirecting(true);
 
-      try {
-        const supabase = createClient();
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token ?? null;
-        const role = getRoleFromAccessToken(accessToken);
+    if (isInvitedAccount) {
+      router.replace("/accept-invite");
+      return;
+    }
 
-        const { data } = await supabase.auth.getUser();
-        const userId = data?.user?.id;
-        if (!userId) {
-          router.replace("/dashboard");
-          return;
-        }
+    const userId = user?.id;
+    const role = getRoleFromAccessToken(session?.access_token ?? null);
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, full_name, sector")
-          .eq("id", userId)
-          .single();
+    if (!userId) {
+      router.replace("/dashboard");
+      return;
+    }
 
-        const needsOnboarding =
-          !profile || !profile.full_name || !profile.sector;
-        router.replace(
-          getSignedInRedirectPath({
-            role,
-            isInvitedAccount,
-            needsOnboarding,
-          }),
-        );
-      } catch {
-        router.replace("/dashboard");
-      }
-    };
-
-    void redirectBasedOnProfile();
-  }, [signedIn, isInvitedAccount, router]);
+    const supabase = createClient();
+    supabase
+      .from("profiles")
+      .select("id, full_name, sector")
+      .eq("id", userId)
+      .single()
+      .then(({ data: profile }) => {
+        const needsOnboarding = !profile || !profile.full_name || !profile.sector;
+        router.replace(getSignedInRedirectPath({ role, isInvitedAccount, needsOnboarding }));
+      })
+      .catch(() => router.replace("/dashboard"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginData.email || !loginData.password) {
-      setLoginError("Please enter your email and password");
+      setLoginError("Please enter your email and password.");
       return;
     }
 
     setIsSubmitting(true);
-    const normalizedEmail = loginData.email.trim().toLowerCase();
-    const { error, user: signedInUser } = await signInWithPassword(
-      normalizedEmail,
+    const { error, user: signedInUser, session: signedInSession } = await signInWithPassword(
+      loginData.email.trim().toLowerCase(),
       loginData.password,
     );
-
     setIsSubmitting(false);
 
     if (error) {
@@ -86,26 +71,23 @@ export default function SignInPage() {
 
     setIsRedirecting(true);
 
-    const accountStatus = signedInUser?.user_metadata?.account_status;
-    if (accountStatus === "invited") {
+    // Use the user + session already returned — no extra getSession/getUser calls
+    const userId = signedInUser?.id;
+    const role = getRoleFromAccessToken(signedInSession?.access_token ?? null);
+    const isInvited = signedInUser?.user_metadata?.account_status === "invited";
+
+    if (isInvited) {
       router.push("/accept-invite");
+      return;
+    }
+
+    if (!userId) {
+      router.push("/dashboard");
       return;
     }
 
     try {
       const supabase = createClient();
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token ?? null;
-      const role = getRoleFromAccessToken(accessToken);
-
-      const { data } = await supabase.auth.getUser();
-      const userId = data?.user?.id;
-
-      if (!userId) {
-        router.push("/dashboard");
-        return;
-      }
-
       const { data: profile } = await supabase
         .from("profiles")
         .select("id, full_name, sector")
@@ -113,14 +95,7 @@ export default function SignInPage() {
         .single();
 
       const needsOnboarding = !profile || !profile.full_name || !profile.sector;
-      router.push(
-        getSignedInRedirectPath({
-          role,
-          isInvitedAccount:
-            signedInUser?.user_metadata?.account_status === "invited",
-          needsOnboarding,
-        }),
-      );
+      router.push(getSignedInRedirectPath({ role, isInvitedAccount: isInvited, needsOnboarding }));
     } catch {
       router.push("/dashboard");
     }

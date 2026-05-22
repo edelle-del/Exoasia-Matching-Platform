@@ -73,7 +73,7 @@ function NavLink({
       href={href}
       className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
         isActive
-          ? "bg-white/20 text-white"
+          ? "bg-[var(--color-accent-gold)] text-[var(--color-primary)] font-semibold"
           : "text-white/70 hover:bg-white/10 hover:text-white"
       }`}
     >
@@ -181,9 +181,9 @@ export default function TopHeader() {
       {/* Logo */}
       <div className="flex items-center gap-3 px-3 py-5">
         <Link href="/" className="flex shrink-0 items-center gap-3">
-          <Image src={logo} alt="Growth Network" width={28} height={28} className="shrink-0 rounded" />
+          <Image src={logo} alt="Founder's Arena" width={28} height={28} className="shrink-0 rounded" />
           <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
-            <span className="block text-xs font-semibold text-white leading-tight">Growth Network</span>
+            <span className="block text-xs font-semibold text-white leading-tight">Founder's Arena</span>
             <span className="block text-[10px] text-white/50">by Exoasia</span>
           </span>
         </Link>

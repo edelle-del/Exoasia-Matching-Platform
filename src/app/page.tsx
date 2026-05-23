@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -96,9 +96,6 @@ export default function Home() {
   // ── Mobile menu ──
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // ── FAQ accordion ──
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const toggleFaq = useCallback((i: number) => setOpenFaq((p) => (p === i ? null : i)), []);
 
   // ── Fade-up scroll animations ──
   const fadeRefs = useRef<(HTMLElement | null)[]>([]);
@@ -357,18 +354,13 @@ export default function Home() {
           <h2 className="xo-section-h2 xo-faq-heading">Common Questions</h2>
           <div className="xo-faq-list">
             {FAQS.map((item, i) => (
-              <div key={i} className="xo-faq-item">
-                <button
-                  type="button"
-                  className={`xo-faq-q${openFaq === i ? " open" : ""}`}
-                  onClick={() => toggleFaq(i)}
-                  aria-expanded={openFaq === i}
-                >
+              <details key={i} className="xo-faq-item">
+                <summary className="xo-faq-q">
                   <span>{item.q}</span>
-                  <i className={`fas ${openFaq === i ? "fa-minus" : "fa-plus"}`} />
-                </button>
-                <div className={`xo-faq-a${openFaq === i ? " open" : ""}`}>{item.a}</div>
-              </div>
+                  <i className="fas fa-plus xo-faq-chevron" />
+                </summary>
+                <div className="xo-faq-a">{item.a}</div>
+              </details>
             ))}
           </div>
         </div>

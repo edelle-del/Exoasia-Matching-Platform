@@ -54,16 +54,13 @@ const sectorOptions = [
 ];
 
 function ScoreBadge({ score, large }: { score: number; large?: boolean }) {
-  const style =
-    score >= 75
-      ? "bg-green-500 text-white ring-2 ring-green-300"
-      : score >= 50
-        ? "bg-yellow-400 text-yellow-900 ring-2 ring-yellow-200"
-        : "bg-gray-200 text-gray-600 ring-1 ring-gray-300";
+  const cls =
+    score >= 80 ? "fa-score-excellent"
+    : score >= 65 ? "fa-score-strong"
+    : score >= 50 ? "fa-score-moderate"
+    : "fa-score-low";
   return (
-    <span
-      className={`inline-flex items-center rounded-full font-bold ${style} ${large ? "px-3 py-1 text-base" : "px-2.5 py-0.5 text-sm"}`}
-    >
+    <span className={`${cls} inline-flex items-center rounded-lg font-bold ${large ? "px-3 py-1.5 text-base" : "px-2.5 py-1 text-sm"}`}>
       {score}/100
     </span>
   );
@@ -288,7 +285,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
         {/* ── Investor: my score detail ── */}
         {!isOwner && myScore && (
-          <div className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 75 ? "border-green-300 bg-green-50" : myScore.fit_score >= 50 ? "border-yellow-300 bg-yellow-50" : "border-(--color-hairline) bg-(--color-surface-soft)"}`}>
+          <div className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-[#A8DFC9] bg-[#E1F5EE]" : myScore.fit_score >= 65 ? "border-[#A8C8EF] bg-[#E6F1FB]" : myScore.fit_score >= 50 ? "border-[#E8C97A] bg-[#FAEEDA]" : "border-[#EFA8A8] bg-[#FCEBEB]"}`}>
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-(--color-ink)">Your match score</h2>
               <ScoreBadge score={myScore.fit_score} large />

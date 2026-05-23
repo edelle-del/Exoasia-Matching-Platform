@@ -68,10 +68,10 @@ function NavLink({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
         isActive
-          ? "bg-[var(--color-accent-gold)] text-[var(--color-primary)] font-semibold"
-          : "text-white/70 hover:bg-white/10 hover:text-white"
+          ? "bg-[#FF6B1F] text-white shadow-sm"
+          : "text-white/60 hover:bg-white/10 hover:text-white"
       }`}
     >
       <Icon d={icon} />
@@ -101,15 +101,18 @@ export default function TopHeader() {
   return (
     <>
     {isSigningOut && <FullPageLoader message="Signing out…" />}
-    <aside className="group/sidebar fixed left-3 top-3 z-40 flex h-[calc(100vh-24px)] w-14 flex-col rounded-2xl bg-(--color-primary) shadow-xl transition-all duration-300 hover:w-56">
+    <aside className="fa-sidebar group/sidebar fixed left-3 top-3 z-40 flex h-[calc(100vh-24px)] w-14 flex-col rounded-2xl shadow-xl transition-all duration-300 hover:w-56">
 
       {/* Logo */}
       <div className="flex items-center gap-3 px-3 py-5">
         <Link href="/" className="flex shrink-0 items-center gap-3">
           <Image src={logo} alt="Founders Arena" width={28} height={28} className="shrink-0 rounded" />
           <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
-            <span className="block text-xs font-semibold text-white leading-tight">Founders Arena</span>
-            <span className="block text-[10px] text-white/50">by Exoasia</span>
+            <span className="flex items-center gap-1.5">
+              <span className="block text-[11px] font-black tracking-widest text-white leading-tight uppercase">Founders Arena</span>
+              <span className="fa-year-badge shrink-0 rounded-md px-1.5 py-0.5 text-[8px] font-semibold tracking-wider">2026</span>
+            </span>
+            <span className="block text-[9px] text-white/40 tracking-wide">by Exoasia</span>
           </span>
         </Link>
       </div>

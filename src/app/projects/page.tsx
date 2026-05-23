@@ -14,14 +14,13 @@ type MatchScore = {
 };
 
 function ScoreBadge({ score }: { score: number }) {
-  const style =
-    score >= 75
-      ? "bg-green-500 text-white ring-2 ring-green-300"
-      : score >= 50
-        ? "bg-yellow-400 text-yellow-900 ring-2 ring-yellow-200"
-        : "bg-gray-200 text-gray-600 ring-1 ring-gray-300";
+  const cls =
+    score >= 80 ? "fa-score-excellent"
+    : score >= 65 ? "fa-score-strong"
+    : score >= 50 ? "fa-score-moderate"
+    : "fa-score-low";
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${style}`}>
+    <span className={`${cls} inline-flex items-center rounded-lg px-2.5 py-0.5 text-xs font-bold`}>
       {score}/100
     </span>
   );

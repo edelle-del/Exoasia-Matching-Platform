@@ -12,9 +12,9 @@ export function FullPageLoader({ message = "Loading..." }: FullPageLoaderProps) 
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-white">
       {/* Logo */}
       <div className="flex items-center gap-3">
-        <Image src={logo} alt="Founder's Arena" width={36} height={36} className="rounded-lg" />
+        <Image src={logo} alt="Founders Arena" width={36} height={36} className="rounded-lg" />
         <div className="leading-tight">
-          <p className="text-sm font-semibold text-gray-900">Founder's Arena</p>
+          <p className="text-sm font-semibold text-gray-900">Founders Arena</p>
           <p className="text-[11px] text-gray-400">by Exoasia</p>
         </div>
       </div>

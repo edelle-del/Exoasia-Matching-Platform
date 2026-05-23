@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/providers";
 
 type Project = {
   id: string;
@@ -16,6 +17,32 @@ type Project = {
   updated_at: string;
 };
 
+type Cofounder = {
+  id: string;
+  cofounder_profile_id: string;
+  created_at: string;
+  profile: { full_name: string | null; business_name: string | null; email: string | null } | null;
+};
+
+type InvestorMatch = {
+  investor_profile_id: string;
+  fit_score: number;
+  summary: string | null;
+  rationale: Record<string, string> | null;
+  generated_at: string;
+  investor_name: string;
+  investor_sector: string | null;
+  investor_city: string | null;
+};
+
+type MyScore = {
+  project_id: string;
+  fit_score: number;
+  summary: string | null;
+  rationale: Record<string, string> | null;
+  generated_at: string;
+};
+
 const projectStages = ["Ideation", "MVP", "Growth", "Scaling", "Revenue-Generating"];
 
 const sectorOptions = [
@@ -26,34 +53,91 @@ const sectorOptions = [
   "Semiconductors","Smart Cities","Sportstech","Supply Chain","Sustainability","Travel & Hospitality",
 ];
 
+function ScoreBadge({ score, large }: { score: number; large?: boolean }) {
+  const style =
+    score >= 75
+      ? "bg-green-500 text-white ring-2 ring-green-300"
+      : score >= 50
+        ? "bg-yellow-400 text-yellow-900 ring-2 ring-yellow-200"
+        : "bg-gray-200 text-gray-600 ring-1 ring-gray-300";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full font-bold ${style} ${large ? "px-3 py-1 text-base" : "px-2.5 py-0.5 text-sm"}`}
+    >
+      {score}/100
+    </span>
+  );
+}
+
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
+
   const [project, setProject] = useState<Project | null>(null);
+  const [cofounders, setCofounders] = useState<Cofounder[]>([]);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", stage: "", sector: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // investor view: their score for this project
+  const [myScore, setMyScore] = useState<MyScore | null>(null);
+  const [scoring, setScoring] = useState(false);
+
+  // startup owner view: investor matches
+  const [investorMatches, setInvestorMatches] = useState<InvestorMatch[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [matchesGenerated, setMatchesGenerated] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+
   useEffect(() => {
-    fetch(`/api/projects/${id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.project) {
-          setProject(data.project);
-          setForm({
-            name: data.project.name,
-            description: data.project.description ?? "",
-            stage: data.project.stage ?? "",
-            sector: data.project.sector ?? "",
-          });
-        }
-        setLoading(false);
-      });
+    Promise.all([
+      fetch(`/api/projects/${id}`).then((r) => r.json()),
+      fetch(`/api/projects/${id}/cofounders`).then((r) => r.json()),
+    ]).then(([projectData, cofounderData]) => {
+      if (projectData.project) {
+        setProject(projectData.project);
+        setForm({
+          name: projectData.project.name,
+          description: projectData.project.description ?? "",
+          stage: projectData.project.stage ?? "",
+          sector: projectData.project.sector ?? "",
+        });
+      }
+      setCofounders(cofounderData.cofounders ?? []);
+      setLoading(false);
+    });
   }, [id]);
 
-  const handleSave = async (e: React.FormEvent) => {
+  // Load member role + role-specific data once we have the project and user
+  useEffect(() => {
+    if (!user?.id || !project) return;
+
+    fetch("/api/projects/my-match-scores")
+      .then((r) => r.json())
+      .then((data: { scores?: MyScore[] }) => {
+        const score = (data.scores ?? []).find((s) => s.project_id === id);
+        if (score) setMyScore(score);
+      });
+
+    // Load existing investor matches if user owns this project
+    if (project.owner_id === user.id) {
+      setMatchesLoading(true);
+      fetch(`/api/projects/${id}/investor-matches`)
+        .then((r) => r.json())
+        .then((data: { matches?: InvestorMatch[] }) => {
+          const matches = data.matches ?? [];
+          setInvestorMatches(matches);
+          if (matches.length > 0) setMatchesGenerated(true);
+          setMatchesLoading(false);
+        });
+    }
+  }, [user?.id, project, id]);
+
+  const handleSave = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!form.name.trim()) { setError("Project name is required."); return; }
     setSaving(true);
@@ -84,6 +168,42 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     router.push("/projects");
   };
 
+  const handleScoreProject = async () => {
+    setScoring(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/generate-match`, { method: "POST" });
+      const data = (await res.json()) as {
+        score?: { project_id: string; fit_score: number; summary: string; rationale: Record<string, string> };
+      };
+      if (data.score) {
+        setMyScore({
+          project_id: id,
+          fit_score: data.score.fit_score,
+          summary: data.score.summary,
+          rationale: data.score.rationale,
+          generated_at: new Date().toISOString(),
+        });
+      }
+    } finally {
+      setScoring(false);
+    }
+  };
+
+  const handleFindInvestors = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/generate-match`, { method: "POST" });
+      const data = (await res.json()) as {
+        scores?: InvestorMatch[];
+      };
+      const scores = data.scores ?? [];
+      setInvestorMatches(scores);
+      setMatchesGenerated(true);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-(--color-canvas)">
@@ -99,6 +219,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       </div>
     );
   }
+
+  const isOwner = user?.id === project.owner_id;
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
@@ -123,20 +245,38 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing((e) => !e)}
-              className="gn-btn-secondary text-sm"
-            >
-              {editing ? "Cancel" : "Edit"}
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-            >
-              Archive
-            </button>
+            {/* Investor: score badge + button in header */}
+            {!isOwner && (
+              <div className="flex items-center gap-2">
+                {myScore && <ScoreBadge score={myScore.fit_score} large />}
+                <button
+                  type="button"
+                  disabled={scoring}
+                  onClick={handleScoreProject}
+                  className="gn-btn-secondary text-sm disabled:opacity-50"
+                >
+                  {scoring ? "Scoring…" : myScore ? "Rescore" : "Score project"}
+                </button>
+              </div>
+            )}
+            {isOwner && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing((e) => !e)}
+                  className="gn-btn-secondary text-sm"
+                >
+                  {editing ? "Cancel" : "Edit"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  Archive
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -146,19 +286,47 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</div>
         )}
 
+        {/* ── Investor: my score detail ── */}
+        {!isOwner && myScore && (
+          <div className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 75 ? "border-green-300 bg-green-50" : myScore.fit_score >= 50 ? "border-yellow-300 bg-yellow-50" : "border-(--color-hairline) bg-(--color-surface-soft)"}`}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-(--color-ink)">Your match score</h2>
+              <ScoreBadge score={myScore.fit_score} large />
+            </div>
+            {myScore.summary && (
+              <p className="mt-2 text-sm text-(--color-body)">{myScore.summary}</p>
+            )}
+            {myScore.rationale && Object.keys(myScore.rationale).length > 0 && (
+              <dl className="mt-3 space-y-1 text-xs">
+                {Object.entries(myScore.rationale).map(([key, value]) => (
+                  <div key={key} className="flex gap-2">
+                    <dt className="min-w-28 capitalize text-(--color-muted)">{key.replace(/_/g, " ")}</dt>
+                    <dd className="text-(--color-body)">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            <p className="mt-3 text-xs text-(--color-muted)">
+              Generated {new Date(myScore.generated_at).toLocaleDateString()}
+            </p>
+          </div>
+        )}
+
         {editing ? (
           <form onSubmit={handleSave} className="space-y-5">
             <div>
-              <label className="text-sm font-semibold text-(--color-ink)">Project name</label>
+              <label htmlFor="proj-name" className="text-sm font-semibold text-(--color-ink)">Project name</label>
               <input
+                id="proj-name"
                 className="gn-input mt-1"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
             <div>
-              <label className="text-sm font-semibold text-(--color-ink)">Description</label>
+              <label htmlFor="proj-desc" className="text-sm font-semibold text-(--color-ink)">Description</label>
               <textarea
+                id="proj-desc"
                 className="gn-input mt-1 h-28"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -166,8 +334,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="text-sm font-semibold text-(--color-ink)">Stage</label>
+                <label htmlFor="proj-stage" className="text-sm font-semibold text-(--color-ink)">Stage</label>
                 <select
+                  id="proj-stage"
                   className="gn-input mt-1"
                   value={form.stage}
                   onChange={(e) => setForm((f) => ({ ...f, stage: e.target.value }))}
@@ -177,8 +346,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </select>
               </div>
               <div>
-                <label className="text-sm font-semibold text-(--color-ink)">Sector</label>
+                <label htmlFor="proj-sector" className="text-sm font-semibold text-(--color-ink)">Sector</label>
                 <select
+                  id="proj-sector"
                   className="gn-input mt-1"
                   value={form.sector}
                   onChange={(e) => setForm((f) => ({ ...f, sector: e.target.value }))}
@@ -220,6 +390,92 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               </dl>
             </div>
+
+            {/* ── Team / Cofounders ── */}
+            {isOwner && (
+              <div className="rounded-xl border border-(--color-hairline) p-4">
+                <h2 className="text-sm font-semibold text-(--color-ink)">Team</h2>
+                {cofounders.length === 0 ? (
+                  <p className="mt-2 text-sm text-(--color-muted)">
+                    No cofounders linked yet. Invite them from your{" "}
+                    <a href="/profile" className="text-(--color-primary) hover:underline">profile page</a>.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {cofounders.map((c) => (
+                      <li key={c.id} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-(--color-ink)">
+                            {c.profile?.full_name || c.profile?.email || "Team member"}
+                          </p>
+                          {c.profile?.business_name && (
+                            <p className="text-xs text-(--color-muted)">{c.profile.business_name}</p>
+                          )}
+                        </div>
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          Cofounder
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* ── Investor matches panel (startup owner only) ── */}
+            {isOwner && (
+              <div id="investor-matches" className="rounded-xl border border-(--color-hairline) p-4">
+                <div className="flex items-center justify-between">
+                  <h2 className={`text-sm font-semibold ${matchesGenerated && investorMatches.length > 0 ? "text-green-600" : "text-(--color-ink)"}`}>
+                    {matchesGenerated && investorMatches.length > 0 ? "✓ Investor matches" : "Investor matches"}
+                  </h2>
+                  <button
+                    type="button"
+                    disabled={generating}
+                    onClick={handleFindInvestors}
+                    className="rounded-xl border border-(--color-hairline) px-3 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) disabled:opacity-50 transition-colors"
+                  >
+                    {generating ? "Generating…" : matchesGenerated ? "Regenerate" : "Find investors"}
+                  </button>
+                </div>
+
+                {matchesLoading ? (
+                  <p className="mt-3 text-sm text-(--color-muted)">Loading…</p>
+                ) : !matchesGenerated ? (
+                  <p className="mt-3 text-sm text-(--color-muted)">
+                    Click &ldquo;Find investors&rdquo; to generate AI-powered investor match scores for this project.
+                  </p>
+                ) : investorMatches.length === 0 ? (
+                  <p className="mt-3 text-sm text-(--color-muted)">
+                    No investor matches found. Try again once more investors have joined the platform.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {investorMatches.map((m) => (
+                      <li
+                        key={m.investor_profile_id}
+                        className="rounded-lg bg-(--color-surface-soft) p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium text-(--color-ink)">{m.investor_name}</p>
+                            {(m.investor_sector || m.investor_city) && (
+                              <p className="text-xs text-(--color-muted)">
+                                {[m.investor_sector, m.investor_city].filter(Boolean).join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                          <ScoreBadge score={m.fit_score} />
+                        </div>
+                        {m.summary && (
+                          <p className="mt-1 text-xs font-medium text-green-600">{m.summary}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

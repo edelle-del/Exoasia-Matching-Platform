@@ -556,6 +556,19 @@ export async function fetchUserProjects(
   return (data ?? []) as ProjectRecord[];
 }
 
+export async function fetchAllStartupProjects(
+  supabase: SupabaseClient,
+): Promise<ProjectRecord[]> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, owner_id, name, description, stage, sector, is_active, created_at, updated_at")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+  if (error) return [];
+  return (data ?? []) as ProjectRecord[];
+}
+
 export async function deleteAskOffer(supabase: SupabaseClient, id: string) {
   const { error } = await supabase
     .from("member_asks_offers")

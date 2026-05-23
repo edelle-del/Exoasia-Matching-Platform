@@ -106,9 +106,9 @@ export default function TopHeader() {
       {/* Logo */}
       <div className="flex items-center gap-3 px-3 py-5">
         <Link href="/" className="flex shrink-0 items-center gap-3">
-          <Image src={logo} alt="Founder's Arena" width={28} height={28} className="shrink-0 rounded" />
+          <Image src={logo} alt="Founders Arena" width={28} height={28} className="shrink-0 rounded" />
           <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
-            <span className="block text-xs font-semibold text-white leading-tight">Founder's Arena</span>
+            <span className="block text-xs font-semibold text-white leading-tight">Founders Arena</span>
             <span className="block text-[10px] text-white/50">by Exoasia</span>
           </span>
         </Link>
@@ -122,7 +122,6 @@ export default function TopHeader() {
 
         {isMemberView && (
           <>
-            <NavLink href="/matches"    label="Matches"    icon={ICONS.matches}   />
             <NavLink href="/deal-board" label="Deal board" icon={ICONS.dealBoard} />
             <NavLink href="/projects"   label="Projects"   icon={ICONS.projects}  />
             <NavLink href="/events"     label="Events"     icon={ICONS.events}    />

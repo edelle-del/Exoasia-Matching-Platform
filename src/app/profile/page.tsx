@@ -7,11 +7,18 @@ import { useAuth } from "../providers";
 
 type CofounderInvite = {
   id: string;
+  token: string;
   uid_type: "email" | "phone";
   uid_value: string;
   status: string;
   created_at: string;
   expires_at: string;
+  project_id: string | null;
+};
+
+type Project = {
+  id: string;
+  name: string;
 };
 
 type CofounderLink = {
@@ -169,11 +176,14 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [invites, setInvites] = useState<CofounderInvite[]>([]);
   const [cofounders, setCofounders] = useState<CofounderLink[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [inviteUidType, setInviteUidType] = useState<"email" | "phone">("email");
   const [inviteUidValue, setInviteUidValue] = useState("");
+  const [inviteProjectId, setInviteProjectId] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     if (!user?.id) return;
@@ -195,6 +205,23 @@ export default function ProfilePage() {
     }
   }, [user?.id]);
 
+  const loadProjects = useCallback(async () => {
+    if (!user?.id) return;
+    const res = await fetch("/api/projects");
+    if (res.ok) {
+      const data = await res.json();
+      setProjects((data.projects ?? []).map((p: any) => ({ id: p.id, name: p.name })));
+    }
+  }, [user?.id]);
+
+  const copyInviteLink = (token: string) => {
+    const siteUrl = window.location.origin;
+    navigator.clipboard.writeText(`${siteUrl}/accept-invite?token=${token}`).then(() => {
+      setCopiedToken(token);
+      setTimeout(() => setCopiedToken(null), 2000);
+    });
+  };
+
   const handleInviteCofounder = async (e: React.FormEvent) => {
     e.preventDefault();
     setInviteError("");
@@ -207,7 +234,11 @@ export default function ProfilePage() {
     const res = await fetch("/api/cofounders/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid_type: inviteUidType, uid_value: inviteUidValue.trim() }),
+      body: JSON.stringify({
+        uid_type: inviteUidType,
+        uid_value: inviteUidValue.trim(),
+        project_id: inviteProjectId || null,
+      }),
     });
     setInviteLoading(false);
     const data = await res.json();
@@ -232,7 +263,8 @@ export default function ProfilePage() {
   useEffect(() => {
     void loadProfile();
     void loadCofounders();
-  }, [loadProfile, loadCofounders]);
+    void loadProjects();
+  }, [loadProfile, loadCofounders, loadProjects]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -397,20 +429,34 @@ export default function ProfilePage() {
             <div className="mt-4 space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">Pending Invites</p>
               {invites.filter((i) => i.status === "pending").map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between rounded-xl border border-(--color-hairline) px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-(--color-ink)">{inv.uid_value}</p>
-                    <p className="text-xs text-(--color-muted)">
-                      via {inv.uid_type} · expires {new Date(inv.expires_at).toLocaleDateString()}
-                    </p>
+                <div key={inv.id} className="rounded-xl border border-(--color-hairline) px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-(--color-ink)">{inv.uid_value}</p>
+                      <p className="text-xs text-(--color-muted)">
+                        via {inv.uid_type} · expires {new Date(inv.expires_at).toLocaleDateString()}
+                        {inv.project_id && projects.find((p) => p.id === inv.project_id) && (
+                          <> · {projects.find((p) => p.id === inv.project_id)!.name}</>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCancelInvite(inv.id)}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      Cancel
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCancelInvite(inv.id)}
-                    className="text-xs text-red-500 hover:underline"
-                  >
-                    Cancel
-                  </button>
+                  {inv.uid_type === "email" && (
+                    <button
+                      type="button"
+                      onClick={() => copyInviteLink(inv.token)}
+                      className="mt-2 text-xs text-(--color-primary) hover:underline"
+                    >
+                      {copiedToken === inv.token ? "Copied!" : "Copy invite link"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -442,6 +488,19 @@ export default function ProfilePage() {
                 Phone
               </button>
             </div>
+            {projects.length > 0 && (
+              <select
+                aria-label="Select project for invite"
+                className="gn-input w-full"
+                value={inviteProjectId}
+                onChange={(e) => setInviteProjectId(e.target.value)}
+              >
+                <option value="">Select project (optional)</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
             <div className="flex gap-2">
               <input
                 type={inviteUidType === "email" ? "email" : "tel"}
@@ -458,6 +517,11 @@ export default function ProfilePage() {
                 {inviteLoading ? "Sending..." : "Send invite"}
               </button>
             </div>
+            {inviteUidType === "email" && (
+              <p className="text-xs text-(--color-muted)">
+                An invite email will be sent. You can also copy the link from the pending invites list to share manually.
+              </p>
+            )}
             {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
             {inviteSuccess && <p className="text-xs text-green-600">{inviteSuccess}</p>}
           </form>

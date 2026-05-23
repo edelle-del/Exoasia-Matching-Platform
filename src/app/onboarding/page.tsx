@@ -491,7 +491,6 @@ export default function OnboardingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [pitchDeckFile, setPitchDeckFile] = useState<File | null>(null);
   const [projectForm, setProjectForm] = useState({
     name: "",
     description: "",
@@ -601,7 +600,6 @@ export default function OnboardingForm() {
 
   const handleRoleSelect = (r: "investor" | "startup") => {
     setForm((prev) => ({ ...prev, member_role: r, ...EMPTY_EXTENDED }));
-    setPitchDeckFile(null);
     setError("");
   };
 
@@ -615,7 +613,7 @@ export default function OnboardingForm() {
     if (!form.last_name.trim()) return fail("Last name is required.");
     if (!form.business_name.trim()) return fail("Business name is required.");
     if (!form.sector) return fail("Please choose a sector.");
-    if (!form.how_heard_about) return fail("Please tell us how you heard about Founder's Arena.");
+    if (!form.how_heard_about) return fail("Please tell us how you heard about Founders Arena.");
     if (form.how_heard_about === "Referred by a member" && !form.referred_by.trim())
       return fail("Please add the name of the person who referred you.");
     if (!form.phone_whatsapp.trim()) return fail("Phone Number / WhatsApp is required.");
@@ -663,23 +661,7 @@ export default function OnboardingForm() {
     }
 
     try {
-      // Upload pitch deck if a new file was selected
-      let pitchDeckUrl = form.pitch_deck_url;
-      if (pitchDeckFile) {
-        const { data: authData } = await supabase.auth.getUser();
-        const userId = authData?.user?.id;
-        if (userId) {
-          const ext = pitchDeckFile.name.split(".").pop() ?? "pdf";
-          const path = `${userId}/${Date.now()}.${ext}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from("pitch-decks")
-            .upload(path, pitchDeckFile, { upsert: true });
-          if (!uploadError && uploadData) {
-            const { data: urlData } = supabase.storage.from("pitch-decks").getPublicUrl(path);
-            pitchDeckUrl = urlData?.publicUrl ?? "";
-          }
-        }
-      }
+      const pitchDeckUrl = form.pitch_deck_url;
 
       const ask_categories =
         form.member_role === "investor"
@@ -852,10 +834,11 @@ export default function OnboardingForm() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                <label htmlFor="onb-proj-stage" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                   Project stage <Opt />
                 </label>
                 <select
+                  id="onb-proj-stage"
                   className="gn-input mt-1"
                   value={projectForm.stage}
                   onChange={(e) => setProjectForm((p) => ({ ...p, stage: e.target.value }))}
@@ -867,10 +850,11 @@ export default function OnboardingForm() {
                 </select>
               </div>
               <div>
-                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                <label htmlFor="onb-proj-sector" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
                   Sector <Opt />
                 </label>
                 <select
+                  id="onb-proj-sector"
                   className="gn-input mt-1"
                   value={projectForm.sector}
                   onChange={(e) => setProjectForm((p) => ({ ...p, sector: e.target.value }))}
@@ -1072,33 +1056,44 @@ export default function OnboardingForm() {
                   Your role determines what matching criteria we collect.
                 </p>
 
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <RoleCard
-                    value="investor"
-                    current={form.member_role}
-                    onSelect={handleRoleSelect}
-                    title="Investor / Ecosystem Partner"
-                    description="I deploy capital and seek deal flow"
-                    icon={
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-                        <path d="M12 6v6l4 2" />
-                      </svg>
-                    }
-                  />
-                  <RoleCard
-                    value="startup"
-                    current={form.member_role}
-                    onSelect={handleRoleSelect}
-                    title="Startup / Founder"
-                    description="I'm building a company and raising capital"
-                    icon={
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    }
-                  />
-                </div>
+                {form.member_role ? (
+                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] px-4 py-3">
+                    <span className="text-sm font-600 text-[var(--color-ink)] capitalize">
+                      {form.member_role === "investor" ? "Investor / Ecosystem Partner" : "Startup / Founder"}
+                    </span>
+                    <span className="rounded-full bg-[var(--color-primary)]/10 px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">
+                      Locked
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <RoleCard
+                      value="investor"
+                      current={form.member_role}
+                      onSelect={handleRoleSelect}
+                      title="Investor / Ecosystem Partner"
+                      description="I deploy capital and seek deal flow"
+                      icon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                          <path d="M12 6v6l4 2" />
+                        </svg>
+                      }
+                    />
+                    <RoleCard
+                      value="startup"
+                      current={form.member_role}
+                      onSelect={handleRoleSelect}
+                      title="Startup / Founder"
+                      description="I'm building a company and raising capital"
+                      icon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               {/* ─── Investor sections ─────────────────────────────────────── */}
@@ -1302,39 +1297,17 @@ export default function OnboardingForm() {
                       </Field>
                     </FieldRow>
 
-                    <Field label="Pitch Deck">
-                      <label className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-[var(--color-hairline)] px-4 py-3 transition hover:border-[var(--color-primary)]/40">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0 text-[var(--color-muted)]">
-                          <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-[var(--color-ink)]">
-                            {pitchDeckFile
-                              ? pitchDeckFile.name
-                              : form.pitch_deck_url
-                              ? "Deck on file ✓ — click to replace"
-                              : "Upload pitch deck (PDF or PPTX)"}
-                          </p>
-                          <p className="text-xs text-[var(--color-muted)]">
-                            Max 10 slides aligning with standard evaluation criteria.
-                          </p>
-                        </div>
-                        <input
-                          type="file"
-                          accept=".pdf,.pptx,.ppt"
-                          className="sr-only"
-                          onChange={(e) => setPitchDeckFile(e.target.files?.[0] ?? null)}
-                        />
-                      </label>
-                      {(pitchDeckFile || form.pitch_deck_url) && (
-                        <button
-                          type="button"
-                          onClick={() => { setPitchDeckFile(null); set("pitch_deck_url", ""); }}
-                          className="mt-1 text-xs text-red-500 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      )}
+                    <Field label="Pitch Deck Link">
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/... or Notion, Docsend, etc."
+                        value={form.pitch_deck_url}
+                        onChange={(e) => set("pitch_deck_url", e.target.value)}
+                        className="input-base w-full"
+                      />
+                      <p className="mt-1 text-xs text-[var(--color-muted)]">
+                        Paste a shareable link (Google Drive, Docsend, Notion, etc.). Max 10 slides aligning with standard evaluation criteria.
+                      </p>
                     </Field>
                   </SectionCard>
 

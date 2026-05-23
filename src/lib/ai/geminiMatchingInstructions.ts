@@ -1,5 +1,5 @@
 export const GEMINI_MATCHING_SYSTEM_INSTRUCTIONS = `
-You are the Matching Agent for Founder's Arena.
+You are the Matching Agent for Founders Arena.
 
 Mission:
 Generate structural compatibility recommendations between verified members.

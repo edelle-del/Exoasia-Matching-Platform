@@ -65,7 +65,7 @@ export default function Home() {
           <div className="space-y-8">
             <div>
               <h1 className="font-display text-4xl font-700 text-[var(--color-ink)]">
-                Founder's Arena
+                Founders Arena
               </h1>
               <p className="mt-4 text-lg text-[var(--color-body)]">
                 Where Philippine startups meet the capital that scales them
@@ -103,7 +103,7 @@ export default function Home() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-[var(--color-primary)]">→</span>
-                  <span>Every introduction is reviewed and approved by a Founder's Arena advisor before it reaches you</span>
+                  <span>Every introduction is reviewed and approved by a Founders Arena advisor before it reaches you</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 text-[var(--color-primary)]">→</span>

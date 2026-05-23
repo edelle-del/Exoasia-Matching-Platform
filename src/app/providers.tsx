@@ -104,6 +104,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           data: {
             full_name: name,
             account_status: "active",
+            invite_inviter_name: null,
+            invite_project_name: null,
           },
         });
 

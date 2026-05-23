@@ -12,7 +12,7 @@ export async function GET() {
     const [{ data: invites }, { data: links }] = await Promise.all([
       supabase
         .from("cofounder_invites")
-        .select("id, uid_type, uid_value, status, created_at, expires_at")
+        .select("id, token, uid_type, uid_value, status, created_at, expires_at, project_id")
         .eq("inviter_id", user.id)
         .order("created_at", { ascending: false }),
       supabase

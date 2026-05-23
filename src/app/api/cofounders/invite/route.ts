@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { uid_type, uid_value } = (await request.json()) as {
+    const { uid_type, uid_value, project_id } = (await request.json()) as {
       uid_type: "email" | "phone";
       uid_value: string;
+      project_id?: string | null;
     };
 
     if (!uid_type || !["email", "phone"].includes(uid_type)) {
@@ -28,41 +33,71 @@ export async function POST(request: Request) {
       }
     }
 
-    // Prevent duplicate pending invite to the same UID
-    const { data: existing } = await supabase
-      .from("cofounder_invites")
-      .select("id")
-      .eq("inviter_id", user.id)
-      .eq("uid_type", uid_type)
-      .eq("uid_value", uid_value.trim())
-      .eq("status", "pending")
-      .single();
-
-    if (existing) {
-      return NextResponse.json({ error: "A pending invite for this contact already exists" }, { status: 409 });
-    }
-
     const { data, error } = await supabase
       .from("cofounder_invites")
       .insert({
         inviter_id: user.id,
         uid_type,
         uid_value: uid_value.trim(),
+        project_id: project_id ?? null,
       })
-      .select("id, token, uid_type, uid_value, status, created_at, expires_at")
+      .select("id, token, uid_type, uid_value, status, created_at, expires_at, project_id")
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // For email invites, send via Supabase's built-in invite email.
+    // We look up the inviter name and project name so they are available
+    // as {{ index .Data "invite_inviter_name" }} / {{ index .Data "invite_project_name" }}
+    // inside the Supabase "Invite User" email template.
+    if (uid_type === "email" && data?.token) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+      const acceptUrl = `${siteUrl}/accept-invite?token=${data.token}`;
+
+      try {
+        const admin = createAdminClient();
+
+        const [{ data: inviterProfile }, { data: projectData }] = await Promise.all([
+          admin.from("profiles").select("full_name, business_name").eq("id", user.id).single(),
+          project_id
+            ? admin.from("projects").select("name").eq("id", project_id).single()
+            : Promise.resolve({ data: null }),
+        ]);
+
+        const inviterName =
+          inviterProfile?.full_name || inviterProfile?.business_name || "A founder";
+        const projectName = (projectData as { name?: string } | null)?.name || null;
+
+        await admin.auth.admin.inviteUserByEmail(uid_value.trim(), {
+          redirectTo: acceptUrl,
+          data: {
+            account_status: "invited",
+            invite_inviter_name: inviterName,
+            ...(projectName ? { invite_project_name: projectName } : {}),
+          },
+        });
+      } catch {
+        // Non-fatal: user may already exist. The invite token link is still valid
+        // and shown in the profile page for manual sharing.
+      }
+    }
+
     return NextResponse.json({ invite: data }, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -81,6 +116,9 @@ export async function DELETE(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
   }
 }

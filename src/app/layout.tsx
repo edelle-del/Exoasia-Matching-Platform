@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Founder's Arena Matching Platform",
+  title: "Founders Arena Matching Platform",
   description: "Where Philippine startups meet the capital that scales them.",
   icons: {
     icon: "/logo.ico",

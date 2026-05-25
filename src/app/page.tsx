@@ -13,7 +13,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!signedIn) {
-      router.replace("/sign-up");
+      router.replace("/sign-in");
       return;
     }
     if (isInvitedAccount) { router.replace("/accept-invite"); return; }

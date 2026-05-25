@@ -258,6 +258,12 @@ export default function DashboardPage() {
   const rawName = displayName || summary.profile?.full_name || "";
   const firstName = rawName.includes("@") ? "there" : (rawName.split(" ")[0] || "there");
 
+  const portalLabel =
+    summary.profile?.member_role === "investor"         ? "Investor Profile"
+    : summary.profile?.member_role === "startup"        ? "Startup Profile"
+    : summary.profile?.member_role === "ecosystem_partner" ? "Partner Profile"
+    : "Member Portal";
+
   const { percent: profilePercent, nextStep: profileNextStep } =
     computeProfileStrength(summary.profile);
 
@@ -275,7 +281,7 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
-                Member portal
+                {isLoading ? "Member Portal" : portalLabel}
               </p>
               <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
                 Hello,{" "}

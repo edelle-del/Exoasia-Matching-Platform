@@ -9,13 +9,13 @@ type FullPageLoaderProps = {
 
 export function FullPageLoader({ message = "Loading..." }: FullPageLoaderProps) {
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-white">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-[#0A0A0F]">
       {/* Logo */}
       <div className="flex items-center gap-3">
-        <Image src={logo} alt="Founders Arena" width={36} height={36} className="rounded-lg" />
+        <Image src={logo} alt="FOUNDERS ARENA" width={36} height={36} className="rounded-lg" />
         <div className="leading-tight">
-          <p className="text-sm font-semibold text-gray-900">Founders Arena</p>
-          <p className="text-[11px] text-gray-400">by Exoasia</p>
+          <p className="text-sm font-semibold text-[#F4F4FF]">FOUNDERS ARENA</p>
+          <p className="text-[11px] text-[#8B8BA7]">by Exoasia</p>
         </div>
       </div>
 
@@ -28,12 +28,12 @@ export function FullPageLoader({ message = "Loading..." }: FullPageLoaderProps) 
         >
           <circle
             cx="20" cy="20" r="16"
-            stroke="#E5E7EB"
+            stroke="#2A2A3E"
             strokeWidth="4"
           />
           <circle
             cx="20" cy="20" r="16"
-            stroke="#1a2744"
+            stroke="#FF6B1F"
             strokeWidth="4"
             strokeDasharray="80"
             strokeDashoffset="60"
@@ -43,7 +43,7 @@ export function FullPageLoader({ message = "Loading..." }: FullPageLoaderProps) 
       </div>
 
       {/* Message */}
-      <p className="text-sm font-medium text-gray-500">{message}</p>
+      <p className="text-sm font-medium text-[#8B8BA7]">{message}</p>
     </div>
   );
 }

@@ -407,7 +407,7 @@ export default function NetworkGraphPage() {
 
         <section
           ref={wrapperRef}
-          className="overflow-hidden rounded-[24px] border border-[var(--color-hairline)] bg-white p-4"
+          className="overflow-hidden rounded-[24px] border border-[var(--color-hairline)] bg-[#12121A] p-4"
         >
           <canvas
             ref={canvasRef}

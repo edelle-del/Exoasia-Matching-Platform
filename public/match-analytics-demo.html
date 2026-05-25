@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match Analytics — Founders Arena</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas:  "#0A0A0F",
+            surface: "#12121A",
+            raised:  "#1A1A26",
+            border:  "#2A2A3E",
+            ink:     "#F4F4FF",
+            muted:   "#8B8BA7",
+            body:    "#C4C4D4",
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { background: #0A0A0F; color: #F4F4FF; font-family: system-ui, -apple-system, sans-serif; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #12121A; }
+    ::-webkit-scrollbar-thumb { background: #2A2A3E; border-radius: 2px; }
+
+    .view-btn.active {
+      background: #6366F1;
+      color: #fff;
+      box-shadow: 0 0 18px rgba(99,102,241,0.45);
+    }
+    .view-btn:not(.active):hover { background: rgba(255,255,255,0.06); color: #F4F4FF; }
+
+    .view-section { transition: opacity 0.18s ease; }
+
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.32s ease;
+    }
+    .accordion-content.open { max-height: 900px; }
+    .accordion-chevron { transition: transform 0.22s ease; }
+    .accordion-chevron.open { transform: rotate(180deg); }
+
+    .badge-matched  { background: rgba(16,185,129,.14);  color: #34D399; border: 1px solid rgba(16,185,129,.3); }
+    .badge-partial  { background: rgba(245,158,11,.14);  color: #FBBF24; border: 1px solid rgba(245,158,11,.3); }
+    .badge-mismatch { background: rgba(239,68,68,.14);   color: #F87171; border: 1px solid rgba(239,68,68,.3); }
+
+    .match-row { transition: border-color .15s, background .15s; }
+    .match-row:hover { border-color: rgba(99,102,241,.45); background: #1E1E2E; }
+
+    .stat-glow-indigo { box-shadow: inset 0 0 40px rgba(99,102,241,.06); }
+    .stat-glow-emerald { box-shadow: inset 0 0 40px rgba(16,185,129,.06); }
+    .stat-glow-violet  { box-shadow: inset 0 0 40px rgba(139,92,246,.06); }
+    .stat-glow-amber   { box-shadow: inset 0 0 40px rgba(245,158,11,.06); }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ── Sticky header ─────────────────────────────────────────────────────── -->
+  <header class="sticky top-0 z-50 border-b border-[#2A2A3E] bg-[#0A0A0F]/90 backdrop-blur-xl px-5 py-3.5">
+    <div class="mx-auto max-w-6xl flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="h-7 w-7 rounded-lg bg-indigo-500 flex items-center justify-center shrink-0">
+          <svg class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <span class="text-sm font-bold text-[#F4F4FF] tracking-wide">Match Analytics</span>
+        <span class="text-[9px] font-bold uppercase tracking-widest text-[#8B8BA7] border border-[#2A2A3E] rounded-full px-2.5 py-0.5">Prototype</span>
+      </div>
+
+      <!-- View switcher -->
+      <div class="flex items-center gap-1 rounded-xl border border-[#2A2A3E] bg-[#12121A] p-1">
+        <button class="view-btn active rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all" data-view="investor">
+          Investor Dashboard
+        </button>
+        <button class="view-btn rounded-lg px-3.5 py-1.5 text-xs font-semibold text-[#8B8BA7] transition-all" data-view="startup">
+          Startup Dashboard
+        </button>
+        <button class="view-btn rounded-lg px-3.5 py-1.5 text-xs font-semibold text-[#8B8BA7] transition-all" data-view="deepdive">
+          Deep-Dive Analytics
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-5 py-10 space-y-0">
+
+    <!-- ── INVESTOR DASHBOARD ─────────────────────────────────────────────── -->
+    <div id="view-investor" class="view-section space-y-8">
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-[.2em] text-indigo-400">Investor Portal</p>
+        <h1 class="mt-2 text-[2rem] font-bold leading-tight text-[#F4F4FF]">Portfolio Match Intelligence</h1>
+        <p class="mt-1 text-sm text-[#8B8BA7]">Macro-averaged compatibility across your matched startup pipeline.</p>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-glow-indigo rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Avg Match Quality</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-indigo-400">74<span class="text-lg font-semibold text-[#8B8BA7]">%</span></p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">Across 12 matches</p>
+        </div>
+        <div class="stat-glow-emerald rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Response Rate</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-emerald-400">88<span class="text-lg font-semibold text-[#8B8BA7]">%</span></p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">Responded within 48h</p>
+        </div>
+        <div class="stat-glow-violet rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Accept Rate</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-violet-400">58<span class="text-lg font-semibold text-[#8B8BA7]">%</span></p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">Of responses accepted</p>
+        </div>
+        <div class="stat-glow-amber rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Active Deals</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-amber-400">7</p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">In progress</p>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-5 gap-6">
+        <div class="lg:col-span-2 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6 flex flex-col items-center">
+          <p class="self-start text-xs font-bold text-[#F4F4FF]">Portfolio Radar</p>
+          <p class="self-start text-[11px] text-[#8B8BA7] mt-0.5 mb-6">3-axis macro average</p>
+          <canvas id="radar-investor" width="260" height="260"></canvas>
+          <div class="mt-5 w-full space-y-2.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[#8B8BA7]">Match Quality</span>
+              <span class="font-bold text-indigo-400">74%</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[#8B8BA7]">Response Rate</span>
+              <span class="font-bold text-emerald-400">88%</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[#8B8BA7]">Accept Rate</span>
+              <span class="font-bold text-violet-400">58%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-3 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6">
+          <p class="text-xs font-bold text-[#F4F4FF]">Top Matched Startups</p>
+          <p class="text-[11px] text-[#8B8BA7] mt-0.5 mb-5">Sorted by fit score · Click row to deep-dive</p>
+          <div class="space-y-2.5" id="investor-matches"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STARTUP DASHBOARD ──────────────────────────────────────────────── -->
+    <div id="view-startup" class="view-section space-y-8 hidden">
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-[.2em] text-emerald-400">Startup Portal</p>
+        <h1 class="mt-2 text-[2rem] font-bold leading-tight text-[#F4F4FF]">Investor Match Intelligence</h1>
+        <p class="mt-1 text-sm text-[#8B8BA7]">Your project's compatibility against the matched investor pool.</p>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-glow-emerald rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Best Fit Score</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-emerald-400">91<span class="text-lg font-semibold text-[#8B8BA7]">%</span></p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">Top investor match</p>
+        </div>
+        <div class="stat-glow-indigo rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Avg Fit Score</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-indigo-400">69<span class="text-lg font-semibold text-[#8B8BA7]">%</span></p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">Across 8 investors</p>
+        </div>
+        <div class="stat-glow-amber rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Response Rate</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-amber-400">75<span class="text-lg font-semibold text-[#8B8BA7]">%</span></p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">Investors responded</p>
+        </div>
+        <div class="stat-glow-violet rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-5">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Intros Made</p>
+          <p class="mt-2 text-[2rem] font-extrabold text-violet-400">3</p>
+          <p class="mt-1 text-[11px] text-[#8B8BA7]">Formal introductions</p>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-5 gap-6">
+        <div class="lg:col-span-2 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6 flex flex-col items-center">
+          <p class="self-start text-xs font-bold text-[#F4F4FF]">Match Radar</p>
+          <p class="self-start text-[11px] text-[#8B8BA7] mt-0.5 mb-6">Your project vs investor pool</p>
+          <canvas id="radar-startup" width="260" height="260"></canvas>
+          <div class="mt-5 w-full space-y-2.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[#8B8BA7]">Match Quality</span>
+              <span class="font-bold text-emerald-400">69%</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[#8B8BA7]">Response Rate</span>
+              <span class="font-bold text-amber-400">75%</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[#8B8BA7]">Accept Rate</span>
+              <span class="font-bold text-violet-400">50%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-3 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6">
+          <p class="text-xs font-bold text-[#F4F4FF]">Matched Investors</p>
+          <p class="text-[11px] text-[#8B8BA7] mt-0.5 mb-5">Sorted by fit score · Click row to deep-dive</p>
+          <div class="space-y-2.5" id="startup-matches"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DEEP-DIVE ANALYTICS ────────────────────────────────────────────── -->
+    <div id="view-deepdive" class="view-section space-y-8 hidden">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">Deep-Dive Analytics</p>
+          <h1 class="mt-2 text-[2rem] font-bold leading-tight text-[#F4F4FF]">Compatibility Breakdown</h1>
+          <p class="mt-1 text-sm text-[#8B8BA7]">
+            <span class="text-[#F4F4FF] font-medium">NexaScale AI</span>
+            <span class="mx-2 text-[#2A2A3E]">×</span>
+            <span class="text-[#F4F4FF] font-medium">Vertex Capital Partners</span>
+          </p>
+        </div>
+        <!-- Overall fit ring -->
+        <div class="flex items-center gap-5 rounded-2xl border border-[#2A2A3E] bg-[#12121A] px-6 py-4">
+          <svg width="68" height="68" viewBox="0 0 68 68">
+            <circle cx="34" cy="34" r="28" fill="none" stroke="#2A2A3E" stroke-width="5.5"/>
+            <circle cx="34" cy="34" r="28" fill="none" stroke="url(#ringGrad)" stroke-width="5.5"
+              stroke-linecap="round"
+              stroke-dasharray="175.9"
+              stroke-dashoffset="35.2"
+              transform="rotate(-90 34 34)"/>
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366F1"/>
+                <stop offset="100%" stop-color="#818CF8"/>
+              </linearGradient>
+            </defs>
+            <text x="34" y="39" text-anchor="middle" fill="#F4F4FF" font-size="13" font-weight="700" font-family="system-ui,sans-serif">80%</text>
+          </svg>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Overall Fit</p>
+            <p class="mt-1 text-sm font-bold text-[#F4F4FF]">Strong Match</p>
+            <p class="text-[11px] text-[#8B8BA7]">3 matched · 2 partial · 2 gaps</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-5 gap-6">
+        <!-- 5-axis radar -->
+        <div class="lg:col-span-2 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6 flex flex-col items-center">
+          <p class="self-start text-xs font-bold text-[#F4F4FF]">5-Axis Compatibility</p>
+          <p class="self-start text-[11px] text-[#8B8BA7] mt-0.5 mb-6">Per-category fit scores</p>
+          <canvas id="radar-deepdive" width="260" height="260"></canvas>
+          <div class="mt-5 w-full space-y-2.5" id="deepdive-legend"></div>
+        </div>
+
+        <!-- Accordion -->
+        <div class="lg:col-span-3">
+          <p class="text-xs font-bold text-[#F4F4FF] mb-4">Parameter Breakdown</p>
+          <div id="accordion-container" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ─── Data ─────────────────────────────────────────────────────────────────
+
+    const INVESTOR_MATCHES = [
+      { name: "NexaScale AI",      sector: "AI / SaaS",    score: 91, status: "introduced" },
+      { name: "GreenPath Energy",  sector: "CleanTech",    score: 78, status: "accepted"   },
+      { name: "MedFlow Health",    sector: "HealthTech",   score: 74, status: "pending"    },
+      { name: "BuildQuick",        sector: "PropTech",     score: 61, status: "pending"    },
+    ];
+
+    const STARTUP_MATCHES = [
+      { name: "Vertex Capital Partners", sector: "Series A · Tech", score: 91, status: "introduced" },
+      { name: "Blue Horizon Fund",       sector: "Seed · SaaS",     score: 72, status: "accepted"   },
+      { name: "Meridian Ventures",       sector: "Series A · AI",   score: 65, status: "pending"    },
+    ];
+
+    const CATEGORIES = [
+      {
+        id: "financial", label: "Financial Alignment", score: 85, color: "#6366F1",
+        params: [
+          { name: "Investment ticket size",   startup: "$2M–$5M",         investor: "$3M–$8M",         status: "matched"  },
+          { name: "Equity offered",           startup: "12%",             investor: "10–15%",           status: "matched"  },
+          { name: "Valuation expectation",    startup: "$25M pre-money",  investor: "$20–$30M",         status: "matched"  },
+          { name: "Revenue model",            startup: "B2B SaaS ARR",    investor: "Prefers recurring", status: "matched"  },
+          { name: "Runway",                   startup: "8 months",        investor: "Prefers 12+",      status: "partial"  },
+        ]
+      },
+      {
+        id: "market", label: "Market & Sector Fit", score: 92, color: "#10B981",
+        params: [
+          { name: "Primary sector",       startup: "AI / SaaS",       investor: "AI, FinTech, SaaS", status: "matched" },
+          { name: "Target geography",     startup: "SEA + ANZ",        investor: "SEA-first",         status: "matched" },
+          { name: "TAM expectation",      startup: "$4.2B by 2027",    investor: ">$1B TAM",          status: "matched" },
+          { name: "Regulatory exposure",  startup: "Medium",           investor: "Acceptable",        status: "matched" },
+        ]
+      },
+      {
+        id: "technology", label: "Technology Stack", score: 75, color: "#8B5CF6",
+        params: [
+          { name: "Core tech",              startup: "Python / PyTorch",   investor: "AI-native preferred", status: "matched"  },
+          { name: "Infrastructure",         startup: "AWS + Kubernetes",   investor: "Cloud-agnostic",       status: "matched"  },
+          { name: "Data moat",              startup: "Proprietary dataset", investor: "Strong preference",   status: "matched"  },
+          { name: "IP / Patents",           startup: "2 pending",          investor: "Nice-to-have",         status: "partial"  },
+          { name: "Open-source exposure",   startup: "40% OSS",            investor: "Prefers <20%",         status: "mismatch" },
+        ]
+      },
+      {
+        id: "timeline", label: "Operational Timeline", score: 70, color: "#F59E0B",
+        params: [
+          { name: "Current stage",          startup: "Series A ready",  investor: "Series A focus",    status: "matched"  },
+          { name: "Close timeline",         startup: "Q3 2026",         investor: "Q2–Q4 2026",        status: "matched"  },
+          { name: "Milestones to close",    startup: "10K ARR MRR",     investor: "10K–50K MRR",       status: "partial"  },
+          { name: "Board seat expectation", startup: "Observer only",   investor: "Requires full seat", status: "mismatch" },
+        ]
+      },
+      {
+        id: "team", label: "Team Dynamics", score: 88, color: "#EC4899",
+        params: [
+          { name: "Founder experience",  startup: "2 exits (CTO, CPO)",   investor: "Serial preferred",     status: "matched" },
+          { name: "Team size",           startup: "14 FTEs",              investor: "10–30 FTEs",            status: "matched" },
+          { name: "Advisory board",      startup: "3 industry advisors",  investor: "Requires at least 2",  status: "matched" },
+          { name: "DEI composition",     startup: "57% diverse",          investor: "Reports DEI metrics",   status: "matched" },
+        ]
+      },
+    ];
+
+    // ─── Radar chart (Canvas) ─────────────────────────────────────────────────
+
+    function drawRadar(id, axes, values, palette) {
+      const canvas = document.getElementById(id);
+      if (!canvas) return;
+      const ctx  = canvas.getContext("2d");
+      const W    = canvas.width;
+      const H    = canvas.height;
+      const cx   = W / 2;
+      const cy   = H / 2;
+      const R    = Math.min(W, H) * 0.37;
+      const n    = axes.length;
+      const LEVELS = 4;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const angle  = (i) => (i / n) * Math.PI * 2 - Math.PI / 2;
+      const point  = (i, r) => ({
+        x: cx + R * r * Math.cos(angle(i)),
+        y: cy + R * r * Math.sin(angle(i)),
+      });
+
+      // Grid polygons
+      for (let l = 1; l <= LEVELS; l++) {
+        const ratio = l / LEVELS;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const p = point(i, ratio);
+          i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = "rgba(255,255,255,0.07)";
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+        ctx.fillStyle   = l === LEVELS ? "rgba(255,255,255,0.015)" : "transparent";
+        ctx.fill();
+      }
+
+      // Axis spokes
+      for (let i = 0; i < n; i++) {
+        const p = point(i, 1);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(p.x, p.y);
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+      }
+
+      // Data polygon with gradient fill
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      grad.addColorStop(0,   palette.inner);
+      grad.addColorStop(1,   palette.outer);
+
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const p = point(i, values[i] / 100);
+        i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle   = grad;
+      ctx.fill();
+      ctx.strokeStyle = palette.stroke;
+      ctx.lineWidth   = 2;
+      ctx.stroke();
+
+      // Dots
+      for (let i = 0; i < n; i++) {
+        const p = point(i, values[i] / 100);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle   = palette.dot;
+        ctx.fill();
+        ctx.strokeStyle = "#0A0A0F";
+        ctx.lineWidth   = 2;
+        ctx.stroke();
+      }
+
+      // Labels
+      ctx.font      = "10.5px system-ui, sans-serif";
+      ctx.fillStyle = "#8B8BA7";
+      ctx.textAlign = "center";
+      for (let i = 0; i < n; i++) {
+        const a  = angle(i);
+        const lr = R * 1.24;
+        const lx = cx + lr * Math.cos(a);
+        const ly = cy + lr * Math.sin(a);
+        const words = axes[i].split(" ");
+        if (words.length <= 2) {
+          ctx.fillText(axes[i], lx, ly + 4);
+        } else {
+          ctx.fillText(words.slice(0, 2).join(" "), lx, ly - 1);
+          ctx.fillText(words.slice(2).join(" "),    lx, ly + 13);
+        }
+      }
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    function statusPill(status) {
+      const map = {
+        introduced: "bg-violet-500/20 text-violet-300 border border-violet-500/30",
+        accepted:   "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
+        pending:    "bg-amber-500/20  text-amber-300  border border-amber-500/30",
+        declined:   "bg-gray-500/20   text-gray-400   border border-gray-500/30",
+      };
+      const labels = { introduced: "Introduced", accepted: "Accepted", pending: "Pending", declined: "Declined" };
+      const cls = map[status] ?? map.pending;
+      return `<span class="rounded-full px-2 py-0.5 text-[10px] font-bold ${cls}">${labels[status] ?? "Pending"}</span>`;
+    }
+
+    function scoreColor(s) {
+      return s >= 80 ? "#10B981" : s >= 65 ? "#6366F1" : "#F59E0B";
+    }
+
+    function scoreBar(score) {
+      const c = scoreColor(score);
+      return `
+        <div class="flex items-center gap-2 flex-1">
+          <div class="h-1.5 flex-1 rounded-full bg-[#2A2A3E] overflow-hidden">
+            <div class="h-full rounded-full" style="width:${score}%;background:${c};"></div>
+          </div>
+          <span class="text-xs font-bold w-9 text-right" style="color:${c};">${score}%</span>
+        </div>`;
+    }
+
+    function paramBadge(status) {
+      return `<span class="badge-${status} rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wider">
+        ${status.toUpperCase()}
+      </span>`;
+    }
+
+    // ─── Match rows ───────────────────────────────────────────────────────────
+
+    function renderMatchRows(containerId, rows) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = rows.map(m => `
+        <button
+          onclick="showView('deepdive')"
+          class="match-row w-full text-left flex items-center gap-4 rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-4 group"
+        >
+          <div class="h-9 w-9 shrink-0 rounded-xl bg-[#2A2A3E] flex items-center justify-center text-xs font-bold text-[#F4F4FF]">
+            ${m.name.charAt(0)}
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap mb-1.5">
+              <p class="text-sm font-semibold text-[#F4F4FF]">${m.name}</p>
+              ${statusPill(m.status)}
+            </div>
+            <p class="text-[11px] text-[#8B8BA7] mb-2">${m.sector}</p>
+            <div class="flex items-center gap-2">${scoreBar(m.score)}</div>
+          </div>
+          <svg class="shrink-0 h-4 w-4 text-[#2A2A3E] group-hover:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      `).join("");
+    }
+
+    // ─── Accordion ────────────────────────────────────────────────────────────
+
+    function renderAccordion() {
+      const el = document.getElementById("accordion-container");
+      if (!el) return;
+      el.innerHTML = CATEGORIES.map((cat, idx) => {
+        const matched  = cat.params.filter(p => p.status === "matched").length;
+        const partial  = cat.params.filter(p => p.status === "partial").length;
+        const mismatch = cat.params.filter(p => p.status === "mismatch").length;
+        const sc = scoreColor(cat.score);
+        return `
+          <div class="rounded-xl border border-[#2A2A3E] bg-[#12121A] overflow-hidden">
+            <button
+              onclick="toggleAccordion(${idx})"
+              class="w-full flex items-center gap-3 px-5 py-4 hover:bg-[#1A1A26] transition-colors"
+            >
+              <div class="h-2.5 w-2.5 rounded-full shrink-0" style="background:${cat.color};box-shadow:0 0 8px ${cat.color}60;"></div>
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-semibold text-[#F4F4FF]">${cat.label}</p>
+                <p class="mt-0.5 text-[11px] text-[#8B8BA7]">${matched} matched · ${partial} partial · ${mismatch} gap</p>
+              </div>
+              <span class="text-base font-extrabold shrink-0" style="color:${sc};">${cat.score}%</span>
+              <svg id="chev-${idx}" class="accordion-chevron shrink-0 h-4 w-4 text-[#8B8BA7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            <div id="acc-${idx}" class="accordion-content">
+              <div class="border-t border-[#2A2A3E] px-5 py-4">
+                <div class="grid grid-cols-12 gap-2 mb-2 pb-2 border-b border-[#2A2A3E]/50">
+                  <p class="col-span-4 text-[9px] font-bold uppercase tracking-widest text-[#8B8BA7]">Parameter</p>
+                  <p class="col-span-3 text-[9px] font-bold uppercase tracking-widest text-[#8B8BA7]">Startup</p>
+                  <p class="col-span-3 text-[9px] font-bold uppercase tracking-widest text-[#8B8BA7]">Investor</p>
+                  <p class="col-span-2 text-[9px] font-bold uppercase tracking-widest text-[#8B8BA7] text-right">Status</p>
+                </div>
+                ${cat.params.map(p => `
+                  <div class="grid grid-cols-12 gap-2 py-2.5 border-b border-[#2A2A3E]/40 last:border-0 items-start">
+                    <p class="col-span-4 text-[11px] text-[#C4C4D4] leading-snug">${p.name}</p>
+                    <p class="col-span-3 text-[11px] font-semibold text-[#F4F4FF] leading-snug">${p.startup}</p>
+                    <p class="col-span-3 text-[11px] text-[#8B8BA7] leading-snug">${p.investor}</p>
+                    <div class="col-span-2 flex justify-end">${paramBadge(p.status)}</div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function toggleAccordion(idx) {
+      const isOpen = document.getElementById(`acc-${idx}`).classList.contains("open");
+      document.querySelectorAll(".accordion-content").forEach(el => el.classList.remove("open"));
+      document.querySelectorAll(".accordion-chevron").forEach(el => el.classList.remove("open"));
+      if (!isOpen) {
+        document.getElementById(`acc-${idx}`).classList.add("open");
+        document.getElementById(`chev-${idx}`).classList.add("open");
+      }
+    }
+
+    // ─── Legend ───────────────────────────────────────────────────────────────
+
+    function renderLegend() {
+      const el = document.getElementById("deepdive-legend");
+      if (!el) return;
+      el.innerHTML = CATEGORIES.map(c => `
+        <div class="flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <div class="h-2 w-2 rounded-full shrink-0" style="background:${c.color};"></div>
+            <span class="text-[#8B8BA7]">${c.label}</span>
+          </div>
+          <span class="font-bold" style="color:${scoreColor(c.score)};">${c.score}%</span>
+        </div>
+      `).join("");
+    }
+
+    // ─── View switching ───────────────────────────────────────────────────────
+
+    const PALETTES = {
+      investor: {
+        inner: "rgba(99,102,241,0.42)",
+        outer: "rgba(99,102,241,0.04)",
+        stroke: "rgba(99,102,241,0.9)",
+        dot:   "#6366F1",
+      },
+      startup: {
+        inner: "rgba(16,185,129,0.42)",
+        outer: "rgba(16,185,129,0.04)",
+        stroke: "rgba(16,185,129,0.9)",
+        dot:   "#10B981",
+      },
+      deepdive: {
+        inner: "rgba(99,102,241,0.35)",
+        outer: "rgba(99,102,241,0.04)",
+        stroke: "rgba(99,102,241,0.8)",
+        dot:   "#6366F1",
+      },
+    };
+
+    function showView(id) {
+      document.querySelectorAll(".view-section").forEach(el => {
+        el.classList.add("hidden");
+        el.style.opacity = "0";
+      });
+      document.querySelectorAll(".view-btn").forEach(btn => btn.classList.remove("active"));
+
+      const section = document.getElementById(`view-${id}`);
+      const btn     = document.querySelector(`[data-view="${id}"]`);
+      if (section) {
+        section.classList.remove("hidden");
+        requestAnimationFrame(() => { section.style.opacity = "1"; });
+      }
+      if (btn) btn.classList.add("active");
+
+      // Draw radar after a short paint delay
+      setTimeout(() => {
+        if (id === "investor") {
+          drawRadar(
+            "radar-investor",
+            ["Match Quality", "Response Rate", "Accept Rate"],
+            [74, 88, 58],
+            PALETTES.investor
+          );
+        } else if (id === "startup") {
+          drawRadar(
+            "radar-startup",
+            ["Match Quality", "Response Rate", "Accept Rate"],
+            [69, 75, 50],
+            PALETTES.startup
+          );
+        } else if (id === "deepdive") {
+          drawRadar(
+            "radar-deepdive",
+            CATEGORIES.map(c => c.label),
+            CATEGORIES.map(c => c.score),
+            PALETTES.deepdive
+          );
+        }
+      }, 40);
+    }
+
+    // ─── Boot ─────────────────────────────────────────────────────────────────
+
+    document.querySelectorAll(".view-btn").forEach(btn =>
+      btn.addEventListener("click", () => showView(btn.dataset.view))
+    );
+
+    renderMatchRows("investor-matches", INVESTOR_MATCHES);
+    renderMatchRows("startup-matches",  STARTUP_MATCHES);
+    renderAccordion();
+    renderLegend();
+    showView("investor");
+  </script>
+</body>
+</html>

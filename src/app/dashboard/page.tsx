@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -13,7 +14,6 @@ import {
 import {
   ProfileStrength,
   MatchFactorsChart,
-  ActivityFeed,
   BenchmarkingChart,
 } from "./_components/MemberWidgets";
 import {
@@ -95,47 +95,6 @@ function computeRadarData(recentMatches: DashboardMatch[], userId: string) {
   ];
 }
 
-// ─── Activity feed helpers ────────────────────────────────────────────────────
-
-function formatRelativeTime(isoDate: string): string {
-  const diff = Date.now() - new Date(isoDate).getTime();
-  const hours = Math.floor(diff / 3_600_000);
-  if (hours < 1) return "Just now";
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  return new Date(isoDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-function matchesToActivityEvents(recentMatches: DashboardMatch[], userId: string) {
-  return recentMatches.slice(0, 4).map((m) => {
-    const counterpart = m.counterpart_name ?? "a verified member";
-    let type: "match" | "deal" | "intro" | "general" = "match";
-    let label = `New match suggested`;
-    let subtext = `${counterpart} — awaiting your response`;
-
-    if (m.status === "introduced") {
-      type = "intro";
-      label = "Introduction made";
-      subtext = `You ↔ ${counterpart}`;
-    } else if (m.status === "accepted") {
-      type = "deal";
-      label = "Match accepted";
-      subtext = `You ↔ ${counterpart}`;
-    } else {
-      const myStatus = m.member_a_id === userId ? m.member_a_status : m.member_b_status;
-      if (myStatus === "declined") {
-        type = "general";
-        label = "Match declined";
-        subtext = counterpart;
-      }
-    }
-
-    return { id: m.id, type, label, subtext, time: formatRelativeTime(m.created_at) };
-  });
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -144,6 +103,7 @@ export default function DashboardPage() {
   const displayName = user?.user_metadata?.full_name ?? user?.email ?? "";
   const isAdvisorView = role && ["advisor", "admin"].includes(role);
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [summary, setSummary] = useState({
     pendingMatches: 0,
     activeDeals: 0,
@@ -185,6 +145,14 @@ export default function DashboardPage() {
       active = false;
     };
   }, [supabase, user?.id, isAdvisorView]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch("/api/notifications")
+      .then((r) => r.json())
+      .then((data) => setUnreadCount(data.unreadCount ?? 0))
+      .catch(() => {});
+  }, [user?.id]);
 
   const advisorDashboard = useMemo(() => {
     const counts = new Map<string, number>();
@@ -316,8 +284,6 @@ export default function DashboardPage() {
 
   const fitData = computeRadarData(summary.recentMatches, user?.id ?? "");
 
-  const activityEvents = matchesToActivityEvents(summary.recentMatches, user?.id ?? "");
-
   const benchmarkData = [
     { name: "You",        value: isLoading ? 0 : summary.activeDeals    },
     { name: "Sector avg", value: isLoading ? 0 : summary.sectorAvgDeals },
@@ -329,19 +295,36 @@ export default function DashboardPage() {
 
         {/* Greeting */}
         <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
-            Member portal
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
-            Hello,{" "}
-            <span className="text-(--color-primary)">
-              {firstName}
-            </span>
-          </h1>
-          <p className="mt-2 text-sm text-(--color-body)">
-            You're a member at Stage {summary.profile?.stage || "0"} · Verification{" "}
-            {summary.profile?.verification_status || "unverified"}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
+                Member portal
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
+                Hello,{" "}
+                <span className="text-(--color-primary)">{firstName}</span>
+              </h1>
+              <p className="mt-2 text-sm text-(--color-body)">
+                You're a member at Stage {summary.profile?.stage || "0"} · Verification{" "}
+                {summary.profile?.verification_status || "unverified"}
+              </p>
+            </div>
+            <Link
+              href="/notifications"
+              className="relative mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-(--color-hairline) bg-(--color-canvas) text-(--color-ink) transition-colors hover:bg-(--color-surface-soft)"
+              aria-label="Notifications"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
         </section>
 
         {/* Row 1: 4 metric cards */}
@@ -352,14 +335,13 @@ export default function DashboardPage() {
           <BenchmarkingChart data={benchmarkData} label="Active deals" />
         </section>
 
-        {/* Row 2: Profile strength + Match quality + Activity feed */}
-        <section className="grid gap-6 lg:grid-cols-3">
+        {/* Row 2: Profile strength + Match quality */}
+        <section className="grid gap-6 lg:grid-cols-2">
           <ProfileStrength
             percent={isLoading ? 0 : profilePercent}
             nextStep={profileNextStep}
           />
           <MatchFactorsChart fitData={fitData} />
-          <ActivityFeed events={isLoading ? [] : activityEvents} />
         </section>
 
       </div>

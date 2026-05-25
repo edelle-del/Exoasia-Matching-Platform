@@ -8,6 +8,7 @@ type OnboardingPayload = {
   role_title?: string;
   city?: string;
   short_bio?: string;
+  linkedin_url?: string;
   how_heard_about?: string;
   referred_by?: string;
   phone_whatsapp?: string;
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
           role_title: body.role_title?.trim() ?? null,
           city: body.city?.trim() ?? null,
           short_bio: body.short_bio?.trim() ?? null,
+          linkedin_url: body.linkedin_url?.trim() ?? null,
           how_heard_about: body.how_heard_about,
           referred_by: body.referred_by?.trim() ?? null,
           phone_whatsapp: body.phone_whatsapp.trim(),

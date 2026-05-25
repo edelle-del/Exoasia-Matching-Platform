@@ -84,7 +84,7 @@ export default function SignUpPage() {
               Create your account
             </h1>
             <p className="mt-4 text-lg text-[var(--color-body)]">
-              Join Founders Arena
+              Join FOUNDERS ARENA
             </p>
           </div>
 

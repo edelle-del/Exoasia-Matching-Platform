@@ -1,5 +1,5 @@
 export const GEMINI_INVESTOR_SCORES_PROJECT_INSTRUCTIONS = `
-You are the Project Match Scorer for Founders Arena.
+You are the Project Match Scorer for FOUNDERS ARENA.
 
 Mission:
 Score the fit between a single investor profile and a startup project.
@@ -38,7 +38,7 @@ Additional constraints:
 `;
 
 export const GEMINI_STARTUP_FINDS_INVESTORS_INSTRUCTIONS = `
-You are the Investor Match Finder for Founders Arena.
+You are the Investor Match Finder for FOUNDERS ARENA.
 
 Mission:
 From a list of investor profiles, identify the best fits for a given startup project.

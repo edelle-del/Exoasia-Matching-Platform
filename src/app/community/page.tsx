@@ -60,7 +60,7 @@ export default function CommunityPage() {
       <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
         <div className="mx-auto max-w-7xl">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
-            Founders Arena
+            FOUNDERS ARENA
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-(--color-ink)">Community</h1>
           <p className="mt-1 text-sm text-(--color-body)">
@@ -202,17 +202,17 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
 
   const roleBadge =
     m.member_role === "investor"
-      ? { label: "Investor", cls: "bg-violet-100 text-violet-700" }
+      ? { label: "Investor", cls: "bg-violet-500/20 text-violet-300" }
       : m.member_role === "startup"
-        ? { label: "Startup", cls: "bg-blue-100 text-blue-700" }
+        ? { label: "Startup", cls: "bg-blue-500/20 text-blue-300" }
         : null;
 
   const verificationBadge =
     m.verification_status === "verified"
-      ? { label: "Verified", cls: "bg-emerald-100 text-emerald-700" }
+      ? { label: "Verified", cls: "bg-emerald-500/20 text-emerald-300" }
       : m.verification_status === "pending"
-        ? { label: "Pending", cls: "bg-amber-100 text-amber-700" }
-        : { label: "Unverified", cls: "bg-gray-100 text-gray-500" };
+        ? { label: "Pending", cls: "bg-amber-500/20 text-amber-300" }
+        : { label: "Unverified", cls: "bg-[#2A2A3E] text-[#8B8BA7]" };
 
   return (
     <article className="flex flex-col gap-3 rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-5">
@@ -241,7 +241,7 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
             {roleBadge.label}
           </span>
         )}
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+        <span className="rounded-full bg-[#2A2A3E] px-2 py-0.5 text-xs font-medium text-[#8B8BA7]">
           Stage {m.stage} · {stageLabel}
         </span>
         <span

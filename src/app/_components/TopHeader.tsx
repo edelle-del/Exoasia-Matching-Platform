@@ -106,10 +106,10 @@ export default function TopHeader() {
       {/* Logo */}
       <div className="flex items-center gap-3 px-3 py-5">
         <Link href="/" className="flex shrink-0 items-center gap-3">
-          <Image src={logo} alt="Founders Arena" width={28} height={28} className="shrink-0 rounded" />
+          <Image src={logo} alt="FOUNDERS ARENA" width={28} height={28} className="shrink-0 rounded" />
           <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
             <span className="flex items-center gap-1.5">
-              <span className="block text-[11px] font-black tracking-widest text-white leading-tight uppercase">Founders Arena</span>
+              <span className="block text-[11px] font-black tracking-widest text-white leading-tight uppercase">FOUNDERS ARENA</span>
               <span className="fa-year-badge shrink-0 rounded-md px-1.5 py-0.5 text-[8px] font-semibold tracking-wider">2026</span>
             </span>
             <span className="block text-[9px] text-white/40 tracking-wide">by Exoasia</span>

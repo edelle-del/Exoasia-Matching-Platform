@@ -53,6 +53,14 @@ type V2Startup = {
   target_raise_max?: string;
 };
 
+type V2EcosystemPartner = {
+  _v: 2;
+  support_types?: string[];
+  target_industries?: string[];
+  target_regions?: string[];
+  target_stages?: string[];
+};
+
 function parseV2(raw: string | null | undefined): V2Investor | V2Startup | null {
   try {
     const parsed = JSON.parse(raw ?? "");
@@ -170,6 +178,33 @@ function StartupMatchingProfile({ data }: { data: V2Startup }) {
     </div>
   );
 }
+
+function EcosystemPartnerMatchingProfile({ data }: { data: V2EcosystemPartner }) {
+  return (
+    <div className="space-y-5">
+      {!!data.support_types?.length && (
+        <ProfileRow label="Support Offered">
+          <TagList items={data.support_types} />
+        </ProfileRow>
+      )}
+      {!!data.target_industries?.length && (
+        <ProfileRow label="Industries">
+          <TagList items={data.target_industries} />
+        </ProfileRow>
+      )}
+      {!!data.target_regions?.length && (
+        <ProfileRow label="Target Regions">
+          <TagList items={data.target_regions} />
+        </ProfileRow>
+      )}
+      {!!data.target_stages?.length && (
+        <ProfileRow label="Startup Stages">
+          <TagList items={data.target_stages} />
+        </ProfileRow>
+      )}
+    </div>
+  );
+}
 export default function ProfilePage() {
   const supabase = useMemo(() => createClient(), []);
   const { user } = useAuth();
@@ -184,6 +219,7 @@ export default function ProfilePage() {
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
 
   const loadProfile = useCallback(async () => {
     if (!user?.id) return;
@@ -294,24 +330,30 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-(--color-canvas)">
       <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
         <div className="mx-auto max-w-7xl">
-          <Link
-            href="/dashboard"
-            className="text-sm text-(--color-primary) hover:underline"
-          >
-            ← Back to dashboard
-          </Link>
-          <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
-            Profile
-          </h1>
-          <p className="mt-2 text-sm text-(--color-body)">
-            {profile?.full_name || "Member profile"} · Stage{" "}
-            {profile?.stage || "0"}
-          </p>
-          {profile?.business_name && (
-            <p className="mt-1 text-sm text-(--color-muted)">
-              {profile.business_name}
-            </p>
-          )}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Link
+                href="/dashboard"
+                className="text-sm text-(--color-primary) hover:underline"
+              >
+                ← Back to dashboard
+              </Link>
+              <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">Profile</h1>
+              <p className="mt-2 text-sm text-(--color-body)">
+                {profile?.full_name || "Member profile"} · Stage{" "}
+                {profile?.stage || "0"}
+              </p>
+              {profile?.business_name && (
+                <p className="mt-1 text-sm text-(--color-muted)">{profile.business_name}</p>
+              )}
+            </div>
+            <Link
+              href="/account-settings"
+              className="mt-1 shrink-0 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+            >
+              Account Settings
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -336,9 +378,11 @@ export default function ProfilePage() {
           const v2 = parseV2(profile?.asks_summary);
           const roleLabel =
             profile?.member_role === "investor"
-              ? "Investor / Ecosystem Partner"
+              ? "Investor"
               : profile?.member_role === "startup"
               ? "Startup / Founder"
+              : profile?.member_role === "ecosystem_partner"
+              ? "Ecosystem Partner"
               : null;
 
           if (v2) {
@@ -355,6 +399,8 @@ export default function ProfilePage() {
                 <div className="mt-6">
                   {profile.member_role === "investor"
                     ? <InvestorMatchingProfile data={v2 as V2Investor} />
+                    : profile.member_role === "ecosystem_partner"
+                    ? <EcosystemPartnerMatchingProfile data={v2 as V2EcosystemPartner} />
                     : <StartupMatchingProfile data={v2 as V2Startup} />}
                 </div>
               </section>
@@ -398,7 +444,7 @@ export default function ProfilePage() {
           );
         })()}
 
-        <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
+        {profile?.member_role === "startup" && <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
           <h2 className="text-lg font-semibold text-(--color-ink)">My Team / Cofounders</h2>
           <p className="mt-1 text-sm text-(--color-body)">
             Invite cofounders by email or phone number. They&apos;ll receive a link to join your team.
@@ -525,7 +571,7 @@ export default function ProfilePage() {
             {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
             {inviteSuccess && <p className="text-xs text-green-600">{inviteSuccess}</p>}
           </form>
-        </section>
+        </section>}
 
         <section className="flex items-center justify-between gap-4">
           <Link
@@ -541,6 +587,7 @@ export default function ProfilePage() {
             Purchase credits
           </Link>
         </section>
+
       </div>
     </div>
   );

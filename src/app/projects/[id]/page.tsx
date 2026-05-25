@@ -447,29 +447,48 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     No investor matches found. Try again once more investors have joined the platform.
                   </p>
                 ) : (
-                  <ul className="mt-3 space-y-3">
-                    {investorMatches.map((m) => (
-                      <li
-                        key={m.investor_profile_id}
-                        className="rounded-lg bg-(--color-surface-soft) p-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-(--color-ink)">{m.investor_name}</p>
-                            {(m.investor_sector || m.investor_city) && (
-                              <p className="text-xs text-(--color-muted)">
-                                {[m.investor_sector, m.investor_city].filter(Boolean).join(" · ")}
-                              </p>
+                  <div className="mt-3 space-y-3">
+                    {investorMatches.map((m, idx) => {
+                      const locked = idx >= 3;
+                      return (
+                        <div key={m.investor_profile_id} className="relative">
+                          <div className={`rounded-lg bg-(--color-surface-soft) p-3 ${locked ? "blur-sm pointer-events-none select-none" : ""}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-medium text-(--color-ink)">{m.investor_name}</p>
+                                {(m.investor_sector || m.investor_city) && (
+                                  <p className="text-xs text-(--color-muted)">
+                                    {[m.investor_sector, m.investor_city].filter(Boolean).join(" · ")}
+                                  </p>
+                                )}
+                              </div>
+                              <ScoreBadge score={m.fit_score} />
+                            </div>
+                            {m.summary && (
+                              <p className="mt-1 text-xs font-medium text-green-600">{m.summary}</p>
                             )}
                           </div>
-                          <ScoreBadge score={m.fit_score} />
+                          {locked && (
+                            <div className="absolute inset-0 flex items-center justify-center rounded-lg">
+                              <div className="flex items-center gap-2 rounded-full border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 shadow-sm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5 text-(--color-muted)">
+                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                </svg>
+                                <span className="text-xs font-semibold text-(--color-ink)">Pro — Upgrade to unlock</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        {m.summary && (
-                          <p className="mt-1 text-xs font-medium text-green-600">{m.summary}</p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                      );
+                    })}
+                    {investorMatches.length > 3 && (
+                      <p className="pt-1 text-center text-xs text-(--color-muted)">
+                        {investorMatches.length - 3} more match{investorMatches.length - 3 !== 1 ? "es" : ""} hidden.{" "}
+                        <span className="font-semibold text-(--color-primary)">Upgrade to Pro</span> to see all.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

@@ -31,15 +31,15 @@
   /* ── Platform token aliases (used by components) ── */
 
   /* Surfaces */
-  --color-canvas:           #FFFFFF;
-  --color-surface-soft:     #F5EFE0;
-  --color-surface-strong:   #EDE5D5;
-  --color-surface-card:     #FFFFFF;
+  --color-canvas:           #0A0A0F;
+  --color-surface-soft:     #12121A;
+  --color-surface-strong:   #1A1A26;
+  --color-surface-card:     #12121A;
 
   /* Brand */
-  --color-primary:          #1A0B2E;
-  --color-primary-active:   #2D0A28;
-  --color-primary-disabled: #B095C5;
+  --color-primary:          #FF6B1F;
+  --color-primary-active:   #FF2E93;
+  --color-primary-disabled: #4A4A6A;
 
   /* Accents */
   --color-accent-gold:        #C9A040;
@@ -49,35 +49,35 @@
   --color-magenta:            #C81E78;
 
   /* Text */
-  --color-ink:        #1A0B2E;
-  --color-body:       #3D2D1F;
-  --color-muted:      #7A6A5A;
-  --color-muted-soft: #C9B89A;
+  --color-ink:        #F4F4FF;
+  --color-body:       #C4C4D4;
+  --color-muted:      #8B8BA7;
+  --color-muted-soft: #4A4A6A;
   --color-on-primary: #FFFFFF;
   --color-on-dark:    #FFFFFF;
 
   /* Borders */
-  --color-hairline:       #D4C5A9;
-  --color-hairline-soft:  #EDE5D5;
-  --color-border-strong:  #C9B89A;
+  --color-hairline:       #2A2A3E;
+  --color-hairline-soft:  #1A1A26;
+  --color-border-strong:  #3A3A5E;
 
   /* Semantic */
-  --color-error-text: #A32D2D;
+  --color-error-text: #F87171;
 
   /* Legacy aliases */
-  --color-bg-base:         #FFFFFF;
-  --color-bg-surface:      #F5EFE0;
-  --color-bg-card:         #FFFFFF;
-  --color-text-primary:    #1A0B2E;
-  --color-text-secondary:  #7A6A5A;
-  --color-text-muted:      #C9B89A;
-  --color-border:          #D4C5A9;
-  --color-border-input:    #D4C5A9;
-  --color-nav-bg:          rgba(26, 11, 46, 0.95);
-  --color-luxe:            #1A0B2E;
+  --color-bg-base:         #0A0A0F;
+  --color-bg-surface:      #12121A;
+  --color-bg-card:         #12121A;
+  --color-text-primary:    #F4F4FF;
+  --color-text-secondary:  #8B8BA7;
+  --color-text-muted:      #4A4A6A;
+  --color-border:          #2A2A3E;
+  --color-border-input:    #2A2A3E;
+  --color-nav-bg:          rgba(10, 10, 15, 0.95);
+  --color-luxe:            #F4F4FF;
   --color-plus:            #C9A040;
   --color-star-rating:     #FF6B1F;
-  --color-legal-link:      #1A0B2E;
+  --color-legal-link:      #8B8BA7;
   --color-accent:          #FF6B1F;
 }
 
@@ -155,7 +155,7 @@ body {
 }
 
 .gn-card:hover {
-  box-shadow: 0 4px 20px rgba(26, 11, 46, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   transform: translateY(-2px);
 }
 
@@ -282,15 +282,15 @@ body {
 /* ── FA Score Badges ──────────────────────────────────── */
 
 /* Used across projects pages — colors from brand guide §5 */
-.fa-score-excellent { background: #E1F5EE; color: #085041; }
-.fa-score-strong    { background: #E6F1FB; color: #0C447C; }
-.fa-score-moderate  { background: #FAEEDA; color: #633806; }
-.fa-score-low       { background: #FCEBEB; color: #A32D2D; }
+.fa-score-excellent { background: rgba(16,185,129,0.15); color: #34D399; }
+.fa-score-strong    { background: rgba(99,102,241,0.15);  color: #818CF8; }
+.fa-score-moderate  { background: rgba(245,158,11,0.15);  color: #FBBF24; }
+.fa-score-low       { background: rgba(239,68,68,0.15);   color: #F87171; }
 
 /* ── Sidebar ──────────────────────────────────────────── */
 
 .fa-sidebar {
-  background: linear-gradient(180deg, #1A0B2E 0%, #2D0A28 100%);
+  background: linear-gradient(180deg, #12121A 0%, #0A0A0F 100%);
 }
 
 .fa-year-badge {

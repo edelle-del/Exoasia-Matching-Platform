@@ -13,6 +13,8 @@ export const PUBLIC_PATHS = [
 export const MEMBER_PATH_PREFIXES = [
   "/dashboard",
   "/profile",
+  "/account-settings",
+  "/notifications",
   "/matches",
   "/deal-board",
   "/documents",

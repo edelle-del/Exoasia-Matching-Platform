@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase/client";
-import { fetchUserMatches, fetchUserProjects, respondToMatch } from "@/lib/app-data";
+import { fetchUserMatches, fetchUserProjects } from "@/lib/app-data";
 import type { MatchRecord, ProjectRecord } from "@/lib/app-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -171,9 +171,18 @@ export default function MatchesPage() {
   const handleRespond = async (match: MatchRow, decision: "accepted" | "declined") => {
     if (!user?.id) return;
     setRespondingMatchId(match.id);
-    await respondToMatch(supabase, user.id, match, decision);
-    setRespondingMatchId(null);
-    setReloadKey((k) => k + 1);
+    try {
+      const res = await fetch(`/api/matches/${match.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      if (res.ok) {
+        setReloadKey((k) => k + 1);
+      }
+    } finally {
+      setRespondingMatchId(null);
+    }
   };
 
   const handleRequestIntro = async (projectId: string, investorProfileId: string) => {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase/client";
-import { fetchUserMatches, fetchUserProjects } from "@/lib/app-data";
+import { fetchUserMatches, fetchUserProjects, respondToMatch } from "@/lib/app-data";
 import type { MatchRecord, ProjectRecord } from "@/lib/app-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ function getProjectNextStep(project: ProjectRecord, scores: ProjectScore[]) {
   if (scores.length === 0) {
     return { label: "Awaiting investor matches — check back soon", href: `/projects/${project.id}`, cta: "View project" };
   }
-  return { label: `${scores.length} investor${scores.length > 1 ? "s" : ""} matched — review intros below`, href: `/projects/${project.id}`, cta: "View project" };
+  return { label: `${scores.length} investor${scores.length > 1 ? "s" : ""} matched — request an intro to connect`, href: `/projects/${project.id}`, cta: "View project" };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -62,6 +62,9 @@ export default function MatchesPage() {
   const [matches,       setMatches]       = useState<MatchRow[]>([]);
   const [projects,      setProjects]      = useState<(ProjectRecord & { owner_name?: string })[]>([]);
   const [projectScores, setProjectScores] = useState<ProjectScore[]>([]);
+  const [reloadKey,        setReloadKey]        = useState(0);
+  const [introRequests,    setIntroRequests]    = useState<Map<string, "requesting" | "done">>(new Map());
+  const [respondingMatchId, setRespondingMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -155,10 +158,43 @@ export default function MatchesPage() {
     };
 
     load().catch(() => setIsLoading(false));
-  }, [supabase, user?.id]);
+  }, [supabase, user?.id, reloadKey]);
 
   const isStartup  = memberRole === "startup";
   const isInvestor = memberRole === "investor";
+
+  const existingMatchPartnerIds = useMemo(
+    () => new Set(matches.map((m) => m.member_a_id === user?.id ? m.member_b_id : m.member_a_id)),
+    [matches, user?.id],
+  );
+
+  const handleRespond = async (match: MatchRow, decision: "accepted" | "declined") => {
+    if (!user?.id) return;
+    setRespondingMatchId(match.id);
+    await respondToMatch(supabase, user.id, match, decision);
+    setRespondingMatchId(null);
+    setReloadKey((k) => k + 1);
+  };
+
+  const handleRequestIntro = async (projectId: string, investorProfileId: string) => {
+    const key = `${projectId}:${investorProfileId}`;
+    setIntroRequests((prev) => new Map(prev).set(key, "requesting"));
+    try {
+      const res = await fetch("/api/matches/request-intro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId, investor_profile_id: investorProfileId }),
+      });
+      if (res.ok) {
+        setIntroRequests((prev) => new Map(prev).set(key, "done"));
+        setReloadKey((k) => k + 1);
+      } else {
+        setIntroRequests((prev) => { const next = new Map(prev); next.delete(key); return next; });
+      }
+    } catch {
+      setIntroRequests((prev) => { const next = new Map(prev); next.delete(key); return next; });
+    }
+  };
 
   const pendingMatches = matches.filter((m) => {
     const myStatus = m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
@@ -273,23 +309,40 @@ export default function MatchesPage() {
                         {/* Investor score rows */}
                         {scores.length > 0 && (
                           <div className="mb-4 space-y-2">
-                            {scores.slice(0, 3).map((score) => (
-                              <div key={score.id} className="flex items-center gap-3 rounded-xl bg-[#1A1A26] px-4 py-2.5">
-                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#2A2A3E] text-[10px] font-bold text-[#F4F4FF]">
-                                  {score.investor_name.charAt(0)}
-                                </div>
-                                <p className="flex-1 truncate text-sm text-[#F4F4FF]">{score.investor_name}</p>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[#2A2A3E]">
-                                    <ScoreBar score={score.fit_score} barClass={scoreBarClass(score.fit_score)} />
+                            {scores.map((score) => {
+                              const requestKey = `${project.id}:${score.investor_profile_id}`;
+                              const reqState   = introRequests.get(requestKey);
+                              const isDone     = existingMatchPartnerIds.has(score.investor_profile_id) || reqState === "done";
+
+                              return (
+                                <div key={score.id} className="flex items-center gap-3 rounded-xl bg-[#1A1A26] px-4 py-2.5">
+                                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#2A2A3E] text-[10px] font-bold text-[#F4F4FF]">
+                                    {score.investor_name.charAt(0)}
                                   </div>
-                                  <span className={`w-8 text-right text-xs font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</span>
+                                  <p className="flex-1 truncate text-sm text-[#F4F4FF]">{score.investor_name}</p>
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[#2A2A3E]">
+                                        <ScoreBar score={score.fit_score} barClass={scoreBarClass(score.fit_score)} />
+                                      </div>
+                                      <span className={`w-8 text-right text-xs font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</span>
+                                    </div>
+                                    {isDone ? (
+                                      <span className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[10px] font-bold text-emerald-400">Requested</span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => void handleRequestIntro(project.id, score.investor_profile_id)}
+                                        disabled={reqState === "requesting"}
+                                        className="rounded-lg bg-indigo-600/30 px-2.5 py-1 text-[10px] font-bold text-indigo-300 transition hover:bg-indigo-600/50 disabled:opacity-50"
+                                      >
+                                        {reqState === "requesting" ? "Sending…" : "Request Intro"}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                            {scores.length > 3 && (
-                              <p className="pt-1 text-center text-xs text-[#8B8BA7]">+{scores.length - 3} more investors matched</p>
-                            )}
+                              );
+                            })}
                           </div>
                         )}
 
@@ -312,7 +365,12 @@ export default function MatchesPage() {
             {!isLoading && pendingCount > 0 && (
               <section>
                 <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Pending Responses</h2>
-                <MatchList matches={pendingMatches} userId={user?.id ?? ""} />
+                <MatchList
+                  matches={pendingMatches}
+                  userId={user?.id ?? ""}
+                  onRespond={handleRespond}
+                  respondingId={respondingMatchId}
+                />
               </section>
             )}
 
@@ -347,13 +405,19 @@ export default function MatchesPage() {
                   {projectScores.map((score) => {
                     const project = projects.find((p) => p.id === score.project_id);
                     const correspondingMatch = matches.find((m) =>
-                      m.member_a_id === user?.id || m.member_b_id === user?.id,
+                      (m.member_a_id === user?.id || m.member_b_id === user?.id) &&
+                      project &&
+                      (m.member_a_id === project.owner_id || m.member_b_id === project.owner_id),
                     );
                     const myMatchStatus = correspondingMatch
                       ? (correspondingMatch.member_a_id === user?.id
                         ? correspondingMatch.member_a_status
                         : correspondingMatch.member_b_status)
                       : null;
+
+                    const requestKey = `${score.project_id}:${user?.id ?? ""}`;
+                    const reqState   = introRequests.get(requestKey);
+                    const isDone     = !!correspondingMatch || reqState === "done";
 
                     return (
                       <div key={score.id} className="flex items-center gap-4 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-4 transition-all hover:border-indigo-500/40">
@@ -381,7 +445,7 @@ export default function MatchesPage() {
                             <p className={`text-lg font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</p>
                             <p className="text-[9px] font-bold uppercase tracking-widest text-[#8B8BA7]">Fit score</p>
                           </div>
-                          {correspondingMatch && (
+                          {correspondingMatch ? (
                             <Link
                               href={`/matches/${correspondingMatch.id}`}
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 transition hover:bg-indigo-500/30"
@@ -390,6 +454,17 @@ export default function MatchesPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                               </svg>
                             </Link>
+                          ) : isDone ? (
+                            <span className="rounded-lg bg-emerald-500/20 px-2.5 py-1.5 text-[10px] font-bold text-emerald-400">Sent</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void handleRequestIntro(score.project_id, user?.id ?? "")}
+                              disabled={reqState === "requesting"}
+                              className="rounded-lg bg-indigo-600/30 px-2.5 py-1.5 text-[10px] font-bold text-indigo-300 transition hover:bg-indigo-600/50 disabled:opacity-50"
+                            >
+                              {reqState === "requesting" ? "Sending…" : "Express Interest"}
+                            </button>
                           )}
                         </div>
                       </div>
@@ -402,7 +477,12 @@ export default function MatchesPage() {
             {!isLoading && pendingCount > 0 && (
               <section>
                 <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Pending Responses</h2>
-                <MatchList matches={pendingMatches} userId={user?.id ?? ""} />
+                <MatchList
+                  matches={pendingMatches}
+                  userId={user?.id ?? ""}
+                  onRespond={handleRespond}
+                  respondingId={respondingMatchId}
+                />
               </section>
             )}
 
@@ -431,7 +511,12 @@ export default function MatchesPage() {
                 <p className="mt-1 text-xs text-[#8B8BA7]">When you get matched with a counterpart, they'll appear here.</p>
               </div>
             ) : (
-              <MatchList matches={matches} userId={user?.id ?? ""} />
+              <MatchList
+                matches={matches}
+                userId={user?.id ?? ""}
+                onRespond={handleRespond}
+                respondingId={respondingMatchId}
+              />
             )}
           </section>
         )}
@@ -460,29 +545,44 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   );
 }
 
-function MatchList({ matches, userId }: { matches: MatchRow[]; userId: string }) {
-  void userId;
+function MatchList({
+  matches,
+  userId,
+  onRespond,
+  respondingId,
+}: {
+  matches: MatchRow[];
+  userId: string;
+  onRespond?: (match: MatchRow, decision: "accepted" | "declined") => Promise<void>;
+  respondingId?: string | null;
+}) {
   return (
     <div className="space-y-2.5">
       {matches.map((m) => {
-        const sc    = statusStyle(m.status);
-        const score = m.fit_score ?? 0;
-        const name  = m.counterpart_name ?? "Verified member";
+        const sc         = statusStyle(m.status);
+        const score      = m.fit_score ?? 0;
+        const name       = m.counterpart_name ?? "Verified member";
+        const myStatus   = m.member_a_id === userId ? m.member_a_status : m.member_b_status;
+        const canRespond = myStatus === "pending" && !!onRespond;
+        const isResponding = respondingId === m.id;
+
         return (
-          <Link
+          <div
             key={m.id}
-            href={`/matches/${m.id}`}
-            className="group flex items-center gap-4 rounded-xl border border-[#2A2A3E] bg-[#12121A] p-4 transition-all hover:border-indigo-500/40 hover:bg-[#1E1E2E]"
+            className="flex items-center gap-4 rounded-xl border border-[#2A2A3E] bg-[#12121A] p-4"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2A2A3E] text-xs font-bold text-[#F4F4FF]">
               {name.charAt(0)}
             </div>
+
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold text-[#F4F4FF]">{name}</p>
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${sc.pill}`}>
-                  {sc.label}
-                </span>
+                {!canRespond && (
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${sc.pill}`}>
+                    {sc.label}
+                  </span>
+                )}
               </div>
               {m.counterpart_sector && (
                 <p className="mb-1.5 text-[11px] text-[#8B8BA7]">{m.counterpart_sector}</p>
@@ -496,10 +596,39 @@ function MatchList({ matches, userId }: { matches: MatchRow[]; userId: string })
                 </div>
               )}
             </div>
-            <svg className="h-4 w-4 shrink-0 text-[#2A2A3E] transition-colors group-hover:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
+
+            <div className="flex shrink-0 items-center gap-2">
+              {canRespond && (
+                <>
+                  <button
+                    type="button"
+                    disabled={isResponding}
+                    onClick={() => void onRespond(m, "accepted")}
+                    className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/30 disabled:opacity-50"
+                  >
+                    {isResponding ? "…" : "Accept"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isResponding}
+                    onClick={() => void onRespond(m, "declined")}
+                    className="rounded-lg bg-[#1A1A26] px-3 py-1.5 text-xs font-bold text-[#8B8BA7] transition hover:bg-[#2A2A3E] disabled:opacity-50"
+                  >
+                    Decline
+                  </button>
+                </>
+              )}
+              <Link
+                href={`/matches/${m.id}`}
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1A1A26] text-[#8B8BA7] transition hover:bg-[#2A2A3E] hover:text-indigo-400"
+                aria-label="View compatibility details"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          </div>
         );
       })}
     </div>

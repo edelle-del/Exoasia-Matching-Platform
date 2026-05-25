@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../providers";
 import { createClient } from "@/lib/supabase/client";
+import { respondToMatch, type MatchRecord } from "@/lib/app-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -334,14 +335,16 @@ function StatusBadge({ status }: { status: ParamStatus }) {
 
 export default function MatchDeepDivePage() {
   const { id }       = useParams<{ id: string }>();
+  const router       = useRouter();
   const supabase     = useMemo(() => createClient(), []);
   const { user, role } = useAuth();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [match,  setMatch]  = useState<Match | null>(null);
-  const [mine,   setMine]   = useState<Profile | null>(null);
-  const [theirs, setTheirs] = useState<Profile | null>(null);
-  const [openCat, setOpenCat] = useState<number | null>(0);
+  const [isLoading,    setIsLoading]    = useState(true);
+  const [match,        setMatch]        = useState<Match | null>(null);
+  const [mine,         setMine]         = useState<Profile | null>(null);
+  const [theirs,       setTheirs]       = useState<Profile | null>(null);
+  const [openCat,      setOpenCat]      = useState<number | null>(0);
+  const [responding,   setResponding]   = useState<"accepted" | "declined" | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -383,6 +386,40 @@ export default function MatchDeepDivePage() {
 
     void load();
   }, [supabase, user?.id, id, role]);
+
+  const isAdvisorRole = role && ["advisor", "admin"].includes(role);
+  const myStatus = match && user?.id && !isAdvisorRole
+    ? (match.member_a_id === user.id ? match.member_a_status : match.member_b_status)
+    : null;
+  const canRespond = myStatus === "pending" && match?.status !== "declined";
+
+  const handleRespond = async (decision: "accepted" | "declined") => {
+    if (!match || !user?.id) return;
+    setResponding(decision);
+    const { error } = await respondToMatch(supabase, user.id, match as MatchRecord, decision);
+    if (!error) {
+      setMatch((prev) =>
+        prev
+          ? {
+              ...prev,
+              member_a_status: prev.member_a_id === user.id ? decision : prev.member_a_status,
+              member_b_status: prev.member_b_id === user.id ? decision : prev.member_b_status,
+              status:
+                decision === "declined"
+                  ? "declined"
+                  : (prev.member_a_id === user.id ? decision : prev.member_a_status) === "accepted" &&
+                    (prev.member_b_id === user.id ? decision : prev.member_b_status) === "accepted"
+                  ? "accepted"
+                  : prev.status,
+            }
+          : prev,
+      );
+      if (decision === "declined") {
+        router.push("/matches");
+      }
+    }
+    setResponding(null);
+  };
 
   const fitScore   = match?.fit_score ?? 70;
   const categories = useMemo(() => computeCategories(mine, theirs, fitScore), [mine, theirs, fitScore]);
@@ -428,16 +465,38 @@ export default function MatchDeepDivePage() {
               </p>
               <h1 className="mt-2 text-3xl font-bold text-[#F4F4FF]">Compatibility Breakdown</h1>
               {!isLoading && (
-                <p className="mt-1 text-sm text-[#8B8BA7]">
-                  <span className="text-[#F4F4FF] font-medium">{myName}</span>
-                  <span className="mx-2 text-[#2A2A3E]">×</span>
-                  <span className="text-[#F4F4FF] font-medium">{theirName}</span>
-                  {match && (
-                    <span className={`ml-3 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusConfig(match.status)}`}>
-                      {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
-                    </span>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-[#8B8BA7]">
+                    <span className="text-[#F4F4FF] font-medium">{myName}</span>
+                    <span className="mx-2 text-[#2A2A3E]">×</span>
+                    <span className="text-[#F4F4FF] font-medium">{theirName}</span>
+                    {match && (
+                      <span className={`ml-3 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusConfig(match.status)}`}>
+                        {match.status.charAt(0).toUpperCase() + match.status.slice(1)}
+                      </span>
+                    )}
+                  </p>
+                  {canRespond && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!!responding}
+                        onClick={() => void handleRespond("accepted")}
+                        className="rounded-lg bg-emerald-500/20 px-4 py-1.5 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/30 disabled:opacity-50"
+                      >
+                        {responding === "accepted" ? "Accepting…" : "Accept"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!!responding}
+                        onClick={() => void handleRespond("declined")}
+                        className="rounded-lg bg-[#1A1A26] px-4 py-1.5 text-sm font-bold text-[#8B8BA7] transition hover:bg-[#2A2A3E] disabled:opacity-50"
+                      >
+                        {responding === "declined" ? "Declining…" : "Decline"}
+                      </button>
+                    </div>
                   )}
-                </p>
+                </div>
               )}
             </div>
 

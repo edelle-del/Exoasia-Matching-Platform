@@ -119,10 +119,11 @@ export default function ManualMatchPage() {
 
         <div className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-600 text-[var(--color-ink)]">
+            <label htmlFor="member-a" className="block text-sm font-600 text-[var(--color-ink)]">
               Member A
             </label>
             <select
+              id="member-a"
               className="gn-input mt-1"
               value={a}
               onChange={(e) => setA(e.target.value)}
@@ -137,10 +138,11 @@ export default function ManualMatchPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-600 text-[var(--color-ink)]">
+            <label htmlFor="member-b" className="block text-sm font-600 text-[var(--color-ink)]">
               Member B
             </label>
             <select
+              id="member-b"
               className="gn-input mt-1"
               value={b}
               onChange={(e) => setB(e.target.value)}
@@ -155,27 +157,31 @@ export default function ManualMatchPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-600 text-[var(--color-ink)]">
+            <label htmlFor="match-summary" className="block text-sm font-600 text-[var(--color-ink)]">
               Summary (optional)
             </label>
             <input
+              id="match-summary"
               className="gn-input mt-1"
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
+              placeholder="Brief reason for this match"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-600 text-[var(--color-ink)]">
+            <label htmlFor="fit-score" className="block text-sm font-600 text-[var(--color-ink)]">
               Fit score (0-100)
             </label>
             <input
+              id="fit-score"
               className="gn-input mt-1"
               value={fitScore}
               onChange={(e) => setFitScore(e.target.value)}
               type="number"
               min={0}
               max={100}
+              placeholder="0"
             />
           </div>
 

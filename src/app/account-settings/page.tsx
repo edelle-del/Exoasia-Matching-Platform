@@ -108,7 +108,7 @@ export default function AccountSettingsPage() {
       return;
     }
     await supabase.auth.signOut();
-    window.location.href = "/sign-up";
+    window.location.href = "/sign-in";
   };
 
   return (

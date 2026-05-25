@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   BarChart,
@@ -163,130 +163,82 @@ export function ProfileStrength({ percent, nextStep }: ProfileStrengthProps) {
   );
 }
 
-// ─── MatchFactorsChart ───────────────────────────────────────────────────────
+// ─── PipelineSummaryCard ─────────────────────────────────────────────────────
 
-type FitDatum = { subject: string; value: number; fullMark: number };
-
-type MatchFactorsChartProps = {
-  fitData: FitDatum[];
+type PipelineSummaryCardProps = {
+  activeProjects: number;
+  investorMatches: number;
+  bestFit: number;
+  memberRole: string | null;
+  isLoading?: boolean;
 };
 
-const RADAR_COLORS = ["#6366F1", "#10B981", "#8B5CF6"];
-
-export function MatchFactorsChart({ fitData }: MatchFactorsChartProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const axes   = fitData.map((d) => d.subject);
-  const values = fitData.map((d) => d.value);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const SIZE   = 200;
-    const cx     = SIZE / 2;
-    const cy     = SIZE / 2;
-    const R      = SIZE * 0.36;
-    const n      = axes.length;
-    const LEVELS = 4;
-
-    ctx.clearRect(0, 0, SIZE, SIZE);
-
-    const ang = (i: number) => (i / n) * Math.PI * 2 - Math.PI / 2;
-    const pt  = (i: number, r: number) => ({
-      x: cx + R * r * Math.cos(ang(i)),
-      y: cy + R * r * Math.sin(ang(i)),
-    });
-
-    for (let l = 1; l <= LEVELS; l++) {
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        const p = pt(i, l / LEVELS);
-        i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = "rgba(255,255,255,0.07)";
-      ctx.lineWidth   = 1;
-      ctx.stroke();
-      if (l === LEVELS) { ctx.fillStyle = "rgba(255,255,255,0.015)"; ctx.fill(); }
-    }
-
-    for (let i = 0; i < n; i++) {
-      const p = pt(i, 1);
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(p.x, p.y);
-      ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1; ctx.stroke();
-    }
-
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
-    grad.addColorStop(0, "rgba(99,102,241,0.42)");
-    grad.addColorStop(1, "rgba(99,102,241,0.04)");
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const p = pt(i, values[i] / 100);
-      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = grad; ctx.fill();
-    ctx.strokeStyle = "rgba(99,102,241,0.9)"; ctx.lineWidth = 2; ctx.stroke();
-
-    for (let i = 0; i < n; i++) {
-      const p = pt(i, values[i] / 100);
-      ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#6366F1"; ctx.fill();
-      ctx.strokeStyle = "#12121A"; ctx.lineWidth = 2; ctx.stroke();
-    }
-
-    ctx.font = "10px system-ui,sans-serif";
-    ctx.fillStyle = "#8B8BA7";
-    ctx.textAlign = "center";
-    for (let i = 0; i < n; i++) {
-      const a  = ang(i);
-      const lx = cx + R * 1.28 * Math.cos(a);
-      const ly = cy + R * 1.28 * Math.sin(a);
-      const words = axes[i].split(" ");
-      if (words.length <= 2) { ctx.fillText(axes[i], lx, ly + 4); }
-      else { ctx.fillText(words.slice(0, 2).join(" "), lx, ly - 1); ctx.fillText(words.slice(2).join(" "), lx, ly + 12); }
-    }
-  }, [axes, values]);
-
-  const legendColorClass = (i: number) =>
-    i === 0 ? "text-indigo-500" : i === 1 ? "text-emerald-500" : "text-violet-500";
+export function PipelineSummaryCard({
+  activeProjects,
+  investorMatches,
+  bestFit,
+  memberRole,
+  isLoading,
+}: PipelineSummaryCardProps) {
+  const isInvestor = memberRole === "investor";
+  const fitColor = bestFit >= 80 ? "text-emerald-400" : bestFit >= 65 ? "text-indigo-400" : "text-amber-400";
 
   return (
-    <div className="rounded-[20px] bg-[#12121A] border border-[#2A2A3E] p-6 flex flex-col">
-      <div className="flex items-start justify-between mb-5">
+    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
+      <div className="mb-6 flex items-start justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-            Match quality
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Project pipeline</p>
           <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
-            Your performance metrics
+            {isInvestor ? "Your matched opportunities" : "Your active projects"}
           </p>
         </div>
-        <Link
-          href="/matches"
-          className="text-xs font-semibold text-indigo-500 hover:underline"
-        >
-          View all →
+        <Link href="/matches" className="text-xs font-semibold text-indigo-400 hover:underline">
+          Next steps →
         </Link>
       </div>
 
-      <div className="flex items-center justify-center gap-6 flex-1">
-        <canvas ref={canvasRef} width={200} height={200} />
-        <div className="space-y-4">
-          {fitData.map((d, i) => (
-            <div key={d.subject}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-                {d.subject}
-              </p>
-              <p className={`text-2xl font-extrabold ${legendColorClass(i)}`}>
-                {d.value}<span className="text-sm font-semibold text-[#8B8BA7]">%</span>
-              </p>
-            </div>
-          ))}
+      {/* Stats */}
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
+          <p className={`text-3xl font-extrabold ${!isLoading && activeProjects > 0 ? "text-indigo-400" : "text-[#4A4A6A]"}`}>
+            {isLoading ? "…" : activeProjects > 0 ? activeProjects : "—"}
+          </p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            {isInvestor ? "Opportunities" : "Projects"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
+          <p className={`text-3xl font-extrabold ${!isLoading && investorMatches > 0 ? "text-violet-400" : "text-[#4A4A6A]"}`}>
+            {isLoading ? "…" : investorMatches > 0 ? investorMatches : "—"}
+          </p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            {isInvestor ? "Score cards" : "Inv. matches"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
+          <p className={`text-3xl font-extrabold ${isLoading || bestFit === 0 ? "text-[#4A4A6A]" : fitColor}`}>
+            {isLoading ? "…" : bestFit > 0 ? `${bestFit}%` : "—"}
+          </p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Best fit</p>
         </div>
       </div>
+
+      {/* Bottom CTA — always links to /matches for per-project next steps */}
+      <Link
+        href="/matches"
+        className="mt-auto flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 transition-colors hover:border-indigo-500/50"
+      >
+        <p className="text-xs font-medium text-indigo-300">
+          {isLoading
+            ? "Loading…"
+            : activeProjects > 0
+              ? `View next steps for your ${isInvestor ? "opportunities" : "projects"}`
+              : "Set up your first project to get matched"}
+        </p>
+        <svg className="h-4 w-4 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
     </div>
   );
 }

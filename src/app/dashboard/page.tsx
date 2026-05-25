@@ -6,14 +6,16 @@ import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase/client";
 import {
   fetchDashboardSummary,
+  fetchProjectPipelineStats,
   type AdvisorCompanyRecord,
   type AdvisorMatchRecord,
   type DashboardMatch,
   type DashboardProfile,
+  type ProjectPipelineStats,
 } from "@/lib/app-data";
 import {
   ProfileStrength,
-  MatchFactorsChart,
+  PipelineSummaryCard,
   BenchmarkingChart,
 } from "./_components/MemberWidgets";
 import {
@@ -60,41 +62,6 @@ function computeProfileStrength(profile: DashboardProfile | null) {
   };
 }
 
-// ─── Match radar helpers ──────────────────────────────────────────────────────
-
-function computeRadarData(recentMatches: DashboardMatch[], userId: string) {
-  if (recentMatches.length === 0) {
-    return [
-      { subject: "Match Quality", value: 0, fullMark: 100 },
-      { subject: "Response Rate", value: 0, fullMark: 100 },
-      { subject: "Accept Rate",   value: 0, fullMark: 100 },
-    ];
-  }
-
-  const scores = recentMatches.filter((m) => m.fit_score !== null).map((m) => m.fit_score!);
-  const avgFit = scores.length > 0
-    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-    : 0;
-
-  const responded = recentMatches.filter((m) => {
-    const myStatus = m.member_a_id === userId ? m.member_a_status : m.member_b_status;
-    return myStatus !== "pending";
-  }).length;
-  const responseRate = Math.round((responded / recentMatches.length) * 100);
-
-  const accepted = recentMatches.filter((m) => {
-    const myStatus = m.member_a_id === userId ? m.member_a_status : m.member_b_status;
-    return myStatus === "accepted";
-  }).length;
-  const acceptRate = responded > 0 ? Math.round((accepted / responded) * 100) : 0;
-
-  return [
-    { subject: "Match Quality", value: avgFit,       fullMark: 100 },
-    { subject: "Response Rate", value: responseRate, fullMark: 100 },
-    { subject: "Accept Rate",   value: acceptRate,   fullMark: 100 },
-  ];
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -117,6 +84,11 @@ export default function DashboardPage() {
     matches: AdvisorMatchRecord[];
     sparkData: { value: number }[];
   }>({ companies: [], matches: [], sparkData: [] });
+  const [pipelineStats, setPipelineStats] = useState<ProjectPipelineStats>({
+    activeProjects: 0,
+    investorMatches: 0,
+    bestFit: 0,
+  });
 
   useEffect(() => {
     let active = true;
@@ -135,6 +107,13 @@ export default function DashboardPage() {
         const next = await fetchDashboardSummary(supabase, user.id);
         if (!active) return;
         setSummary(next);
+        const stats = await fetchProjectPipelineStats(
+          supabase,
+          user.id,
+          next.profile?.member_role ?? null,
+        );
+        if (!active) return;
+        setPipelineStats(stats);
       }
       setIsLoading(false);
     };
@@ -282,8 +261,6 @@ export default function DashboardPage() {
   const { percent: profilePercent, nextStep: profileNextStep } =
     computeProfileStrength(summary.profile);
 
-  const fitData = computeRadarData(summary.recentMatches, user?.id ?? "");
-
   const benchmarkData = [
     { name: "You",        value: isLoading ? 0 : summary.activeDeals    },
     { name: "Sector avg", value: isLoading ? 0 : summary.sectorAvgDeals },
@@ -335,13 +312,19 @@ export default function DashboardPage() {
           <BenchmarkingChart data={benchmarkData} label="Active deals" />
         </section>
 
-        {/* Row 2: Profile strength + Match quality */}
+        {/* Row 2: Profile strength + Pipeline summary */}
         <section className="grid gap-6 lg:grid-cols-2">
           <ProfileStrength
             percent={isLoading ? 0 : profilePercent}
             nextStep={profileNextStep}
           />
-          <MatchFactorsChart fitData={fitData} />
+          <PipelineSummaryCard
+            activeProjects={isLoading ? 0 : pipelineStats.activeProjects}
+            investorMatches={isLoading ? 0 : pipelineStats.investorMatches}
+            bestFit={isLoading ? 0 : pipelineStats.bestFit}
+            memberRole={summary.profile?.member_role ?? null}
+            isLoading={isLoading}
+          />
         </section>
 
       </div>

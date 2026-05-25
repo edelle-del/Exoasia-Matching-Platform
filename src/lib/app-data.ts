@@ -136,6 +136,7 @@ export type DashboardProfile = {
   offer_categories: string[] | null;
   asks_summary: string | null;
   offers_summary: string | null;
+  member_role: string | null;
 };
 
 export type DashboardMatch = {
@@ -184,7 +185,7 @@ export async function fetchDashboardSummary(
     supabase
       .from("profiles")
       .select(
-        "full_name, stage, verification_status, business_name, role_title, city, short_bio, sector, phone_whatsapp, ask_categories, offer_categories, asks_summary, offers_summary",
+        "full_name, stage, verification_status, business_name, role_title, city, short_bio, sector, phone_whatsapp, ask_categories, offer_categories, asks_summary, offers_summary, member_role",
       )
       .eq("id", userId)
       .single(),
@@ -575,6 +576,51 @@ export async function deleteAskOffer(supabase: SupabaseClient, id: string) {
     .delete()
     .eq("id", id);
   return { error: error?.message ?? null };
+}
+
+export type ProjectPipelineStats = {
+  activeProjects: number;
+  investorMatches: number;
+  bestFit: number;
+};
+
+export async function fetchProjectPipelineStats(
+  supabase: SupabaseClient,
+  userId: string,
+  memberRole: string | null,
+): Promise<ProjectPipelineStats> {
+  if (memberRole === "investor") {
+    const { data: scores } = await supabase
+      .from("project_match_scores")
+      .select("project_id, fit_score")
+      .eq("investor_profile_id", userId);
+
+    const rows = scores ?? [];
+    const distinctProjects = new Set(rows.map((s) => s.project_id)).size;
+    const bestFit = rows.reduce((max, s) => Math.max(max, s.fit_score ?? 0), 0);
+    return { activeProjects: distinctProjects, investorMatches: rows.length, bestFit };
+  }
+
+  // Startup / ecosystem partner: look at projects they own
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("owner_id", userId)
+    .eq("is_active", true);
+
+  const projectIds = (projects ?? []).map((p) => p.id);
+  if (projectIds.length === 0) {
+    return { activeProjects: 0, investorMatches: 0, bestFit: 0 };
+  }
+
+  const { data: scores } = await supabase
+    .from("project_match_scores")
+    .select("fit_score")
+    .in("project_id", projectIds);
+
+  const rows = scores ?? [];
+  const bestFit = rows.reduce((max, s) => Math.max(max, s.fit_score ?? 0), 0);
+  return { activeProjects: projectIds.length, investorMatches: rows.length, bestFit };
 }
 
 export type AdvisorDocumentQueueRecord = {

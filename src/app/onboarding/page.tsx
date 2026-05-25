@@ -499,6 +499,181 @@ function parseExtended(raw: string | null | undefined): ExtendedFields {
   return EMPTY_EXTENDED;
 }
 
+// ─── PDF Upload ───────────────────────────────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function PdfUploadCard({
+  file,
+  status,
+  error,
+  isDragging,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onChange,
+  onParse,
+  onClear,
+  hideParseButton = false,
+}: {
+  file: File | null;
+  status: "idle" | "parsing" | "done" | "error";
+  error: string;
+  isDragging: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onParse: () => void;
+  onClear: () => void;
+  hideParseButton?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-6">
+      {/* Header */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+            Quick-fill
+          </p>
+          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-600">
+            Optional
+          </span>
+        </div>
+        <p className="mt-1 text-sm font-semibold text-[var(--color-ink)]">
+          Upload your profile and project report
+        </p>
+        <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+          We&apos;ll extract your fundraising details to auto-fill the fields below.
+        </p>
+      </div>
+
+      {/* Done */}
+      {status === "done" ? (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500">
+            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-emerald-800">Fields filled from {file?.name}</p>
+            <p className="text-xs text-emerald-600">Review and adjust the fields below.</p>
+          </div>
+          <button type="button" onClick={onClear} className="shrink-0 text-xs text-emerald-700 underline hover:text-emerald-900">
+            Change file
+          </button>
+        </div>
+
+      /* Parsing */
+      ) : status === "parsing" ? (
+        <div className="flex items-center gap-3 rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] px-4 py-4">
+          <svg className="h-5 w-5 shrink-0 animate-spin text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-[var(--color-ink)]">Analysing your document…</p>
+            <p className="text-xs text-[var(--color-muted)]">This takes a few seconds</p>
+          </div>
+        </div>
+
+      /* File selected */
+      ) : file ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] px-4 py-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-[var(--color-ink)]">{file.name}</p>
+              <p className="text-xs text-[var(--color-muted)]">{formatBytes(file.size)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClear}
+              aria-label="Remove file"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          {!hideParseButton && (
+            <button
+              type="button"
+              onClick={onParse}
+              className="flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Auto-fill from this PDF
+            </button>
+          )}
+        </div>
+
+      /* Drop zone */
+      ) : (
+        <div>
+          <div
+            role="button"
+            tabIndex={0}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
+            className={`cursor-pointer rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors ${
+              isDragging
+                ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5"
+                : "border-[var(--color-hairline)] hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-primary)]/3"
+            }`}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors ${isDragging ? "bg-[var(--color-primary)]/10" : "bg-[var(--color-canvas)]"}`}>
+                <svg
+                  className={`h-6 w-6 transition-colors ${isDragging ? "text-[var(--color-primary)]" : "text-[var(--color-muted)]"}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--color-ink)]">
+                  {isDragging ? "Drop to upload" : "Drop your PDF here"}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                  or <span className="font-medium text-[var(--color-primary)]">click to browse</span>
+                </p>
+              </div>
+              <p className="text-[11px] text-[var(--color-muted)]">PDF only · Max 10 MB</p>
+            </div>
+          </div>
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,application/pdf"
+            aria-label="Upload profile and project report PDF"
+            className="hidden"
+            onChange={onChange}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main form ────────────────────────────────────────────────────────────────
 
 export default function OnboardingForm() {
@@ -506,7 +681,8 @@ export default function OnboardingForm() {
   const supabase = useMemo(() => createClient(), []);
   const { role } = useAuth();
   const isAdminView = ["advisor", "admin"].includes(role ?? "");
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [assessmentGateView, setAssessmentGateView] = useState<"question" | "upload">("question");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -603,6 +779,7 @@ export default function OnboardingForm() {
             referral_3_name: refs[2]?.name ?? "",
             referral_3_contact: refs[2]?.contact ?? "",
           }));
+          if (profile.member_role) setStep(1);
           setProfileLoaded(true);
           return;
         }
@@ -635,6 +812,39 @@ export default function OnboardingForm() {
 
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [pendingRole, setPendingRole] = useState<"investor" | "startup" | "ecosystem_partner" | null>(null);
+
+  // PDF upload state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfStatus, setPdfStatus] = useState<"idle" | "parsing" | "done" | "error">("idle");
+  const [pdfError, setPdfError] = useState("");
+  const [isDraggingPdf, setIsDraggingPdf] = useState(false);
+
+  const handlePdfFile = (file: File) => {
+    if (file.type !== "application/pdf") {
+      setPdfError("Please upload a PDF file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setPdfError("File must be under 10 MB.");
+      return;
+    }
+    setPdfFile(file);
+    setPdfError("");
+    setPdfStatus("idle");
+  };
+
+  const clearPdf = () => {
+    setPdfFile(null);
+    setPdfStatus("idle");
+    setPdfError("");
+  };
+
+  const handlePdfParse = async () => {
+    if (!pdfFile || pdfStatus === "parsing") return;
+    setPdfStatus("parsing");
+    // TODO: implement PDF parsing — extract profile fields and call setForm()
+    setPdfStatus("done");
+  };
 
   const confirmRoleSelect = () => {
     if (!pendingRole) return;
@@ -884,6 +1094,94 @@ export default function OnboardingForm() {
       detail: "You'll describe the type of support you offer (mentorship, legal, technical, etc.) and 3 referrals who can verify your role.",
     },
   };
+
+  if (step === 0) {
+    return (
+      <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+        <div className="mx-auto max-w-[520px]">
+          {assessmentGateView === "question" ? (
+            <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                Before you start
+              </p>
+              <h1 className="mt-3 text-2xl font-semibold text-[var(--color-ink)]">
+                Have you completed the Startup Readiness Assessment?
+              </h1>
+              <p className="mt-3 text-sm text-[var(--color-body)]">
+                The assessment generates a personalised report we can use to auto-fill your onboarding profile. If you haven&apos;t done it yet, we recommend completing it first — it only takes a few minutes.
+              </p>
+
+              <div className="mt-8 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAssessmentGateView("upload")}
+                  className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  Yes, I have my report
+                </button>
+                <a
+                  href="https://startup-readiness.vercel.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-xl border border-[var(--color-hairline)] py-3 text-center text-sm font-semibold text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-soft)]"
+                >
+                  No — take me to the assessment ↗
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setAssessmentGateView("question")}
+                className="mb-6 flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                Step 0 of 2
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
+                Upload your assessment report
+              </h1>
+              <p className="mt-2 text-sm text-[var(--color-body)]">
+                Upload the PDF from your Startup Readiness Assessment. We&apos;ll use it to pre-fill your profile details.
+              </p>
+
+              <div className="mt-6">
+                <PdfUploadCard
+                  file={pdfFile}
+                  status={pdfStatus}
+                  error={pdfError}
+                  isDragging={isDraggingPdf}
+                  hideParseButton
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingPdf(true); }}
+                  onDragLeave={() => setIsDraggingPdf(false)}
+                  onDrop={(e) => { e.preventDefault(); setIsDraggingPdf(false); const f = e.dataTransfer.files[0]; if (f) handlePdfFile(f); }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); }}
+                  onParse={handlePdfParse}
+                  onClear={clearPdf}
+                />
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  {pdfFile ? "Continue with this report →" : "Continue →"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (step === 2) {
     return (

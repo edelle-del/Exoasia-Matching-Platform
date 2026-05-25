@@ -8,6 +8,9 @@
  *   Project: API-first B2B payment infrastructure for Philippine SMEs
  *   (designed to score 85+ against the investor above)
  *
+ * Profiles are fully populated to match what the onboarding form writes,
+ * including the _v: 2 JSON blob in asks_summary for role-specific fields.
+ *
  * Usage:
  *   node scripts/seed-matching-test.mjs
  */
@@ -58,6 +61,12 @@ const INVESTOR = {
     sector: "Financial Technology",
     short_bio:
       "General Partner at Meridian Ventures ($30M AUM) focused on B2B fintech and enterprise SaaS in Southeast Asia. Previously led corporate venture at BDO Unibank. 14 portfolio companies across PH, ID, and VN — 3 exits.",
+    linkedin_url: "https://www.linkedin.com/in/jonathan-reyes-meridian",
+    how_heard_about: "Social Media",
+    phone_whatsapp: "+639171234001",
+    years_in_operation: "5+ years",
+    employee_band: "1-10",
+    annual_revenue_estimate: "$100K – $350K",
     member_role: "investor",
     stage: "3",
     verification_status: "verified",
@@ -65,8 +74,26 @@ const INVESTOR = {
     pdpa_matching_consent: true,
     ask_categories: ["Deal Flow", "Co-investment Opportunities", "Due Diligence Support"],
     offer_categories: ["Funding", "Enterprise Introductions", "Board Advisory", "Regulatory Guidance"],
-    asks_summary:
-      "Seeking pre-Series A B2B fintech and enterprise SaaS startups in Southeast Asia with $10K+ MRR, strong unit economics, and founding teams with domain expertise. Ticket: $500K–$3M USD.",
+    asks_summary: JSON.stringify({
+      _v: 2,
+      investor_type: "Venture Capital Firms",
+      entity_class: ["VC Fund"],
+      investment_interests: ["Direct Investment in Startups"],
+      target_regions: ["Asia Pacific"],
+      target_industries: ["Fintech", "B2B SaaS"],
+      target_stages: ["Pre-seed", "Seed"],
+      lp_check_min: "",
+      lp_check_max: "",
+      direct_check_min: "500000",
+      direct_check_max: "3000000",
+      anp_affiliated: false,
+      demo_day_judge: "yes",
+      referrals: [
+        { name: "Ana Reyes", contact: "ana.reyes@bdounibank.com" },
+        { name: "Marco Santos", contact: "linkedin.com/in/marco-santos-bdo" },
+        { name: "Lisa Tan", contact: "+639189990001" },
+      ],
+    }),
     offers_summary:
       "Pre-Series A equity investment ($500K–$3M), board seat, warm introductions to BDO, Metrobank, and SM Group as enterprise clients, and hands-on BSP regulatory compliance support.",
     primary_goal: "Find high-growth pre-Series A B2B fintech deals in the Philippines",
@@ -85,6 +112,12 @@ const STARTUP = {
     sector: "Financial Technology",
     short_bio:
       "Co-founder of PayFlow Technologies. Ex-GCash product manager with 7 years in fintech. Building embedded payment infrastructure for Philippine SMEs — 200+ active clients, ₱50M/month TPV, 94% MoM retention.",
+    linkedin_url: "https://www.linkedin.com/in/camille-lim-payflow",
+    how_heard_about: "Social Media",
+    phone_whatsapp: "+639171234002",
+    years_in_operation: "1-3 years",
+    employee_band: "11-50",
+    annual_revenue_estimate: "$100K – $350K",
     member_role: "startup",
     stage: "2",
     verification_status: "verified",
@@ -92,8 +125,18 @@ const STARTUP = {
     pdpa_matching_consent: true,
     ask_categories: ["Funding", "Enterprise Partnerships", "Regulatory Guidance"],
     offer_categories: ["Fintech API Access", "SME Distribution Network", "Payment Infrastructure"],
-    asks_summary:
-      "Raising ₱15M pre-Series A to expand our B2B payment API to 3 new cities and onboard 2 additional bank partners. Seeking investors with Philippine banking relationships and BSP regulatory experience.",
+    asks_summary: JSON.stringify({
+      _v: 2,
+      target_regions: ["Asia Pacific"],
+      target_industries: ["Fintech", "B2B SaaS"],
+      fundraising_stage: "Seed",
+      product_stage: "Traction",
+      total_cofounders: "2",
+      has_technical_founder: "yes",
+      pitch_deck_url: "",
+      target_raise_min: "400000",
+      target_raise_max: "800000",
+    }),
     offers_summary:
       "API-first embedded payments for SMEs. ₱50M/month TPV across 200 clients, 94% retention. We offer integration partnerships, co-selling through our SME distribution network, and white-label checkout SDK licensing.",
     primary_goal: "Raise pre-Series A funding and secure enterprise bank partnerships",
@@ -208,12 +251,14 @@ Investor  (Jonathan Reyes / Meridian Ventures)
   Email:    ${INVESTOR.email}
   Password: ${INVESTOR.password}
   Thesis:   B2B fintech & enterprise SaaS, pre-Series A, PH/SEA
+  Ticket:   $500K–$3M direct check
   Tests:    Projects page → "Score this project" → Express Interest
 
 Startup   (Camille Lim / PayFlow Technologies)
   Email:    ${STARTUP.email}
   Password: ${STARTUP.password}
   Project:  "${STARTUP.project.name}"
+  Raise:    $400K–$800K (pre-Series A)
   Tests:    Projects page → "Find investors" → Request Intro
             Your Pipeline → Accept / Decline incoming intros
 

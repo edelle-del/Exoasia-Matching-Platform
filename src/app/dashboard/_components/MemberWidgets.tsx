@@ -243,6 +243,64 @@ export function PipelineSummaryCard({
   );
 }
 
+// ─── PartnerPortfolioCard ────────────────────────────────────────────────────
+
+export function PartnerPortfolioCard() {
+  return (
+    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Portfolio</p>
+          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">Your portfolio command center</p>
+        </div>
+        <Link href="/ecosystem" className="text-xs font-semibold text-violet-400 hover:underline">
+          Open →
+        </Link>
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-3">
+        <Link
+          href="/ecosystem"
+          className="flex flex-col gap-1.5 rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 transition hover:border-violet-500/40"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20">
+            <svg className="h-3.5 w-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <p className="text-xs font-bold text-[#F4F4FF]">Portfolio overview</p>
+          <p className="text-[10px] text-[#8B8BA7]">Stats, company feed, deep-dive</p>
+        </Link>
+
+        <Link
+          href="/ecosystem"
+          className="flex flex-col gap-1.5 rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 transition hover:border-indigo-500/40"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20">
+            <svg className="h-3.5 w-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+            </svg>
+          </div>
+          <p className="text-xs font-bold text-[#F4F4FF]">Co-Pilot Kanban</p>
+          <p className="text-[10px] text-[#8B8BA7]">Live intro statuses, stale alerts</p>
+        </Link>
+      </div>
+
+      <Link
+        href="/ecosystem"
+        className="mt-auto flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 transition-colors hover:border-violet-500/50"
+      >
+        <p className="text-xs font-medium text-violet-300">
+          Nominate a startup or track your pipeline
+        </p>
+        <svg className="h-4 w-4 shrink-0 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
 // ─── BenchmarkingChart ───────────────────────────────────────────────────────
 
 type BenchmarkDatum = { name: string; value: number };

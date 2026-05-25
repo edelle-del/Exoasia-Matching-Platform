@@ -9,7 +9,9 @@
       "mcp__ide__getDiagnostics",
       "Bash(python -c ' *)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
-      "Bash(node scripts/seed-matching-test.mjs)"
+      "Bash(node scripts/seed-matching-test.mjs)",
+      "Bash(node scripts/seed-ecosystem-portfolio.mjs)",
+      "Bash(npx supabase *)"
     ]
   }
 }

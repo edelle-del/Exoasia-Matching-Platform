@@ -16,6 +16,7 @@ import {
 import {
   ProfileStrength,
   PipelineSummaryCard,
+  PartnerPortfolioCard,
   BenchmarkingChart,
 } from "./_components/MemberWidgets";
 import {
@@ -66,7 +67,7 @@ function computeProfileStrength(profile: DashboardProfile | null) {
 
 export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { user, role } = useAuth();
+  const { user, role, memberRole } = useAuth();
   const displayName = user?.user_metadata?.full_name ?? user?.email ?? "";
   const isAdvisorView = role && ["advisor", "admin"].includes(role);
   const [isLoading, setIsLoading] = useState(true);
@@ -318,19 +319,23 @@ export default function DashboardPage() {
           <BenchmarkingChart data={benchmarkData} label="Active deals" />
         </section>
 
-        {/* Row 2: Profile strength + Pipeline summary */}
+        {/* Row 2: Profile strength + Pipeline summary / Partner card */}
         <section className="grid gap-6 lg:grid-cols-2">
           <ProfileStrength
             percent={isLoading ? 0 : profilePercent}
             nextStep={profileNextStep}
           />
-          <PipelineSummaryCard
-            activeProjects={isLoading ? 0 : pipelineStats.activeProjects}
-            investorMatches={isLoading ? 0 : pipelineStats.investorMatches}
-            bestFit={isLoading ? 0 : pipelineStats.bestFit}
-            memberRole={summary.profile?.member_role ?? null}
-            isLoading={isLoading}
-          />
+          {(memberRole ?? summary.profile?.member_role) === "ecosystem_partner" ? (
+            <PartnerPortfolioCard />
+          ) : (
+            <PipelineSummaryCard
+              activeProjects={isLoading ? 0 : pipelineStats.activeProjects}
+              investorMatches={isLoading ? 0 : pipelineStats.investorMatches}
+              bestFit={isLoading ? 0 : pipelineStats.bestFit}
+              memberRole={summary.profile?.member_role ?? null}
+              isLoading={isLoading}
+            />
+          )}
         </section>
 
       </div>

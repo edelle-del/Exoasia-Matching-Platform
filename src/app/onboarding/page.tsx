@@ -102,8 +102,6 @@ function Req() {
   return <span className="text-red-500 font-bold ml-0.5">*</span>;
 }
 
-const projectStages = ["Ideation", "MVP", "Growth", "Scaling", "Revenue-Generating"];
-
 function SectionCard({
   label,
   description,
@@ -679,9 +677,9 @@ function PdfUploadCard({
 export default function OnboardingForm() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const isAdminView = ["advisor", "admin"].includes(role ?? "");
-  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [step, setStep] = useState<"role" | "assessment" | "profile" | "project">("role");
   const [assessmentGateView, setAssessmentGateView] = useState<"question" | "upload">("question");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -779,7 +777,7 @@ export default function OnboardingForm() {
             referral_3_name: refs[2]?.name ?? "",
             referral_3_contact: refs[2]?.contact ?? "",
           }));
-          if (profile.member_role) setStep(1);
+          if (profile.member_role) setStep("profile");
           setProfileLoaded(true);
           return;
         }
@@ -852,6 +850,7 @@ export default function OnboardingForm() {
         error?: string;
         data?: {
           profile?: {
+            venture?: string | null;
             first_name?: string | null;
             last_name?: string | null;
             business_name?: string | null;
@@ -876,6 +875,7 @@ export default function OnboardingForm() {
             technical_founder?: string | null;
             target_raise_min?: number | null;
             target_raise_max?: number | null;
+            additional_info?: string | null;
           };
         };
       };
@@ -966,11 +966,19 @@ export default function OnboardingForm() {
 
       // Pre-fill the project form (used in step 2)
       setProjectForm((prev) => ({
-        name: p.project_name || p.business_name || prev.name,
-        description: p.description || prev.description,
-        stage: matchOpt(p.fundraising_stage, ["Ideation", "MVP", "Growth", "Scaling", "Revenue-Generating"]) || prev.stage,
+        name: p.project_name || p.venture || p.business_name || prev.name,
+        description: p.description || p.additional_info || prev.description,
+        stage: matchOpt(p.product_stage, PRODUCT_STAGES) || prev.stage,
         sector: matchOpt(p.sector, sectorOptions) || prev.sector,
       }));
+
+      // Persist the full report so the profile page can show the metrics immediately
+      if (user?.id) {
+        await supabase
+          .from("profiles")
+          .update({ venture_readiness_report: json.data })
+          .eq("id", user.id);
+      }
 
       setPdfStatus("done");
       return true;
@@ -987,6 +995,7 @@ export default function OnboardingForm() {
     setForm((prev) => ({ ...prev, member_role: pendingRole, ...EMPTY_EXTENDED }));
     setError("");
     setPendingRole(null);
+    setStep(pendingRole === "startup" ? "assessment" : "profile");
   };
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -1169,9 +1178,13 @@ export default function OnboardingForm() {
       await supabase.auth.refreshSession();
       setSuccess("Profile saved.");
       if (form.member_role === "startup") {
+        setProjectForm((prev) => ({
+          ...prev,
+          stage: prev.stage || form.product_stage,
+        }));
         setTimeout(() => {
           setSuccess("");
-          setStep(2);
+          setStep("project");
         }, 600);
       } else {
         setTimeout(() => router.push("/dashboard"), 900);
@@ -1231,7 +1244,115 @@ export default function OnboardingForm() {
     },
   };
 
-  if (step === 0) {
+  if (step === "role") {
+    if (!profileLoaded) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
+        </div>
+      );
+    }
+    return (
+      <>
+        {pendingRole && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-xl">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                Confirm your role
+              </p>
+              <h2 className="mt-3 text-xl font-700 text-[var(--color-ink)]">
+                {ROLE_META[pendingRole].label}
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-muted)]">
+                {ROLE_META[pendingRole].description}
+              </p>
+              <p className="mt-4 text-sm text-[var(--color-body)]">
+                {ROLE_META[pendingRole].detail}
+              </p>
+              <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
+                Your role cannot be changed after confirmation. Make sure this is correct.
+              </p>
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPendingRole(null)}
+                  className="flex-1 rounded-xl border border-[var(--color-hairline)] py-2.5 text-sm font-600 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] transition-colors"
+                >
+                  Go back
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmRoleSelect}
+                  className="flex-1 rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-600 text-white hover:opacity-90 transition-opacity"
+                >
+                  Confirm — I&apos;m a {ROLE_META[pendingRole].label}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+          <div className="mx-auto max-w-[520px]">
+            <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                Before you start
+              </p>
+              <h1 className="mt-3 text-2xl font-semibold text-[var(--color-ink)]">
+                What brings you to FOUNDERS ARENA?
+              </h1>
+              <p className="mt-3 text-sm text-[var(--color-body)]">
+                Choose the role that best describes you. This shapes how we match you and what information we collect — it can&apos;t be changed later.
+              </p>
+              <div className="mt-8 flex flex-col gap-4">
+                <RoleCard
+                  value="startup"
+                  current={form.member_role}
+                  onSelect={setPendingRole}
+                  title="Startup / Founder"
+                  description="I'm building a company and raising capital"
+                  icon={
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  }
+                />
+                <RoleCard
+                  value="investor"
+                  current={form.member_role}
+                  onSelect={setPendingRole}
+                  title="Investor"
+                  description="I deploy capital and seek deal flow"
+                  icon={
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                  }
+                />
+                <RoleCard
+                  value="ecosystem_partner"
+                  current={form.member_role}
+                  onSelect={setPendingRole}
+                  title="Ecosystem Partner"
+                  description="I support startups — not through capital, but expertise"
+                  icon={
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (step === "assessment") {
     return (
       <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
         <div className="mx-auto max-w-[520px]">
@@ -1263,6 +1384,13 @@ export default function OnboardingForm() {
                 >
                   No — take me to the assessment ↗
                 </a>
+                <button
+                  type="button"
+                  onClick={() => setStep("profile")}
+                  className="text-center text-xs text-[var(--color-muted)] underline hover:text-[var(--color-ink)]"
+                >
+                  Skip and fill in manually →
+                </button>
               </div>
             </div>
           ) : (
@@ -1278,7 +1406,7 @@ export default function OnboardingForm() {
                 Back
               </button>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
-                Step 0 of 2
+                Step 1 of 3
               </p>
               <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
                 Upload your assessment report
@@ -1309,7 +1437,7 @@ export default function OnboardingForm() {
                   disabled={!pdfFile || pdfStatus === "parsing"}
                   onClick={async () => {
                     const ok = await handlePdfParse();
-                    if (ok) setStep(1);
+                    if (ok) setStep("profile");
                   }}
                   className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
@@ -1328,12 +1456,12 @@ export default function OnboardingForm() {
     );
   }
 
-  if (step === 2) {
+  if (step === "project") {
     return (
       <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
         <div className="mx-auto max-w-[700px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-            Step 2 of 2
+            Step 3 of 3
           </div>
           <h1 className="text-2xl font-700 text-[var(--color-ink)]">
             Add your first project
@@ -1385,7 +1513,7 @@ export default function OnboardingForm() {
                   onChange={(e) => setProjectForm((p) => ({ ...p, stage: e.target.value }))}
                 >
                   <option value="">Select stage</option>
-                  {projectStages.map((s) => (
+                  {PRODUCT_STAGES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -1438,51 +1566,11 @@ export default function OnboardingForm() {
     form.investor_type === "Angel Networks" || form.entity_class.includes("Angel");
 
   return (
-    <>
-      {/* ─── Role confirmation modal ─────────────────────────────────────── */}
-      {pendingRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-xl">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
-              Confirm your role
-            </p>
-            <h2 className="mt-3 text-xl font-700 text-[var(--color-ink)]">
-              {ROLE_META[pendingRole].label}
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              {ROLE_META[pendingRole].description}
-            </p>
-            <p className="mt-4 text-sm text-[var(--color-body)]">
-              {ROLE_META[pendingRole].detail}
-            </p>
-            <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
-              Your role cannot be changed after confirmation. Make sure this is correct.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setPendingRole(null)}
-                className="flex-1 rounded-xl border border-[var(--color-hairline)] py-2.5 text-sm font-600 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] transition-colors"
-              >
-                Go back
-              </button>
-              <button
-                type="button"
-                onClick={confirmRoleSelect}
-                className="flex-1 rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-600 text-white hover:opacity-90 transition-opacity"
-              >
-                Confirm — I&apos;m a {ROLE_META[pendingRole].label}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
         {!isAdminView && form.member_role === "startup" && (
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-            Step 1 of 2
+            Step 2 of 3
           </div>
         )}
         <h1 className="text-2xl font-700 text-[var(--color-ink)]">Complete your profile</h1>
@@ -2121,6 +2209,5 @@ export default function OnboardingForm() {
         </form>
       </div>
     </div>
-    </>
   );
 }

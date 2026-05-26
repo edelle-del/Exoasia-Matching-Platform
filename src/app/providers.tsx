@@ -12,6 +12,7 @@ type AuthContextType = {
   isInvitedAccount: boolean;
   role: string | null;
   memberRole: string | null;
+  memberRoleLoaded: boolean;
   isLoading: boolean;
   signInWithPassword: (
     email: string,
@@ -36,6 +37,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [memberRole, setMemberRole] = useState<string | null>(null);
+  const [memberRoleLoaded, setMemberRoleLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -46,7 +48,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         .select("member_role")
         .eq("id", userId)
         .single();
-      if (isMounted) setMemberRole(data?.member_role ?? null);
+      if (isMounted) {
+        setMemberRole(data?.member_role ?? null);
+        setMemberRoleLoaded(true);
+      }
     };
 
     const fetchSession = async () => {
@@ -56,12 +61,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setSession(null);
         setUser(null);
         setMemberRole(null);
+        setMemberRoleLoaded(true);
         setIsLoading(false);
         return;
       }
       setSession(data.session ?? null);
       setUser(data.session?.user ?? null);
-      if (data.session?.user) await fetchMemberRole(data.session.user.id);
+      if (data.session?.user) {
+        await fetchMemberRole(data.session.user.id);
+      } else {
+        setMemberRoleLoaded(true);
+      }
       setIsLoading(false);
     };
 
@@ -73,9 +83,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
+        setMemberRoleLoaded(false);
         void fetchMemberRole(nextSession.user.id);
       } else {
         setMemberRole(null);
+        setMemberRoleLoaded(true);
       }
       setIsLoading(false);
     });
@@ -94,6 +106,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       isInvitedAccount: user?.user_metadata?.account_status === "invited",
       role: getRoleFromAccessToken(session?.access_token),
       memberRole,
+      memberRoleLoaded,
       isLoading,
       signInWithPassword: async (email: string, password: string) => {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -131,7 +144,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         return { error: error?.message ?? null };
       },
     }),
-    [isLoading, memberRole, session, supabase, user],
+    [isLoading, memberRole, memberRoleLoaded, session, supabase, user],
   );
 
   if (isLoading) {

@@ -13,7 +13,7 @@ import {
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { signedIn, isInvitedAccount, isLoading, role } = useAuth();
+  const { signedIn, isInvitedAccount, isLoading, role, memberRole, memberRoleLoaded } = useAuth();
 
   useEffect(() => {
     if (isLoading) return;
@@ -25,6 +25,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     if (signedIn && isInvitedAccount && pathname !== "/accept-invite") {
       router.replace("/accept-invite");
+      return;
+    }
+
+    // Regular members who haven't completed onboarding cannot access protected pages.
+    // Gate on memberRoleLoaded to avoid spurious redirects during async fetch.
+    const isRegularMember = role !== "advisor" && role !== "admin";
+    if (signedIn && isRegularMember && memberRoleLoaded && !memberRole && !isPublicPath(pathname)) {
+      router.replace("/onboarding");
       return;
     }
 
@@ -66,7 +74,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (signedIn && !canAccessPath(pathname, role)) {
       router.replace(getHomePathForRole(role));
     }
-  }, [signedIn, isInvitedAccount, pathname, router, isLoading, role]);
+  }, [signedIn, isInvitedAccount, pathname, router, isLoading, role, memberRole, memberRoleLoaded]);
 
   return <>{children}</>;
 }

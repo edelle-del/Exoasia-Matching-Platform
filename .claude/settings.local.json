@@ -11,7 +11,11 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(node scripts/seed-matching-test.mjs)",
       "Bash(node scripts/seed-ecosystem-portfolio.mjs)",
-      "Bash(npx supabase *)"
+      "Bash(npx supabase *)",
+      "Bash(npm install *)",
+      "Bash(mkdir -p \"C:\\\\Claude-dev\\\\projects\\\\Exoasia-Matching-Platform\\\\src\\\\lib\\\\venture-readiness\")",
+      "Bash(mkdir -p \"C:\\\\Claude-dev\\\\projects\\\\Exoasia-Matching-Platform\\\\src\\\\app\\\\api\\\\venture-readiness\\\\parse\")",
+      "Bash(npm test *)"
     ]
   }
 }

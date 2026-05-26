@@ -223,6 +223,8 @@ export default function ProfilePage() {
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [reportDragging, setReportDragging] = useState(false);
   const [reportError, setReportError] = useState("");
+  const [reportUploading, setReportUploading] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
   const reportInputRef = useRef<HTMLInputElement>(null);
 
   const handleReportFile = (file: File) => {
@@ -230,6 +232,30 @@ export default function ProfilePage() {
     if (file.size > 10 * 1024 * 1024) { setReportError("File must be under 10 MB."); return; }
     setReportFile(file);
     setReportError("");
+    setReportSuccess(false);
+  };
+
+  const handleReportUpload = async () => {
+    if (!reportFile) return;
+    setReportUploading(true);
+    setReportError("");
+    setReportSuccess(false);
+    try {
+      const form = new FormData();
+      form.append("file", reportFile);
+      const res = await fetch("/api/venture-readiness/parse", { method: "POST", body: form });
+      const json = await res.json();
+      if (!res.ok) {
+        setReportError(json?.error ?? "Upload failed. Please try again.");
+        return;
+      }
+      setReportSuccess(true);
+      setReportFile(null);
+    } catch {
+      setReportError("Network error. Please try again.");
+    } finally {
+      setReportUploading(false);
+    }
   };
 
 
@@ -507,9 +533,11 @@ export default function ProfilePage() {
                   {reportError && <p className="text-xs text-red-600">{reportError}</p>}
                   <button
                     type="button"
-                    className="rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    onClick={handleReportUpload}
+                    disabled={reportUploading}
+                    className="rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                   >
-                    Upload report
+                    {reportUploading ? "Uploading…" : "Upload report"}
                   </button>
                 </div>
               ) : (
@@ -542,6 +570,11 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   {reportError && <p className="mt-2 text-xs text-red-600">{reportError}</p>}
+                  {reportSuccess && (
+                    <p className="mt-2 text-xs font-medium text-emerald-600">
+                      Report parsed successfully. Your readiness data is up to date.
+                    </p>
+                  )}
                   <input ref={reportInputRef} type="file" accept=".pdf,application/pdf" aria-label="Upload profile and project report PDF" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReportFile(f); e.target.value = ""; }} />
                 </div>
               )}

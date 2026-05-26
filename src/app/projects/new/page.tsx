@@ -89,8 +89,9 @@ export default function NewProjectPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-sm font-semibold text-(--color-ink)">Stage</label>
+              <label htmlFor="proj-stage" className="text-sm font-semibold text-(--color-ink)">Stage</label>
               <select
+                id="proj-stage"
                 className="gn-input mt-1"
                 value={form.stage}
                 onChange={(e) => setForm((f) => ({ ...f, stage: e.target.value }))}
@@ -100,8 +101,9 @@ export default function NewProjectPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-semibold text-(--color-ink)">Sector</label>
+              <label htmlFor="proj-sector" className="text-sm font-semibold text-(--color-ink)">Sector</label>
               <select
+                id="proj-sector"
                 className="gn-input mt-1"
                 value={form.sector}
                 onChange={(e) => setForm((f) => ({ ...f, sector: e.target.value }))}

@@ -249,8 +249,17 @@ export default function ProfilePage() {
         setReportError(json?.error ?? "Upload failed. Please try again.");
         return;
       }
+      const { error: saveError } = await supabase
+        .from("profiles")
+        .update({ venture_readiness_report: json.data })
+        .eq("id", user!.id);
+      if (saveError) {
+        setReportError("Parsed but failed to save. Please try again.");
+        return;
+      }
       setReportSuccess(true);
       setReportFile(null);
+      void loadProfile();
     } catch {
       setReportError("Network error. Please try again.");
     } finally {
@@ -478,6 +487,68 @@ export default function ProfilePage() {
                   </p>
                 )}
               </div>
+            </section>
+          );
+        })()}
+
+        {profile?.member_role === "startup" && profile?.venture_readiness_report && (() => {
+          const vr = profile.venture_readiness_report;
+          const scores: { label: string; value: number | null }[] = [
+            { label: "Technology", value: vr.executive_summary?.assessment?.technology ?? null },
+            { label: "Business",   value: vr.executive_summary?.assessment?.business   ?? null },
+            { label: "Investment", value: vr.executive_summary?.assessment?.investment ?? null },
+            { label: "Team",       value: vr.executive_summary?.assessment?.team       ?? null },
+          ];
+          const strengths: string[] = vr.executive_summary?.key_strengths ?? [];
+          const actions: string[]   = vr.executive_summary?.priority_actions ?? [];
+          return (
+            <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Venture Confidence Report</p>
+                  <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Readiness Assessment</h2>
+                  {vr.report_date && (
+                    <p className="mt-0.5 text-xs text-(--color-muted)">As of {vr.report_date}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {scores.map(({ label, value }) => (
+                  <div key={label} className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-4 text-center">
+                    <p className="text-2xl font-bold text-(--color-ink)">{value ?? "—"}</p>
+                    <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {strengths.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Key Strengths</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {strengths.map((s, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-(--color-body)">
+                        <span className="mt-0.5 shrink-0 text-(--color-primary)">•</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {actions.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Priority Actions</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {actions.map((a, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-(--color-body)">
+                        <span className="mt-0.5 shrink-0 text-amber-500">→</span>
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
           );
         })()}

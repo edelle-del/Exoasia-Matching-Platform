@@ -26,11 +26,11 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // pdf-parse is a CJS module; dynamic import avoids bundler conflicts.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pdfParse = (await import("pdf-parse/lib/pdf-parse.js" as any)).default as (
-      dataBuffer: Buffer,
-    ) => Promise<{ text: string; numpages: number }>;
+    // pdf-parse is listed in serverExternalPackages so Next.js uses Node's
+    // native require instead of bundling it — avoids the CJS/ESM conflict.
+    const { default: pdfParse } = await import("pdf-parse") as {
+      default: (buf: Buffer) => Promise<{ text: string; numpages: number }>;
+    };
 
     const { text } = await pdfParse(buffer);
 

@@ -839,11 +839,147 @@ export default function OnboardingForm() {
     setPdfError("");
   };
 
-  const handlePdfParse = async () => {
-    if (!pdfFile || pdfStatus === "parsing") return;
+  const handlePdfParse = async (): Promise<boolean> => {
+    if (!pdfFile || pdfStatus === "parsing") return false;
     setPdfStatus("parsing");
-    // TODO: implement PDF parsing — extract profile fields and call setForm()
-    setPdfStatus("done");
+    setPdfError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", pdfFile);
+      const res = await fetch("/api/venture-readiness/parse", { method: "POST", body: fd });
+      const json = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        data?: {
+          profile?: {
+            first_name?: string | null;
+            last_name?: string | null;
+            business_name?: string | null;
+            project_name?: string | null;
+            role_title?: string | null;
+            phone?: string | null;
+            city?: string | null;
+            short_bio?: string | null;
+            linkedin?: string | null;
+            sector?: string | null;
+            employee_band?: string | null;
+            annual_revenue?: string | null;
+            years_in_operation?: string | null;
+            referral_source?: string | null;
+            referral_name?: string | null;
+            description?: string | null;
+            fundraising_stage?: string | null;
+            target_regions?: string[] | null;
+            primary_industries?: string[] | null;
+            product_stage?: string | null;
+            co_founders?: string | null;
+            technical_founder?: string | null;
+            target_raise_min?: number | null;
+            target_raise_max?: number | null;
+          };
+        };
+      };
+
+      if (!res.ok || !json.success) {
+        setPdfError(json.error ?? "Failed to parse PDF.");
+        setPdfStatus("error");
+        return false;
+      }
+
+      const p = json.data?.profile ?? {};
+
+      // Case-insensitive partial match against a list of allowed option strings
+      const matchOpt = (value: string | null | undefined, options: string[]): string => {
+        if (!value) return "";
+        const v = value.toLowerCase();
+        return (
+          options.find((o) => o.toLowerCase() === v) ??
+          options.find((o) => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ??
+          ""
+        );
+      };
+
+      // Revenue matching: handles shorthand like "20-100K" → "$20K – $100K"
+      const parseRevenueNum = (s: string): number => {
+        const m = s.replace(/[$,\s]/g, "").toLowerCase().match(/^([\d.]+)([km]?)$/);
+        if (!m) return NaN;
+        const n = parseFloat(m[1]);
+        if (m[2] === "k") return n * 1000;
+        if (m[2] === "m") return n * 1_000_000;
+        return n;
+      };
+      const matchRevenue = (raw: string | null | undefined): string => {
+        if (!raw) return "";
+        const parts = raw.split(/[-–—]/);
+        const rawLow = parseRevenueNum(parts[0]);
+        const rawHigh = parts[1] ? parseRevenueNum(parts[1]) : NaN;
+        for (const opt of revenueRanges) {
+          const op = opt.split(/[-–—]/);
+          const oLow = parseRevenueNum(op[0]);
+          const oHigh = op[1] ? parseRevenueNum(op[1]) : NaN;
+          if (isNaN(rawLow) || isNaN(oLow)) continue;
+          const lowMatch = Math.abs(rawLow - oLow) < 1 || Math.abs(rawLow * 1000 - oLow) < 1;
+          if (!lowMatch) continue;
+          const highMatch = (isNaN(rawHigh) && isNaN(oHigh)) ||
+            (!isNaN(rawHigh) && !isNaN(oHigh) &&
+              (Math.abs(rawHigh - oHigh) < 1 || Math.abs(rawHigh * 1000 - oHigh) < 1));
+          if (highMatch) return opt;
+        }
+        return matchOpt(raw, revenueRanges);
+      };
+
+      // Array field matchers
+      const matchList = (items: string[] | null | undefined, options: string[]): string[] =>
+        (items ?? []).map((r) => matchOpt(r, options)).filter(Boolean);
+
+      const techFounder = p.technical_founder?.toLowerCase();
+
+      setForm((prev) => ({
+        ...prev,
+        first_name: p.first_name || prev.first_name,
+        last_name: p.last_name || prev.last_name,
+        business_name: p.business_name || prev.business_name,
+        role_title: p.role_title || prev.role_title,
+        phone_whatsapp: p.phone || prev.phone_whatsapp,
+        city: p.city || prev.city,
+        short_bio: p.short_bio || prev.short_bio,
+        linkedin_url: p.linkedin || prev.linkedin_url,
+        sector: matchOpt(p.sector, sectorOptions) || prev.sector,
+        employee_band: matchOpt(p.employee_band, employeeBands) || prev.employee_band,
+        annual_revenue_estimate: matchRevenue(p.annual_revenue) || prev.annual_revenue_estimate,
+        years_in_operation: matchOpt(p.years_in_operation, yearsOptions) || prev.years_in_operation,
+        how_heard_about: matchOpt(p.referral_source, hearAboutOptions) || prev.how_heard_about,
+        referred_by: p.referral_name || prev.referred_by,
+        member_role: prev.member_role || "startup",
+        // Extended startup fields
+        target_regions: matchList(p.target_regions, REGIONS).length
+          ? matchList(p.target_regions, REGIONS) : prev.target_regions,
+        target_industries: matchList(p.primary_industries, INDUSTRIES).length
+          ? matchList(p.primary_industries, INDUSTRIES) : prev.target_industries,
+        fundraising_stage: matchOpt(p.fundraising_stage, STAGES) || prev.fundraising_stage,
+        product_stage: matchOpt(p.product_stage, PRODUCT_STAGES) || prev.product_stage,
+        total_cofounders: p.co_founders || prev.total_cofounders,
+        has_technical_founder: techFounder === "yes" ? "yes" : techFounder === "no" ? "no" : prev.has_technical_founder,
+        target_raise_min: p.target_raise_min != null ? String(p.target_raise_min) : prev.target_raise_min,
+        target_raise_max: p.target_raise_max != null ? String(p.target_raise_max) : prev.target_raise_max,
+      }));
+
+      // Pre-fill the project form (used in step 2)
+      setProjectForm((prev) => ({
+        name: p.project_name || p.business_name || prev.name,
+        description: p.description || prev.description,
+        stage: matchOpt(p.fundraising_stage, ["Ideation", "MVP", "Growth", "Scaling", "Revenue-Generating"]) || prev.stage,
+        sector: matchOpt(p.sector, sectorOptions) || prev.sector,
+      }));
+
+      setPdfStatus("done");
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to parse PDF.";
+      setPdfError(msg);
+      setPdfStatus("error");
+      return false;
+    }
   };
 
   const confirmRoleSelect = () => {
@@ -1170,11 +1306,20 @@ export default function OnboardingForm() {
               <div className="mt-6 flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
-                  className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  disabled={!pdfFile || pdfStatus === "parsing"}
+                  onClick={async () => {
+                    const ok = await handlePdfParse();
+                    if (ok) setStep(1);
+                  }}
+                  className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
-                  {pdfFile ? "Continue with this report →" : "Continue →"}
+                  {pdfStatus === "parsing" ? "Reading PDF…" : "Auto-fill & continue →"}
                 </button>
+                {!pdfFile && (
+                  <p className="text-center text-xs text-[var(--color-muted)]">
+                    Upload your report to continue
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -1350,6 +1495,17 @@ export default function OnboardingForm() {
         )}
         {success && (
           <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</div>
+        )}
+
+        {pdfStatus === "done" && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-800">
+              Auto-filled from your assessment report — please review all fields
+            </p>
+            <p className="mt-0.5 text-xs text-amber-700">
+              Some values may have been extracted incorrectly. Double-check every field below before saving, especially numeric values, industries, and regions.
+            </p>
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">

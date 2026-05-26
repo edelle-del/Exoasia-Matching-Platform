@@ -157,6 +157,27 @@ export function extractFieldValue(
     if (!isAnotherField) return candidate;
   }
 
+  // Pattern 4: single space separator — guard against matching a prefix of a
+  // longer label (e.g. "Role " + "Title CEO" should not match for label "Role").
+  const singleSpaceRe = new RegExp(
+    `(?:^|\\n)[ \\t]*${escaped} ([^\\n]+)`,
+    "i",
+  );
+  const singleSpaceMatch = singleSpaceRe.exec(text);
+  if (singleSpaceMatch?.[1]?.trim()) {
+    const candidate = singleSpaceMatch[1].trim();
+    const firstWord = (candidate.match(/^(\S+)/)?.[1] ?? "").toLowerCase();
+    const wouldFormLongerLabel = KNOWN_FIELD_LABELS.some(
+      (label) => label.toLowerCase() === `${fieldLabel.toLowerCase()} ${firstWord}`,
+    );
+    const isAnotherField = KNOWN_FIELD_LABELS.some((label) => {
+      const lc = label.toLowerCase();
+      const cc = candidate.toLowerCase();
+      return cc === lc || cc.startsWith(lc + " ") || cc.startsWith(lc + "\t");
+    });
+    if (!wouldFormLongerLabel && !isAnotherField) return candidate;
+  }
+
   return null;
 }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import pdfParse from "pdf-parse";
 import { parseVentureReadinessText } from "@/lib/venture-readiness/parser";
 
 export async function POST(request: Request) {
@@ -25,13 +26,6 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    // pdf-parse is listed in serverExternalPackages so Next.js uses Node's
-    // native require instead of bundling it — avoids the CJS/ESM conflict.
-    const { default: pdfParse } = await import("pdf-parse") as {
-      default: (buf: Buffer) => Promise<{ text: string; numpages: number }>;
-    };
-
     const { text } = await pdfParse(buffer);
 
     if (!text?.trim()) {

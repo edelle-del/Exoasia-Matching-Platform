@@ -22,6 +22,14 @@ export default function AccountSettingsPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
+  const [showBugModal, setShowBugModal] = useState(false);
+  const [bugSubject, setBugSubject] = useState("");
+  const [bugDescription, setBugDescription] = useState("");
+  const [bugSteps, setBugSteps] = useState("");
+  const [bugLoading, setBugLoading] = useState(false);
+  const [bugError, setBugError] = useState("");
+  const [bugSuccess, setBugSuccess] = useState(false);
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -94,6 +102,23 @@ export default function AccountSettingsPage() {
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
+  };
+
+  const handleBugReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBugError("");
+    if (!bugSubject.trim()) { setBugError("Subject is required."); return; }
+    if (!bugDescription.trim()) { setBugError("Description is required."); return; }
+    setBugLoading(true);
+    const res = await fetch("/api/bug-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: bugSubject, description: bugDescription, steps: bugSteps }),
+    });
+    setBugLoading(false);
+    const data = await res.json();
+    if (!res.ok) { setBugError(data?.error ?? "Failed to submit report."); return; }
+    setBugSuccess(true);
   };
 
   const handleDeleteAccount = async () => {
@@ -195,6 +220,24 @@ export default function AccountSettingsPage() {
           {passwordSuccess && <p className="mt-2 text-xs text-green-600">{passwordSuccess}</p>}
         </section>
 
+        {/* Report a Bug */}
+        <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
+          <h2 className="text-base font-semibold text-(--color-ink)">Report a bug</h2>
+          <p className="mt-1 text-sm text-(--color-body)">
+            Found something broken? Let us know and we&apos;ll look into it.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setShowBugModal(true); setBugSubject(""); setBugDescription(""); setBugSteps(""); setBugError(""); setBugSuccess(false); }}
+            className="mt-4 flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            Report a bug
+          </button>
+        </section>
+
         {/* Danger Zone */}
         <section className="rounded-[16px] border border-red-200 bg-(--color-canvas) p-6">
           <h2 className="text-base font-semibold text-red-600">Danger Zone</h2>
@@ -210,6 +253,99 @@ export default function AccountSettingsPage() {
           </button>
         </section>
       </div>
+
+      {/* Bug report modal */}
+      {showBugModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-8 shadow-xl">
+            {bugSuccess ? (
+              <div className="text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                  <svg className="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="mt-4 text-lg font-semibold text-(--color-ink)">Report received</h2>
+                <p className="mt-2 text-sm text-(--color-body)">
+                  Thanks for letting us know. We&apos;ll investigate and follow up if needed.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowBugModal(false)}
+                  className="mt-6 w-full rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Help us improve</p>
+                <h2 className="mt-3 text-xl font-semibold text-(--color-ink)">Report a bug</h2>
+                <p className="mt-1 text-sm text-(--color-body)">
+                  Describe what went wrong and we&apos;ll look into it.
+                </p>
+                <form onSubmit={handleBugReport} className="mt-5 space-y-4">
+                  <div>
+                    <label htmlFor="bug-subject" className="mb-1.5 block text-sm font-semibold text-(--color-ink)">
+                      Subject <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="bug-subject"
+                      type="text"
+                      className="gn-input"
+                      placeholder="e.g. Profile page crashes on save"
+                      value={bugSubject}
+                      onChange={(e) => { setBugSubject(e.target.value); setBugError(""); }}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="bug-description" className="mb-1.5 block text-sm font-semibold text-(--color-ink)">
+                      What happened? <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      id="bug-description"
+                      className="gn-input h-24"
+                      placeholder="Describe the issue clearly — what you saw, what you expected."
+                      value={bugDescription}
+                      onChange={(e) => { setBugDescription(e.target.value); setBugError(""); }}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="bug-steps" className="mb-1.5 block text-sm font-semibold text-(--color-ink)">
+                      Steps to reproduce{" "}
+                      <span className="font-normal text-(--color-muted)">(optional)</span>
+                    </label>
+                    <textarea
+                      id="bug-steps"
+                      className="gn-input h-20"
+                      placeholder="1. Go to…&#10;2. Click…&#10;3. See error"
+                      value={bugSteps}
+                      onChange={(e) => setBugSteps(e.target.value)}
+                    />
+                  </div>
+                  {bugError && <p className="text-xs text-red-600">{bugError}</p>}
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowBugModal(false)}
+                      className="flex-1 rounded-xl border border-(--color-hairline) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={bugLoading}
+                      className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {bugLoading ? "Sending…" : "Send report"}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation modal */}
       {showDeleteModal && (

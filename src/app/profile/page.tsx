@@ -506,7 +506,7 @@ export default function ProfilePage() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Venture Confidence Report</p>
-                  <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Readiness Assessment</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Venture Confidence Assessment</h2>
                   {vr.report_date && (
                     <p className="mt-0.5 text-xs text-(--color-muted)">As of {vr.report_date}</p>
                   )}
@@ -557,10 +557,10 @@ export default function ProfilePage() {
           <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Startup Readiness</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Venture Confidence Assessment</p>
                 <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Profile &amp; Project Report</h2>
                 <p className="mt-1 text-sm text-(--color-body)">
-                  Upload your report from the Startup Readiness Assessment to keep your profile up to date.
+                  Upload your report from the Venture Confidence Assessment to keep your profile up to date.
                 </p>
               </div>
               <a

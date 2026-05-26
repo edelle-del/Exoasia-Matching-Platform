@@ -544,7 +544,7 @@ function PdfUploadCard({
           </span>
         </div>
         <p className="mt-1 text-sm font-semibold text-[var(--color-ink)]">
-          Upload your profile and project report
+          Upload your Venture Confidence Assessment report
         </p>
         <p className="mt-0.5 text-xs text-[var(--color-muted)]">
           We&apos;ll extract your fundraising details to auto-fill the fields below.
@@ -662,7 +662,7 @@ function PdfUploadCard({
             ref={inputRef}
             type="file"
             accept=".pdf,application/pdf"
-            aria-label="Upload profile and project report PDF"
+            aria-label="Upload Venture Confidence Assessment report PDF"
             className="hidden"
             onChange={onChange}
           />
@@ -679,8 +679,7 @@ export default function OnboardingForm() {
   const supabase = useMemo(() => createClient(), []);
   const { role, user } = useAuth();
   const isAdminView = ["advisor", "admin"].includes(role ?? "");
-  const [step, setStep] = useState<"role" | "assessment" | "profile" | "project">("role");
-  const [assessmentGateView, setAssessmentGateView] = useState<"question" | "upload">("question");
+  const [step, setStep] = useState<"role" | "profile" | "startup">("role");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -690,8 +689,12 @@ export default function OnboardingForm() {
     stage: "",
     sector: "",
   });
-  const [projectLoading, setProjectLoading] = useState(false);
-  const [projectError, setProjectError] = useState("");
+  const [startupLoading, setStartupLoading] = useState(false);
+  const [startupError, setStartupError] = useState("");
+  const [startupMode, setStartupMode] = useState<"create" | "join">("create");
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState("");
 
   const [form, setForm] = useState({
     first_name: "",
@@ -995,7 +998,7 @@ export default function OnboardingForm() {
     setForm((prev) => ({ ...prev, member_role: pendingRole, ...EMPTY_EXTENDED }));
     setError("");
     setPendingRole(null);
-    setStep(pendingRole === "startup" ? "assessment" : "profile");
+    setStep("profile");
   };
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -1043,16 +1046,6 @@ export default function OnboardingForm() {
       if (!form.referral_3_name.trim() || !form.referral_3_contact.trim()) return fail("Referral 3 name and contact are required.");
     }
 
-    if (!isAdminView && form.member_role === "startup") {
-      if (!form.target_regions.length) return fail("Please select at least one target region.");
-      if (!form.target_industries.length) return fail("Please select at least one target industry.");
-      if (!form.fundraising_stage) return fail("Please select your current fundraising stage.");
-      if (!form.product_stage) return fail("Please select your product stage.");
-      if (!form.total_cofounders.trim()) return fail("Please enter the number of co-founders.");
-      if (!form.target_raise_min.trim()) return fail("Please enter a minimum target raise amount.");
-      if (!form.target_raise_max.trim()) return fail("Please enter a maximum target raise amount.");
-    }
-
     if (!isAdminView && form.member_role === "ecosystem_partner") {
       if (!form.support_types.length) return fail("Please select at least one type of support you offer.");
       if (!form.target_industries.length) return fail("Please select at least one target industry.");
@@ -1073,8 +1066,6 @@ export default function OnboardingForm() {
     }
 
     try {
-      const pitchDeckUrl = form.pitch_deck_url;
-
       const ask_categories =
         form.member_role === "investor"
           ? ["Deal flow / Investment opportunities"]
@@ -1093,6 +1084,7 @@ export default function OnboardingForm() {
           ? form.support_types.length ? form.support_types : ["Ecosystem support"]
           : ["Industry expertise"];
 
+      // Startup extended fields are collected in the dedicated "startup" step
       const extendedPayload =
         form.member_role === "investor"
           ? {
@@ -1114,19 +1106,6 @@ export default function OnboardingForm() {
                 { name: form.referral_2_name, contact: form.referral_2_contact },
                 { name: form.referral_3_name, contact: form.referral_3_contact },
               ],
-            }
-          : form.member_role === "startup"
-          ? {
-              _v: 2,
-              target_regions: form.target_regions,
-              target_industries: form.target_industries,
-              fundraising_stage: form.fundraising_stage,
-              product_stage: form.product_stage,
-              total_cofounders: form.total_cofounders,
-              has_technical_founder: form.has_technical_founder,
-              pitch_deck_url: pitchDeckUrl,
-              target_raise_min: form.target_raise_min,
-              target_raise_max: form.target_raise_max,
             }
           : form.member_role === "ecosystem_partner"
           ? {
@@ -1178,13 +1157,9 @@ export default function OnboardingForm() {
       await supabase.auth.refreshSession();
       setSuccess("Profile saved.");
       if (form.member_role === "startup") {
-        setProjectForm((prev) => ({
-          ...prev,
-          stage: prev.stage || form.product_stage,
-        }));
         setTimeout(() => {
           setSuccess("");
-          setStep("project");
+          setStep("startup");
         }, 600);
       } else {
         setTimeout(() => router.push("/dashboard"), 900);
@@ -1196,34 +1171,125 @@ export default function OnboardingForm() {
     }
   };
 
-  const handleProjectSubmit = async (skip = false) => {
-    if (skip) {
+  const handleStartupSubmit = async (skipProject = false) => {
+    setStartupLoading(true);
+    setStartupError("");
+
+    function failStartup(msg: string) {
+      setStartupError(msg);
+      setStartupLoading(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return undefined as never;
+    }
+
+    if (!form.target_regions.length) return failStartup("Please select at least one target region.");
+    if (!form.target_industries.length) return failStartup("Please select at least one target industry.");
+    if (!form.fundraising_stage) return failStartup("Please select your current fundraising stage.");
+    if (!form.product_stage) return failStartup("Please select your product stage.");
+    if (!form.total_cofounders.trim()) return failStartup("Please enter the number of co-founders.");
+    if (!form.target_raise_min.trim()) return failStartup("Please enter a minimum target raise amount.");
+    if (!form.target_raise_max.trim()) return failStartup("Please enter a maximum target raise amount.");
+    if (!skipProject && !projectForm.name.trim()) return failStartup("Project name is required.");
+
+    try {
+      const startupExtended = {
+        _v: 2,
+        target_regions: form.target_regions,
+        target_industries: form.target_industries,
+        fundraising_stage: form.fundraising_stage,
+        product_stage: form.product_stage,
+        total_cofounders: form.total_cofounders,
+        has_technical_founder: form.has_technical_founder,
+        pitch_deck_url: form.pitch_deck_url,
+        target_raise_min: form.target_raise_min,
+        target_raise_max: form.target_raise_max,
+      };
+
+      // Re-send full profile payload so the API upsert has all required fields
+      const profileRes = await fetch("/api/onboarding/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
+          member_role: "startup",
+          business_name: form.business_name.trim(),
+          role_title: form.role_title.trim() || undefined,
+          city: form.city.trim() || undefined,
+          short_bio: form.short_bio.trim() || undefined,
+          linkedin_url: form.linkedin_url.trim() || undefined,
+          how_heard_about: form.how_heard_about,
+          referred_by: form.referred_by.trim() || undefined,
+          phone_whatsapp: form.phone_whatsapp.trim(),
+          years_in_operation: form.years_in_operation,
+          sector: form.sector || undefined,
+          employee_band: form.employee_band,
+          annual_revenue_estimate: form.annual_revenue_estimate,
+          ask_categories: ["Funding / Investment capital"],
+          offer_categories: ["Technology / Product"],
+          asks_summary: JSON.stringify(startupExtended),
+          offers_summary: form.offers_summary.trim() || undefined,
+          pdpa_matching_consent: form.pdpa_matching_consent,
+          additional_notes: form.additional_notes.trim() || undefined,
+        }),
+      });
+      const profileData = await profileRes.json();
+      if (!profileRes.ok) throw new Error(profileData?.error || "Save failed");
+
+      if (!skipProject) {
+        const projectRes = await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: projectForm.name.trim(),
+            description: projectForm.description.trim() || undefined,
+            stage: form.product_stage || undefined,
+            sector: form.sector || undefined,
+          }),
+        });
+        if (!projectRes.ok) {
+          const d = await projectRes.json();
+          return failStartup(d?.error ?? "Failed to create project.");
+        }
+      }
+
       router.push("/dashboard");
+    } catch (err) {
+      setStartupError(err instanceof Error ? err.message : "Save failed.");
+      setStartupLoading(false);
+    }
+  };
+
+  const handleInviteAccept = async () => {
+    setInviteLoading(true);
+    setInviteError("");
+
+    let token = inviteLink.trim();
+    try {
+      const url = new URL(token);
+      token = url.searchParams.get("token") ?? token;
+    } catch {
+      // not a full URL — treat the raw string as the token
+    }
+
+    if (!token) {
+      setInviteError("Please paste your invite link.");
+      setInviteLoading(false);
       return;
     }
-    if (!projectForm.name.trim()) {
-      setProjectError("Project name is required.");
-      return;
-    }
-    setProjectLoading(true);
-    setProjectError("");
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: projectForm.name.trim(),
-        description: projectForm.description.trim() || undefined,
-        stage: projectForm.stage || undefined,
-        sector: projectForm.sector || undefined,
-      }),
-    });
-    setProjectLoading(false);
-    if (!res.ok) {
+
+    try {
+      const res = await fetch("/api/cofounders/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
       const data = await res.json();
-      setProjectError(data?.error ?? "Failed to create project.");
-      return;
+      if (!res.ok) throw new Error(data?.error || "Failed to accept invite.");
+      router.push("/dashboard");
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Failed to accept invite.");
+      setInviteLoading(false);
     }
-    router.push("/dashboard");
   };
 
   const ROLE_META: Record<"investor" | "startup" | "ecosystem_partner", { label: string; description: string; detail: string }> = {
@@ -1352,208 +1418,261 @@ export default function OnboardingForm() {
     );
   }
 
-  if (step === "assessment") {
+
+  if (step === "startup") {
     return (
       <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
-        <div className="mx-auto max-w-[520px]">
-          {assessmentGateView === "question" ? (
-            <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
-                Before you start
-              </p>
-              <h1 className="mt-3 text-2xl font-semibold text-[var(--color-ink)]">
-                Have you completed the Startup Readiness Assessment?
-              </h1>
-              <p className="mt-3 text-sm text-[var(--color-body)]">
-                The assessment generates a personalised report we can use to auto-fill your onboarding profile. If you haven&apos;t done it yet, we recommend completing it first — it only takes a few minutes.
-              </p>
+        <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+            Step 2 of 2
+          </div>
+          <h1 className="text-2xl font-700 text-[var(--color-ink)]">
+            {startupMode === "join" ? "Join a startup" : "Register your startup"}
+          </h1>
+          <p className="mt-2 text-sm text-[var(--color-body)]">
+            {startupMode === "join"
+              ? "Paste the invite link sent by your co-founder to connect your profile to their project."
+              : "Tell investors what you’re building and what you’re raising. Your first project slot is free."}
+          </p>
 
-              <div className="mt-8 flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={() => setAssessmentGateView("upload")}
-                  className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                >
-                  Yes, I have my report
-                </button>
-                <a
-                  href="https://startup-readiness.vercel.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full rounded-xl border border-[var(--color-hairline)] py-3 text-center text-sm font-semibold text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-soft)]"
-                >
-                  No — take me to the assessment ↗
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setStep("profile")}
-                  className="text-center text-xs text-[var(--color-muted)] underline hover:text-[var(--color-ink)]"
-                >
-                  Skip and fill in manually →
-                </button>
+          {/* Mode toggle */}
+          <div className="mt-6 flex rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-1">
+            <button
+              type="button"
+              onClick={() => { setStartupMode("create"); setInviteError(""); }}
+              className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+                startupMode === "create"
+                  ? "bg-[var(--color-primary)] text-white shadow-sm"
+                  : "text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+              }`}
+            >
+              Start a new startup
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStartupMode("join"); setStartupError(""); }}
+              className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+                startupMode === "join"
+                  ? "bg-[var(--color-primary)] text-white shadow-sm"
+                  : "text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+              }`}
+            >
+              I was invited as a co-founder
+            </button>
+          </div>
+
+          {/* ── JOIN MODE ─────────────────────────────────────────────── */}
+          {startupMode === "join" && (
+            <div className="mt-6 space-y-5">
+              {inviteError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{inviteError}</div>
+              )}
+              <div>
+                <label htmlFor="invite-link" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  Invite link <Req />
+                </label>
+                <input
+                  id="invite-link"
+                  type="text"
+                  className="gn-input mt-1"
+                  value={inviteLink}
+                  onChange={(e) => { setInviteLink(e.target.value); setInviteError(""); }}
+                  placeholder="https://…/accept-invite?token=…"
+                />
+                <p className="mt-1 text-xs text-[var(--color-muted)]">
+                  Paste the full invite URL or just the token your co-founder shared with you.
+                </p>
               </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-sm">
               <button
                 type="button"
-                onClick={() => setAssessmentGateView("question")}
-                className="mb-6 flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                onClick={handleInviteAccept}
+                disabled={inviteLoading}
+                className="gn-btn-primary disabled:opacity-50"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back
+                {inviteLoading ? "Accepting…" : "Accept invite & continue"}
               </button>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
-                Step 1 of 3
-              </p>
-              <h1 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
-                Upload your assessment report
-              </h1>
-              <p className="mt-2 text-sm text-[var(--color-body)]">
-                Upload the PDF from your Startup Readiness Assessment. We&apos;ll use it to pre-fill your profile details.
-              </p>
+            </div>
+          )}
 
-              <div className="mt-6">
-                <PdfUploadCard
-                  file={pdfFile}
-                  status={pdfStatus}
-                  error={pdfError}
-                  isDragging={isDraggingPdf}
-                  hideParseButton
-                  onDragOver={(e) => { e.preventDefault(); setIsDraggingPdf(true); }}
-                  onDragLeave={() => setIsDraggingPdf(false)}
-                  onDrop={(e) => { e.preventDefault(); setIsDraggingPdf(false); const f = e.dataTransfer.files[0]; if (f) handlePdfFile(f); }}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); }}
-                  onParse={handlePdfParse}
-                  onClear={clearPdf}
+          {/* ── CREATE MODE ───────────────────────────────────────────── */}
+          {startupMode === "create" && (
+            <div className="mt-6 space-y-6">
+              {startupError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{startupError}</div>
+              )}
+
+              {pdfStatus === "done" && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-amber-800">
+                    Auto-filled from your Venture Confidence Assessment report — please review all fields
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-700">
+                    Some values may have been extracted incorrectly. Double-check every field before saving.
+                  </p>
+                </div>
+              )}
+
+              {/* PDF quick-fill */}
+              <PdfUploadCard
+                file={pdfFile}
+                status={pdfStatus}
+                error={pdfError}
+                isDragging={isDraggingPdf}
+                onDragOver={(e) => { e.preventDefault(); setIsDraggingPdf(true); }}
+                onDragLeave={() => setIsDraggingPdf(false)}
+                onDrop={(e) => { e.preventDefault(); setIsDraggingPdf(false); const f = e.dataTransfer.files[0]; if (f) handlePdfFile(f); }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); }}
+                onParse={handlePdfParse}
+                onClear={clearPdf}
+              />
+
+              {/* Project basics */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  Project name <Req />
+                </label>
+                <input
+                  className="gn-input mt-1"
+                  value={projectForm.name}
+                  onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. SmartSupply PH"
                 />
               </div>
 
-              <div className="mt-6 flex flex-col gap-3">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+                  Description
+                </label>
+                <textarea
+                  className="gn-input mt-1 h-24"
+                  value={projectForm.description}
+                  onChange={(e) => setProjectForm((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Brief description of what the project does and the problem it solves."
+                />
+              </div>
+
+              {/* Section A */}
+              <SectionCard label="Section A — Fundraising Target">
+                <FieldRow>
+                  <Field label="Target Regions" req>
+                    <SearchableMultiSelect
+                      options={REGIONS}
+                      value={form.target_regions}
+                      onChange={(v) => setArr("target_regions", v)}
+                      placeholder="Search regions…"
+                    />
+                  </Field>
+
+                  <Field label="Primary &amp; Secondary Industries" req>
+                    <SearchableMultiSelect
+                      options={INDUSTRIES}
+                      value={form.target_industries}
+                      onChange={(v) => setArr("target_industries", v)}
+                      placeholder="Search industries…"
+                      allowSelectAll
+                    />
+                  </Field>
+                </FieldRow>
+
+                <Field label="Current Fundraising Stage" req>
+                  <div className="flex flex-wrap gap-2">
+                    {STAGES.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => set("fundraising_stage", form.fundraising_stage === s ? "" : s)}
+                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          form.fundraising_stage === s
+                            ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                            : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field label="Product Stage" req>
+                  <PillToggle
+                    options={PRODUCT_STAGES}
+                    value={form.product_stage ? [form.product_stage] : []}
+                    onChange={(v) => set("product_stage", v[v.length - 1] ?? "")}
+                    singleSelect
+                  />
+                </Field>
+
+                <FieldRow>
+                  <Field label="Total Co-founders" req>
+                    <input
+                      type="number"
+                      min={1}
+                      className="gn-input"
+                      placeholder="e.g. 2"
+                      value={form.total_cofounders}
+                      onChange={(e) => set("total_cofounders", e.target.value)}
+                    />
+                    <p className="mt-1 text-xs text-[var(--color-muted)]">
+                      Minimum 2 required for Demo Day tracking.
+                    </p>
+                  </Field>
+
+                  <Field label="Includes a Technical Founder">
+                    <YesNoToggle
+                      value={form.has_technical_founder as "" | "yes" | "no"}
+                      onChange={(v) => set("has_technical_founder", v)}
+                    />
+                  </Field>
+                </FieldRow>
+
+                <Field label="Pitch Deck Link">
+                  <input
+                    type="url"
+                    placeholder="https://drive.google.com/... or Notion, Docsend, etc."
+                    value={form.pitch_deck_url}
+                    onChange={(e) => set("pitch_deck_url", e.target.value)}
+                    className="gn-input"
+                  />
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    Paste a shareable link (Google Drive, Docsend, Notion, etc.). Max 10 slides.
+                  </p>
+                </Field>
+              </SectionCard>
+
+              {/* Section B */}
+              <SectionCard
+                label="Section B — Financials"
+                description="Approximate raise target in USD. Used for matching precision only."
+              >
+                <CheckSizePair
+                  label="Target Raise Amount"
+                  minValue={form.target_raise_min}
+                  maxValue={form.target_raise_max}
+                  onMinChange={(v) => set("target_raise_min", v)}
+                  onMaxChange={(v) => set("target_raise_max", v)}
+                  req
+                />
+              </SectionCard>
+
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  disabled={!pdfFile || pdfStatus === "parsing"}
-                  onClick={async () => {
-                    const ok = await handlePdfParse();
-                    if (ok) setStep("profile");
-                  }}
-                  className="w-full rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                  onClick={() => handleStartupSubmit(false)}
+                  disabled={startupLoading}
+                  className="gn-btn-primary disabled:opacity-50"
                 >
-                  {pdfStatus === "parsing" ? "Reading PDF…" : "Auto-fill & continue →"}
+                  {startupLoading ? "Saving…" : "Complete registration"}
                 </button>
-                {!pdfFile && (
-                  <p className="text-center text-xs text-[var(--color-muted)]">
-                    Upload your report to continue
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handleStartupSubmit(true)}
+                  className="text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] underline"
+                >
+                  Skip project for now
+                </button>
               </div>
             </div>
           )}
-        </div>
-      </div>
-    );
-  }
-
-  if (step === "project") {
-    return (
-      <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
-        <div className="mx-auto max-w-[700px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-            Step 3 of 3
-          </div>
-          <h1 className="text-2xl font-700 text-[var(--color-ink)]">
-            Add your first project
-          </h1>
-          <p className="mt-2 text-sm text-[var(--color-body)]">
-            Tell investors what you&apos;re building. You get 1 free project slot — upgrade to add more.
-          </p>
-
-          {projectError && (
-            <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              {projectError}
-            </div>
-          )}
-
-          <div className="mt-6 space-y-5">
-            <div>
-              <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                Project name <Req />
-              </label>
-              <input
-                className="gn-input mt-1"
-                value={projectForm.name}
-                onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))}
-                placeholder="e.g. SmartSupply PH"
-              />
-            </div>
-
-            <div>
-              <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                Description
-              </label>
-              <textarea
-                className="gn-input mt-1 h-24"
-                value={projectForm.description}
-                onChange={(e) => setProjectForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Brief description of what the project does and the problem it solves."
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label htmlFor="onb-proj-stage" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  Project stage
-                </label>
-                <select
-                  id="onb-proj-stage"
-                  className="gn-input mt-1"
-                  value={projectForm.stage}
-                  onChange={(e) => setProjectForm((p) => ({ ...p, stage: e.target.value }))}
-                >
-                  <option value="">Select stage</option>
-                  {PRODUCT_STAGES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="onb-proj-sector" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  Sector
-                </label>
-                <select
-                  id="onb-proj-sector"
-                  className="gn-input mt-1"
-                  value={projectForm.sector}
-                  onChange={(e) => setProjectForm((p) => ({ ...p, sector: e.target.value }))}
-                >
-                  <option value="">Select sector</option>
-                  {sectorOptions.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => handleProjectSubmit(false)}
-              disabled={projectLoading}
-              className="gn-btn-primary disabled:opacity-50"
-            >
-              {projectLoading ? "Saving..." : "Save project"}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleProjectSubmit(true)}
-              className="text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] underline"
-            >
-              Skip for now
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -1570,7 +1689,7 @@ export default function OnboardingForm() {
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
         {!isAdminView && form.member_role === "startup" && (
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-            Step 2 of 3
+            Step 1 of 2
           </div>
         )}
         <h1 className="text-2xl font-700 text-[var(--color-ink)]">Complete your profile</h1>
@@ -1583,17 +1702,6 @@ export default function OnboardingForm() {
         )}
         {success && (
           <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</div>
-        )}
-
-        {pdfStatus === "done" && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-sm font-semibold text-amber-800">
-              Auto-filled from your assessment report — please review all fields
-            </p>
-            <p className="mt-0.5 text-xs text-amber-700">
-              Some values may have been extracted incorrectly. Double-check every field below before saving, especially numeric values, industries, and regions.
-            </p>
-          </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
@@ -1959,114 +2067,6 @@ export default function OnboardingForm() {
                         </FieldRow>
                       </div>
                     ))}
-                  </SectionCard>
-
-                </div>
-              )}
-
-              {/* ─── Startup sections ──────────────────────────────────────── */}
-              {form.member_role === "startup" && (
-                <div className="space-y-4">
-
-                  <SectionCard label="Section A — Fundraising Target">
-                    <FieldRow>
-                      <Field label="Target Regions" req>
-                        <SearchableMultiSelect
-                          options={REGIONS}
-                          value={form.target_regions}
-                          onChange={(v) => setArr("target_regions", v)}
-                          placeholder="Search regions…"
-                        />
-                      </Field>
-
-                      <Field label="Primary & Secondary Industries" req>
-                        <SearchableMultiSelect
-                          options={INDUSTRIES}
-                          value={form.target_industries}
-                          onChange={(v) => setArr("target_industries", v)}
-                          placeholder="Search industries…"
-                          allowSelectAll
-                        />
-                      </Field>
-                    </FieldRow>
-
-                    <Field label="Current Fundraising Stage" req>
-                      <div className="flex flex-wrap gap-2">
-                        {STAGES.map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => set("fundraising_stage", form.fundraising_stage === s ? "" : s)}
-                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                              form.fundraising_stage === s
-                                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                                : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-                            }`}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </Field>
-
-                    <Field label="Product Stage" req>
-                      <PillToggle
-                        options={PRODUCT_STAGES}
-                        value={form.product_stage ? [form.product_stage] : []}
-                        onChange={(v) => set("product_stage", v[v.length - 1] ?? "")}
-                        singleSelect
-                      />
-                    </Field>
-
-                    <FieldRow>
-                      <Field label="Total Co-founders" req>
-                        <input
-                          type="number"
-                          min={1}
-                          className="gn-input"
-                          placeholder="e.g. 2"
-                          value={form.total_cofounders}
-                          onChange={(e) => set("total_cofounders", e.target.value)}
-                        />
-                        <p className="mt-1 text-xs text-[var(--color-muted)]">
-                          Minimum 2 required for Demo Day tracking.
-                        </p>
-                      </Field>
-
-                      <Field label="Includes a Technical Founder">
-                        <YesNoToggle
-                          value={form.has_technical_founder as "" | "yes" | "no"}
-                          onChange={(v) => set("has_technical_founder", v)}
-                        />
-                      </Field>
-                    </FieldRow>
-
-                    <Field label="Pitch Deck Link">
-                      <input
-                        type="url"
-                        placeholder="https://drive.google.com/... or Notion, Docsend, etc."
-                        value={form.pitch_deck_url}
-                        onChange={(e) => set("pitch_deck_url", e.target.value)}
-                        className="input-base w-full"
-                      />
-                      <p className="mt-1 text-xs text-[var(--color-muted)]">
-                        Paste a shareable link (Google Drive, Docsend, Notion, etc.). Max 10 slides aligning with standard evaluation criteria.
-                      </p>
-                    </Field>
-                  </SectionCard>
-
-                  <SectionCard
-                    label="Section B — Financials"
-                    description="Approximate raise target in USD. Used for matching precision only."
-                  >
-                    <CheckSizePair
-                      label="Target Raise Amount"
-                      minValue={form.target_raise_min}
-                      maxValue={form.target_raise_max}
-                      onMinChange={(v) => set("target_raise_min", v)}
-                      onMaxChange={(v) => set("target_raise_max", v)}
-                      req
-                    />
                   </SectionCard>
 
                 </div>

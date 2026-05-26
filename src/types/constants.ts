@@ -1,5 +1,18 @@
 import { Stage, SubscriptionPlan } from "./index";
 
+export interface CreditPackage {
+  id: string;
+  name: string;
+  credits: number;
+  price: number;
+}
+
+export const CREDIT_PACKAGES: CreditPackage[] = [
+  { id: "credits-20", name: "Starter Pack", credits: 20, price: 199 },
+  { id: "credits-75", name: "Growth Pack", credits: 75, price: 649 },
+  { id: "credits-200", name: "Scale Pack", credits: 200, price: 1499 },
+];
+
 // Stage Configuration
 export const STAGE_CONFIG: Record<Stage, { label: string; title: string; description: string }> = {
   "0": {
@@ -32,8 +45,7 @@ export const STAGE_CONFIG: Record<Stage, { label: string; title: string; descrip
 // Credit Configuration
 export const CREDIT_CONFIG = {
   FREE_TIER: {
-    askCredits: 2,
-    offerCredits: 3,
+    credits: 5,
   },
   ENTRY_COST: 1, // Each match acceptance costs 1 credit
 };
@@ -43,24 +55,21 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: "starter",
     name: "Starter",
-    askCredits: 5,
-    offerCredits: 5,
+    credits: 20,
     price: 149,
     billingCycle: "monthly",
   },
   {
     id: "professional",
     name: "Professional",
-    askCredits: 15,
-    offerCredits: 15,
+    credits: 60,
     price: 349,
     billingCycle: "monthly",
   },
   {
     id: "premium",
     name: "Premium",
-    askCredits: 30,
-    offerCredits: 30,
+    credits: 120,
     price: 649,
     billingCycle: "monthly",
   },

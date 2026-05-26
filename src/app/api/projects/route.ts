@@ -42,28 +42,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Project name is required" }, { status: 400 });
     }
 
-    // Enforce project slot limit: 1 free + paid_project_slots
+    // Enforce project slot limit: unlimited for active subscribers, 1 for free tier
     const { data: profile } = await supabase
       .from("profiles")
-      .select("paid_project_slots, member_role")
+      .select("subscription_plan, subscription_ends_at")
       .eq("id", user.id)
       .single();
 
-    const { count: existing } = await supabase
-      .from("projects")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", user.id)
-      .eq("is_active", true);
+    const hasActiveSub =
+      !!profile?.subscription_plan &&
+      (!profile.subscription_ends_at || new Date(profile.subscription_ends_at) > new Date());
 
-    const freeSlots = 1;
-    const paidSlots = profile?.paid_project_slots ?? 0;
-    const totalSlots = freeSlots + paidSlots;
+    if (!hasActiveSub) {
+      const { count: existing } = await supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", user.id)
+        .eq("is_active", true);
 
-    if ((existing ?? 0) >= totalSlots) {
-      return NextResponse.json(
-        { error: "Project slot limit reached. Upgrade to add more projects.", upgrade: true },
-        { status: 402 },
-      );
+      if ((existing ?? 0) >= 1) {
+        return NextResponse.json(
+          { error: "Project slot limit reached. Upgrade to a paid plan to add more projects.", upgrade: true },
+          { status: 402 },
+        );
+      }
     }
 
     const { data, error } = await supabase

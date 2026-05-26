@@ -25,9 +25,7 @@ export interface Member {
 // Credit System
 export interface CreditBalance {
   memberId: string;
-  askCredits: number;
-  offerCredits: number;
-  totalCredits: number;
+  credits: number;
   isPremium: boolean;
   subscriptionEndDate?: Date;
 }
@@ -152,8 +150,7 @@ export interface Payment {
 export interface SubscriptionPlan {
   id: string;
   name: string;
-  askCredits: number;
-  offerCredits: number;
+  credits: number;
   price: number;
   billingCycle: "monthly" | "yearly";
 }

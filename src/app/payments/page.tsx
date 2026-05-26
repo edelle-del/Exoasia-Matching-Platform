@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SUBSCRIPTION_PLANS } from "@/types/constants";
+import { SUBSCRIPTION_PLANS, CREDIT_PACKAGES } from "@/types/constants";
 
 const currentSubscription = {
   plan: "starter" as const,
@@ -9,12 +9,6 @@ const currentSubscription = {
   renewalDate: "2024-05-15",
   status: "active" as const,
 };
-
-const CREDIT_PACKAGES = [
-  { id: "credits-25", name: "Starter Pack", credits: 25, price: 99 },
-  { id: "credits-100", name: "Growth Pack", credits: 100, price: 349 },
-  { id: "credits-250", name: "Scale Pack", credits: 250, price: 799 },
-];
 
 const creditHistory = [
   {
@@ -55,13 +49,7 @@ export default function PaymentsPage() {
     console.log("purchase-credits", packageId);
   };
 
-  const handleViewInvoice = (transactionId: string) => {
-    console.log("view-invoice", transactionId);
-  };
-
-  const getTransactionIcon = (type: string) => {
-    return type === 'purchase' ? '💳' : '📤';
-  };
+  const getTransactionIcon = (type: string) => (type === "purchase" ? "💳" : "📤");
 
   return (
     <div className="min-h-screen bg-[var(--color-canvas)]">
@@ -98,8 +86,7 @@ export default function PaymentsPage() {
                     {currentPlanDetails.name}
                   </h3>
                   <p className="mt-1 text-sm text-[var(--color-body)]">
-                    {currentPlanDetails.askCredits} ASK credits + {currentPlanDetails.offerCredits} OFFER credits per{" "}
-                    {currentPlanDetails.billingCycle}
+                    {currentPlanDetails.credits} credits/month · ₱{(currentPlanDetails.price / currentPlanDetails.credits).toFixed(2)} per credit
                   </p>
                   <p className="mt-2 text-xs text-[var(--color-muted)]">
                     Renews on {currentSubscription.renewalDate}
@@ -166,8 +153,12 @@ export default function PaymentsPage() {
                       {plan.billingCycle} billing cycle
                     </p>
                     <ul className="mt-4 space-y-2 text-sm text-[var(--color-body)]">
-                      <li>• {plan.askCredits} ASK credits/month</li>
-                      <li>• {plan.offerCredits} OFFER credits/month</li>
+                      <li>• {plan.credits} credits/month</li>
+                      <li className="text-xs text-[var(--color-muted)]">
+                        ₱{(plan.price / plan.credits).toFixed(2)} per credit
+                      </li>
+                      <li>• Unlimited project slots</li>
+                      <li>• All investor matches unlocked</li>
                       <li>• Priority advisor queue</li>
                     </ul>
                     {plan.id === currentSubscription.plan ? (
@@ -176,6 +167,7 @@ export default function PaymentsPage() {
                       </span>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => handleUpgradePlan(plan.id)}
                         className="mt-4 rounded-lg bg-[var(--color-primary)] px-6 py-2 font-500 text-white hover:bg-[var(--color-primary-active)]"
                       >
@@ -213,6 +205,7 @@ export default function PaymentsPage() {
                       ₱{(pkg.price / pkg.credits).toFixed(2)} per credit
                     </p>
                     <button
+                      type="button"
                       onClick={() => handlePurchaseCredits(pkg.id)}
                       className="mt-4 rounded-lg bg-[var(--color-primary)] px-6 py-2 font-500 text-white hover:bg-[var(--color-primary-active)]"
                     >
@@ -260,14 +253,6 @@ export default function PaymentsPage() {
                           ₱{transaction.cost}
                         </p>
                       )}
-                      {transaction.type === 'purchase' && (
-                        <button
-                          onClick={() => handleViewInvoice(transaction.id)}
-                          className="mt-1 text-sm font-500 text-[var(--color-primary)] hover:underline"
-                        >
-                          View invoice
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -281,8 +266,9 @@ export default function PaymentsPage() {
               Payment information
             </p>
             <ul className="mt-4 space-y-3 text-sm text-[var(--color-body)]">
-              <li>• All payments are processed securely through Stripe</li>
-              <li>• Credits never expire and can be used anytime</li>
+              <li>• All payments are processed securely through PayMongo</li>
+              <li>• Accepted: GCash, Maya, GrabPay, Visa/Mastercard</li>
+              <li>• Credits are added to your account immediately after payment</li>
               <li>• Subscription renews automatically unless cancelled</li>
               <li>• Refunds available within 30 days for unused credits</li>
             </ul>

@@ -1,9 +1,10 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers";
+import { createClient } from "@/lib/supabase/client";
 
 type Project = {
   id: string;
@@ -70,6 +71,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
 
   const [project, setProject] = useState<Project | null>(null);
   const [cofounders, setCofounders] = useState<Cofounder[]>([]);
@@ -78,6 +80,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const [hasActiveSub, setHasActiveSub] = useState(false);
 
   // investor view: their score for this project
   const [myScore, setMyScore] = useState<MyScore | null>(null);
@@ -108,6 +112,22 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       setLoading(false);
     });
   }, [id]);
+
+  // Load subscription state once user is known
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("profiles")
+      .select("subscription_plan, subscription_ends_at")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        setHasActiveSub(
+          !!data?.subscription_plan &&
+            (!data.subscription_ends_at || new Date(data.subscription_ends_at) > new Date()),
+        );
+      });
+  }, [user?.id, supabase]);
 
   // Load member role + role-specific data once we have the project and user
   useEffect(() => {
@@ -449,7 +469,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 ) : (
                   <div className="mt-3 space-y-3">
                     {investorMatches.map((m, idx) => {
-                      const locked = idx >= 3;
+                      const locked = !hasActiveSub && idx >= 3;
                       return (
                         <div key={m.investor_profile_id} className="relative">
                           <div className={`rounded-lg bg-(--color-surface-soft) p-3 ${locked ? "blur-sm pointer-events-none select-none" : ""}`}>
@@ -482,10 +502,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         </div>
                       );
                     })}
-                    {investorMatches.length > 3 && (
+                    {!hasActiveSub && investorMatches.length > 3 && (
                       <p className="pt-1 text-center text-xs text-(--color-muted)">
                         {investorMatches.length - 3} more match{investorMatches.length - 3 !== 1 ? "es" : ""} hidden.{" "}
-                        <span className="font-semibold text-(--color-primary)">Upgrade to Pro</span> to see all.
+                        <span className="font-semibold text-(--color-primary)">Upgrade to a paid plan</span> to see all.
                       </p>
                     )}
                   </div>

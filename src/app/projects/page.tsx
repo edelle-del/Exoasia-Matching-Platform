@@ -31,6 +31,7 @@ export default function ProjectsPage() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [memberRole, setMemberRole] = useState<string | null>(null);
+  const [hasActiveSub, setHasActiveSub] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // investor-only: existing scores keyed by project_id
@@ -46,12 +47,16 @@ export default function ProjectsPage() {
 
     supabase
       .from("profiles")
-      .select("member_role")
+      .select("member_role, subscription_plan, subscription_ends_at")
       .eq("id", user.id)
       .single()
       .then(({ data: profile }) => {
         const role = profile?.member_role ?? null;
         setMemberRole(role);
+        setHasActiveSub(
+          !!profile?.subscription_plan &&
+            (!profile.subscription_ends_at || new Date(profile.subscription_ends_at) > new Date()),
+        );
 
         const projectFetch =
           role === "investor"
@@ -166,17 +171,16 @@ export default function ProjectsPage() {
           </div>
         ) : (
           (() => {
-            const freeScoreIds = new Set(
-              projects.filter((p) => scoreMap.has(p.id)).slice(0, 3).map((p) => p.id)
-            );
-            const totalScored = projects.filter((p) => scoreMap.has(p.id)).length;
+            const scoredProjects = projects.filter((p) => scoreMap.has(p.id));
+            const freeScoreIds = new Set(scoredProjects.slice(0, 3).map((p) => p.id));
+            const totalScored = scoredProjects.length;
             return projects.map((p) => {
             const existingScore = scoreMap.get(p.id);
             const isScoringThis = scoring.has(p.id);
             const isGeneratingThis = generating.has(p.id);
             const alreadyGenerated = generatedProjects.has(p.id);
-            const scoreLocked = !!existingScore && !freeScoreIds.has(p.id);
-            const cannotScoreMore = !existingScore && totalScored >= 3;
+            const scoreLocked = !hasActiveSub && !!existingScore && !freeScoreIds.has(p.id);
+            const cannotScoreMore = !hasActiveSub && !existingScore && totalScored >= 3;
 
             return (
               <div

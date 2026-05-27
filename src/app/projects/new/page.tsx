@@ -66,10 +66,11 @@ export default function NewProjectPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="text-sm font-semibold text-(--color-ink)">
+            <label htmlFor="proj-name" className="text-sm font-semibold text-(--color-ink)">
               Project name <span className="ml-1 text-xs font-normal text-red-500">Required</span>
             </label>
             <input
+              id="proj-name"
               className="gn-input mt-1"
               value={form.name}
               onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setError(""); }}
@@ -78,8 +79,9 @@ export default function NewProjectPage() {
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-(--color-ink)">Description</label>
+            <label htmlFor="proj-description" className="text-sm font-semibold text-(--color-ink)">Description</label>
             <textarea
+              id="proj-description"
               className="gn-input mt-1 h-28"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}

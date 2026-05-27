@@ -83,12 +83,12 @@ function NavLink({
 
 
 export default function TopHeader() {
-  const { signedIn, signOut, role, memberRole, user } = useAuth();
+  const { signedIn, signOut, role, memberRole, user, isLoading } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const isAdminView           = signedIn && ["advisor", "admin"].includes(role ?? "");
-  const isEcosystemPartner    = signedIn && !isAdminView && memberRole === "ecosystem_partner";
-  const isMemberView          = signedIn && role && !isAdminView && !isEcosystemPartner;
+  const isAdminView           = !isLoading && signedIn && ["advisor", "admin"].includes(role ?? "");
+  const isEcosystemPartner    = !isLoading && signedIn && !isAdminView && memberRole === "ecosystem_partner";
+  const isMemberView          = !isLoading && signedIn && role && !isAdminView && !isEcosystemPartner;
 
   const displayName = user?.user_metadata?.full_name ?? user?.email ?? "";
   const initials = displayName

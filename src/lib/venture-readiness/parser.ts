@@ -12,6 +12,27 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function buildFlexibleTextPattern(text: string): string {
+  return Array.from(text.trim())
+    .map((char) => {
+      if (/\s/.test(char)) return "\\s+";
+      return `${escapeRegExp(char)}\\s*`;
+    })
+    .join("");
+}
+
+function buildFlexibleLinePattern(text: string): string {
+  return `(?:^|\\n)[ \\t]*${buildFlexibleTextPattern(text)}(?:[ \\t]{2,}[^\\n]*)?(?:\\n|$)`;
+}
+
+function matchesFlexibleHeaderLine(line: string, header: string): boolean {
+  const re = new RegExp(
+    `^[ \\t]*${buildFlexibleTextPattern(header)}(?:[ \\t]{2,}.*)?$`,
+    "i",
+  );
+  return re.test(line);
+}
+
 /**
  * Extract the text following `sectionHeader` up to the earliest match of any
  * header in `nextHeaders`.
@@ -29,33 +50,26 @@ export function extractSection(
   sectionHeader: string,
   nextHeaders: string[],
 ): string {
-  // Allow trailing content on the header line only when it is preceded by 2+
-  // spaces/tabs (e.g. "PROJECT PROFILE    AS OF 5/21/2026").  A single space
-  // after the header keyword means the keyword is part of a longer phrase
-  // (e.g. "PROBLEM WORTH SOLVING"), so those lines are correctly rejected.
-  const headerRe = new RegExp(
-    `(?:^|\\n)[ \\t]*${escapeRegExp(sectionHeader)}(?:[ \\t]{2,}[^\\n]*)?(?:\\n|$)`,
-    "i",
-  );
-  const match = headerRe.exec(text);
-  if (!match) return "";
+  const lines = text.split("\n");
+  const collected: string[] = [];
+  let inSection = false;
 
-  const contentStart = match.index + match[0].length;
-  let contentEnd = text.length;
-
-  for (const nextHeader of nextHeaders) {
-    const nextRe = new RegExp(
-      `(?:^|\\n)[ \\t]*${escapeRegExp(nextHeader)}(?:[ \\t]{2,}[^\\n]*)?(?:\\n|$)`,
-      "i",
-    );
-    const nextMatch = nextRe.exec(text.slice(contentStart));
-    if (nextMatch) {
-      const candidateEnd = contentStart + nextMatch.index;
-      if (candidateEnd < contentEnd) contentEnd = candidateEnd;
+  for (const line of lines) {
+    if (!inSection) {
+      if (matchesFlexibleHeaderLine(line, sectionHeader)) {
+        inSection = true;
+      }
+      continue;
     }
+
+    if (nextHeaders.some((header) => matchesFlexibleHeaderLine(line, header))) {
+      break;
+    }
+
+    collected.push(line);
   }
 
-  return text.slice(contentStart, contentEnd).trim();
+  return collected.join("\n").trim();
 }
 
 /**
@@ -63,14 +77,47 @@ export function extractSection(
  * Recognises bullets: •  ·  -  *
  */
 export function extractBulletItems(text: string): string[] {
-  return text
+  const isNoiseLine = (line: string): boolean => {
+    const normalized = line.replace(/\s+/g, " ").trim();
+    if (!normalized) return true;
+    if (/^--\s*\d+\s+of\s+\d+\s*--$/i.test(normalized)) return true;
+    if (/^assessment snapshot\b/i.test(normalized)) return true;
+    if (/^recommended next steps:/i.test(normalized)) return true;
+
+    const headerLikeLabels = [
+      "PROJECT PROFILE",
+      "EXECUTIVE SUMMARY",
+      "CONCLUSION",
+      "KEY STRENGTHS",
+      "PRIORITY ACTIONS",
+      "FINDINGS",
+      "RECOMMENDATIONS",
+      ...DIMENSION_HEADERS,
+    ];
+
+    return headerLikeLabels.some((label) => {
+      const pattern = new RegExp(`^${buildFlexibleTextPattern(label)}$`, "i");
+      return pattern.test(normalized);
+    });
+  };
+
+  const lines = text
     .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line.length > 0 && !isNoiseLine(line));
+
+  const bulletItems = lines
     .map((line) => {
-      const t = line.trim();
-      const m = t.match(/^[•·\-*]\s+(.+)$/) ?? t.match(/^[•·]\s*(.+)$/);
-      return m?.[1]?.trim() ?? null;
+      const bulletMatch =
+        line.match(/^[•·\-*]\s+(.+)$/) ?? line.match(/^[•·]\s*(.+)$/);
+      return bulletMatch?.[1]?.trim() ?? null;
     })
     .filter((item): item is string => item !== null && item.length > 0);
+
+  if (bulletItems.length > 0) return bulletItems;
+  if (lines.length <= 1) return [];
+
+  return lines;
 }
 
 // All known field labels in the PROJECT PROFILE block, ordered longest-first to
@@ -134,10 +181,7 @@ export function extractFieldValue(
   if (sameLineMatch?.[1]?.trim()) return sameLineMatch[1].trim();
 
   // Pattern 2: tab separator
-  const tabRe = new RegExp(
-    `(?:^|\\n)[ \\t]*${escaped}\\t([^\\n]+)`,
-    "i",
-  );
+  const tabRe = new RegExp(`(?:^|\\n)[ \\t]*${escaped}\\t([^\\n]+)`, "i");
   const tabMatch = tabRe.exec(text);
   if (tabMatch?.[1]?.trim()) return tabMatch[1].trim();
 
@@ -159,16 +203,14 @@ export function extractFieldValue(
 
   // Pattern 4: single space separator — guard against matching a prefix of a
   // longer label (e.g. "Role " + "Title CEO" should not match for label "Role").
-  const singleSpaceRe = new RegExp(
-    `(?:^|\\n)[ \\t]*${escaped} ([^\\n]+)`,
-    "i",
-  );
+  const singleSpaceRe = new RegExp(`(?:^|\\n)[ \\t]*${escaped} ([^\\n]+)`, "i");
   const singleSpaceMatch = singleSpaceRe.exec(text);
   if (singleSpaceMatch?.[1]?.trim()) {
     const candidate = singleSpaceMatch[1].trim();
     const firstWord = (candidate.match(/^(\S+)/)?.[1] ?? "").toLowerCase();
     const wouldFormLongerLabel = KNOWN_FIELD_LABELS.some(
-      (label) => label.toLowerCase() === `${fieldLabel.toLowerCase()} ${firstWord}`,
+      (label) =>
+        label.toLowerCase() === `${fieldLabel.toLowerCase()} ${firstWord}`,
     );
     const isAnotherField = KNOWN_FIELD_LABELS.some((label) => {
       const lc = label.toLowerCase();
@@ -182,7 +224,8 @@ export function extractFieldValue(
 }
 
 export function parseReportDate(text: string): string | null {
-  const m = text.match(/AS OF\s+(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  const normalized = text.replace(/\s+/g, "");
+  const m = normalized.match(/([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/);
   return m?.[1] ?? null;
 }
 
@@ -217,10 +260,16 @@ export function parseProjectProfile(profileText: string): ProjectProfile {
     referral_source: f("Referral Source"),
     referral_name: f("Referral Name"),
     target_regions: targetRegionsRaw
-      ? targetRegionsRaw.split(",").map((r) => r.trim()).filter(Boolean)
+      ? targetRegionsRaw
+          .split(",")
+          .map((r) => r.trim())
+          .filter(Boolean)
       : [],
     primary_industries: primaryIndustriesRaw
-      ? primaryIndustriesRaw.split(",").map((i) => i.trim()).filter(Boolean)
+      ? primaryIndustriesRaw
+          .split(",")
+          .map((i) => i.trim())
+          .filter(Boolean)
       : [],
     fundraising_stage: f("Fundraising Stage"),
     product_stage: f("Product Stage"),
@@ -238,7 +287,8 @@ export function parseAssessmentScores(text: string): ReadinessScores {
   const m = text.match(
     /Assessment snapshot\s*[—–\-]\s*Technology:\s*([\d.]+)[,.]?\s*Business:\s*([\d.]+)[,.]?\s*Investment:\s*([\d.]+)[,.]?\s*Team:\s*([\d.]+)/i,
   );
-  if (!m) return { technology: null, business: null, investment: null, team: null };
+  if (!m)
+    return { technology: null, business: null, investment: null, team: null };
   return {
     technology: parseFloat(m[1]),
     business: parseFloat(m[2]),
@@ -249,7 +299,9 @@ export function parseAssessmentScores(text: string): ReadinessScores {
 
 export function parseExecutiveSummary(summaryText: string): ExecutiveSummary {
   const assessment = parseAssessmentScores(summaryText);
-  const strengthsText = extractSection(summaryText, "KEY STRENGTHS", ["PRIORITY ACTIONS"]);
+  const strengthsText = extractSection(summaryText, "KEY STRENGTHS", [
+    "PRIORITY ACTIONS",
+  ]);
   const actionsText = extractSection(summaryText, "PRIORITY ACTIONS", []);
   return {
     assessment,
@@ -263,8 +315,14 @@ export function parseConclusion(conclusionText: string): Conclusion {
 }
 
 export function parseDimensionSection(sectionText: string): DimensionSection {
-  const findingsText = extractSection(sectionText, "FINDINGS", ["RECOMMENDATIONS"]);
-  const recommendationsText = extractSection(sectionText, "RECOMMENDATIONS", []);
+  const findingsText = extractSection(sectionText, "FINDINGS", [
+    "RECOMMENDATIONS",
+  ]);
+  const recommendationsText = extractSection(
+    sectionText,
+    "RECOMMENDATIONS",
+    [],
+  );
   return {
     findings: extractBulletItems(findingsText),
     recommendations: extractBulletItems(recommendationsText),
@@ -284,28 +342,35 @@ const DIMENSION_HEADERS = [
 function parseDimensionSections(text: string): DimensionSections {
   const empty: DimensionSection = { findings: [], recommendations: [] };
 
-  // Locate each dimension header (line-anchored, same pattern as extractSection)
-  const entries: Array<{ header: string; pos: number }> = [];
-  for (const header of DIMENSION_HEADERS) {
-    const re = new RegExp(
-      `(?:^|\\n)[ \\t]*${escapeRegExp(header)}(?:[ \\t]{2,}[^\\n]*)?(?:\\n|$)`,
-      "i",
-    );
-    const m = re.exec(text);
-    if (m) entries.push({ header, pos: m.index });
-  }
-  entries.sort((a, b) => a.pos - b.pos);
-
   const result: Record<string, DimensionSection> = {};
-  for (let i = 0; i < entries.length; i++) {
-    const { header, pos } = entries[i];
-    const contentStart = pos + header.length;
-    const contentEnd =
-      i + 1 < entries.length ? entries[i + 1].pos : text.length;
-    result[header] = parseDimensionSection(
-      text.slice(contentStart, contentEnd).trim(),
+  let currentHeader: string | null = null;
+  let currentLines: string[] = [];
+
+  const flush = () => {
+    if (currentHeader) {
+      result[currentHeader] = parseDimensionSection(
+        currentLines.join("\n").trim(),
+      );
+    }
+  };
+
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    const matchedHeader = DIMENSION_HEADERS.find((header) =>
+      matchesFlexibleHeaderLine(line, header),
     );
+
+    if (matchedHeader) {
+      flush();
+      currentHeader = matchedHeader;
+      currentLines = [rawLine];
+      continue;
+    }
+
+    if (currentHeader) currentLines.push(rawLine);
   }
+
+  flush();
 
   return {
     ideas_worth_pursuing: result["IDEAS WORTH PURSUING"] ?? empty,
@@ -321,7 +386,9 @@ function parseDimensionSections(text: string): DimensionSections {
 /**
  * Parse a full Venture Confidence Report from extracted PDF text.
  */
-export function parseVentureReadinessText(text: string): VentureReadinessReport {
+export function parseVentureReadinessText(
+  text: string,
+): VentureReadinessReport {
   const t = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
   const profileText = extractSection(t, "PROJECT PROFILE", [

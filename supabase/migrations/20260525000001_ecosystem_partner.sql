@@ -17,17 +17,20 @@ CREATE TABLE IF NOT EXISTS public.portfolio_companies (
 ALTER TABLE public.portfolio_companies ENABLE ROW LEVEL SECURITY;
 
 -- Partner manages their own portfolio entries
+DROP POLICY IF EXISTS "Partner manages own portfolio" ON public.portfolio_companies;
 CREATE POLICY "Partner manages own portfolio"
   ON public.portfolio_companies FOR ALL
   USING  (partner_id = auth.uid())
   WITH CHECK (partner_id = auth.uid());
 
 -- A startup can see which partners have listed them
+DROP POLICY IF EXISTS "Startup sees own portfolio memberships" ON public.portfolio_companies;
 CREATE POLICY "Startup sees own portfolio memberships"
   ON public.portfolio_companies FOR SELECT
   USING (startup_id = auth.uid());
 
 -- Advisors can read everything
+DROP POLICY IF EXISTS "Advisors read portfolio_companies" ON public.portfolio_companies;
 CREATE POLICY "Advisors read portfolio_companies"
   ON public.portfolio_companies FOR SELECT
   USING (public.authorize('profiles.read'));
@@ -49,6 +52,7 @@ CREATE TABLE IF NOT EXISTS public.portfolio_nominations (
 
 ALTER TABLE public.portfolio_nominations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Partner manages own nominations" ON public.portfolio_nominations;
 CREATE POLICY "Partner manages own nominations"
   ON public.portfolio_nominations FOR ALL
   USING  (partner_id = auth.uid())
@@ -56,6 +60,7 @@ CREATE POLICY "Partner manages own nominations"
 
 -- ── 3. RLS: Ecosystem partner can read projects owned by portfolio startups ─────
 
+DROP POLICY IF EXISTS "Ecosystem partner reads portfolio projects" ON public.projects;
 CREATE POLICY "Ecosystem partner reads portfolio projects"
   ON public.projects FOR SELECT
   USING (
@@ -69,6 +74,7 @@ CREATE POLICY "Ecosystem partner reads portfolio projects"
 
 -- ── 4. RLS: Ecosystem partner can read match scores for portfolio projects ───────
 
+DROP POLICY IF EXISTS "Ecosystem partner reads portfolio match scores" ON public.project_match_scores;
 CREATE POLICY "Ecosystem partner reads portfolio match scores"
   ON public.project_match_scores FOR SELECT
   USING (
@@ -84,6 +90,7 @@ CREATE POLICY "Ecosystem partner reads portfolio match scores"
 
 -- ── 5. RLS: Ecosystem partner can read matches involving portfolio startups ──────
 
+DROP POLICY IF EXISTS "Ecosystem partner reads portfolio matches" ON public.matches;
 CREATE POLICY "Ecosystem partner reads portfolio matches"
   ON public.matches FOR SELECT
   USING (
@@ -97,6 +104,7 @@ CREATE POLICY "Ecosystem partner reads portfolio matches"
 
 -- ── 6. RLS: Ecosystem partner can read deal cards for portfolio startups ─────────
 
+DROP POLICY IF EXISTS "Ecosystem partner reads portfolio deal cards" ON public.deal_cards;
 CREATE POLICY "Ecosystem partner reads portfolio deal cards"
   ON public.deal_cards FOR SELECT
   USING (

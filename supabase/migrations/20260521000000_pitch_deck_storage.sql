@@ -4,6 +4,7 @@ values ('pitch-decks', 'pitch-decks', false)
 on conflict (id) do nothing;
 
 -- Allow authenticated users to upload their own pitch deck
+DROP POLICY IF EXISTS "Users can upload their own pitch deck" ON storage.objects;
 create policy "Users can upload their own pitch deck"
   on storage.objects for insert
   to authenticated
@@ -13,6 +14,7 @@ create policy "Users can upload their own pitch deck"
   );
 
 -- Allow authenticated users to update/replace their own pitch deck
+DROP POLICY IF EXISTS "Users can update their own pitch deck" ON storage.objects;
 create policy "Users can update their own pitch deck"
   on storage.objects for update
   to authenticated
@@ -22,6 +24,7 @@ create policy "Users can update their own pitch deck"
   );
 
 -- Allow authenticated users to read their own pitch deck
+DROP POLICY IF EXISTS "Users can read their own pitch deck" ON storage.objects;
 create policy "Users can read their own pitch deck"
   on storage.objects for select
   to authenticated
@@ -31,14 +34,15 @@ create policy "Users can read their own pitch deck"
   );
 
 -- Allow advisors and admins to read all pitch decks
+DROP POLICY IF EXISTS "Advisors can read all pitch decks" ON storage.objects;
 create policy "Advisors can read all pitch decks"
   on storage.objects for select
   to authenticated
   using (
     bucket_id = 'pitch-decks'
     and exists (
-      select 1 from profiles
+      select 1 from public.profiles
       where profiles.id = auth.uid()
-      and profiles.role in ('advisor', 'admin')
+      and profiles.member_role in ('advisor', 'admin')
     )
   );

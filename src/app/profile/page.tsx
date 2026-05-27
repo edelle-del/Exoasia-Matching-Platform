@@ -249,10 +249,16 @@ export default function ProfilePage() {
         setReportError(json?.error ?? "Upload failed. Please try again.");
         return;
       }
+      const primaryProject = projects[0];
+      if (!primaryProject) {
+        setReportError("Create a project first so the report can be attached to it.");
+        return;
+      }
+
       const { error: saveError } = await supabase
-        .from("profiles")
+        .from("projects")
         .update({ venture_readiness_report: json.data })
-        .eq("id", user!.id);
+        .eq("id", primaryProject.id);
       if (saveError) {
         setReportError("Parsed but failed to save. Please try again.");
         return;
@@ -426,130 +432,6 @@ export default function ProfilePage() {
           const roleLabel =
             profile?.member_role === "investor"
               ? "Investor"
-              : profile?.member_role === "startup"
-              ? "Startup / Founder"
-              : profile?.member_role === "ecosystem_partner"
-              ? "Ecosystem Partner"
-              : null;
-
-          if (v2) {
-            return (
-              <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-lg font-semibold text-(--color-ink)">Matching Profile</h2>
-                  {roleLabel && (
-                    <span className="rounded-full bg-(--color-primary)/10 px-3 py-1 text-xs font-semibold text-(--color-primary)">
-                      {roleLabel}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-6">
-                  {profile.member_role === "investor"
-                    ? <InvestorMatchingProfile data={v2 as V2Investor} />
-                    : profile.member_role === "ecosystem_partner"
-                    ? <EcosystemPartnerMatchingProfile data={v2 as V2EcosystemPartner} />
-                    : <StartupMatchingProfile data={v2 as V2Startup} />}
-                </div>
-              </section>
-            );
-          }
-
-          // Legacy fallback
-          return (
-            <section className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-5">
-                <h3 className="text-base font-semibold text-(--color-ink)">ASKS</h3>
-                {profile?.ask_categories?.length > 0 && (
-                  <ul className="mt-4 space-y-1">
-                    {profile.ask_categories.map((cat: string, idx: number) => (
-                      <li key={idx} className="text-sm text-(--color-body)">• {cat}</li>
-                    ))}
-                  </ul>
-                )}
-                {!profile?.asks_summary && (
-                  <p className="mt-4 text-sm text-(--color-muted)">
-                    Complete your onboarding to set your ASKS summary.
-                  </p>
-                )}
-              </div>
-              <div className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-5">
-                <h3 className="text-base font-semibold text-(--color-ink)">OFFERS</h3>
-                {profile?.offer_categories?.length > 0 && (
-                  <ul className="mt-4 space-y-1">
-                    {profile.offer_categories.map((cat: string, idx: number) => (
-                      <li key={idx} className="text-sm text-(--color-body)">• {cat}</li>
-                    ))}
-                  </ul>
-                )}
-                {!profile?.offers_summary && (
-                  <p className="mt-4 text-sm text-(--color-muted)">
-                    Complete your onboarding to set your OFFERS summary.
-                  </p>
-                )}
-              </div>
-            </section>
-          );
-        })()}
-
-        {profile?.member_role === "startup" && profile?.venture_readiness_report && (() => {
-          const vr = profile.venture_readiness_report;
-          const scores: { label: string; value: number | null }[] = [
-            { label: "Technology", value: vr.executive_summary?.assessment?.technology ?? null },
-            { label: "Business",   value: vr.executive_summary?.assessment?.business   ?? null },
-            { label: "Investment", value: vr.executive_summary?.assessment?.investment ?? null },
-            { label: "Team",       value: vr.executive_summary?.assessment?.team       ?? null },
-          ];
-          const strengths: string[] = vr.executive_summary?.key_strengths ?? [];
-          const actions: string[]   = vr.executive_summary?.priority_actions ?? [];
-          return (
-            <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Venture Confidence Report</p>
-                  <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Venture Confidence Assessment</h2>
-                  {vr.report_date && (
-                    <p className="mt-0.5 text-xs text-(--color-muted)">As of {vr.report_date}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {scores.map(({ label, value }) => (
-                  <div key={label} className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-4 text-center">
-                    <p className="text-2xl font-bold text-(--color-ink)">{value ?? "—"}</p>
-                    <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">{label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {strengths.length > 0 && (
-                <div className="mt-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Key Strengths</p>
-                  <ul className="mt-2 space-y-1.5">
-                    {strengths.map((s, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-(--color-body)">
-                        <span className="mt-0.5 shrink-0 text-(--color-primary)">•</span>
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {actions.length > 0 && (
-                <div className="mt-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Priority Actions</p>
-                  <ul className="mt-2 space-y-1.5">
-                    {actions.map((a, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-(--color-body)">
-                        <span className="mt-0.5 shrink-0 text-amber-500">→</span>
-                        {a}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </section>
           );
         })()}
 
@@ -558,98 +440,23 @@ export default function ProfilePage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Venture Confidence Assessment</p>
-                <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Profile &amp; Project Report</h2>
+                <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Project-centered startup setup</h2>
                 <p className="mt-1 text-sm text-(--color-body)">
-                  Upload your report from the Venture Confidence Assessment to keep your profile up to date.
+                  Create your startup/project profile first. The Venture Confidence Assessment belongs on the project record, so the report stays tied to the actual venture entity.
                 </p>
               </div>
-              <a
-                href="https://startup-readiness.vercel.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors whitespace-nowrap"
-              >
-                Take assessment ↗
-              </a>
             </div>
-
-            <div className="mt-5">
-              {reportFile ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-(--color-ink)">{reportFile.name}</p>
-                      <p className="text-xs text-(--color-muted)">
-                        {reportFile.size < 1024 * 1024
-                          ? `${(reportFile.size / 1024).toFixed(0)} KB`
-                          : `${(reportFile.size / (1024 * 1024)).toFixed(1)} MB`}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setReportFile(null); setReportError(""); }}
-                      aria-label="Remove file"
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-(--color-muted) transition-colors hover:bg-(--color-canvas) hover:text-(--color-ink)"
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  {reportError && <p className="text-xs text-red-600">{reportError}</p>}
-                  <button
-                    type="button"
-                    onClick={handleReportUpload}
-                    disabled={reportUploading}
-                    className="rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                  >
-                    {reportUploading ? "Uploading…" : "Upload report"}
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onDragOver={(e) => { e.preventDefault(); setReportDragging(true); }}
-                    onDragLeave={() => setReportDragging(false)}
-                    onDrop={(e) => { e.preventDefault(); setReportDragging(false); const f = e.dataTransfer.files[0]; if (f) handleReportFile(f); }}
-                    onClick={() => reportInputRef.current?.click()}
-                    onKeyDown={(e) => e.key === "Enter" && reportInputRef.current?.click()}
-                    className={`cursor-pointer rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors ${
-                      reportDragging
-                        ? "border-(--color-primary) bg-(--color-primary)/5"
-                        : "border-(--color-hairline) hover:border-(--color-primary)/40 hover:bg-(--color-surface-soft)"
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-3">
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${reportDragging ? "bg-(--color-primary)/10" : "bg-(--color-surface-soft)"}`}>
-                        <svg className={`h-5 w-5 transition-colors ${reportDragging ? "text-(--color-primary)" : "text-(--color-muted)"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-(--color-ink)">{reportDragging ? "Drop to upload" : "Drop your PDF here"}</p>
-                        <p className="mt-0.5 text-xs text-(--color-muted)">or <span className="font-medium text-(--color-primary)">click to browse</span></p>
-                      </div>
-                      <p className="text-[11px] text-(--color-muted)">PDF only · Max 10 MB</p>
-                    </div>
-                  </div>
-                  {reportError && <p className="mt-2 text-xs text-red-600">{reportError}</p>}
-                  {reportSuccess && (
-                    <p className="mt-2 text-xs font-medium text-emerald-600">
-                      Report parsed successfully. Your readiness data is up to date.
-                    </p>
-                  )}
-                  <input ref={reportInputRef} type="file" accept=".pdf,application/pdf" aria-label="Upload profile and project report PDF" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReportFile(f); e.target.value = ""; }} />
-                </div>
-              )}
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href="/projects/new" className="gn-btn-primary">
+                Register a project
+              </Link>
+              <Link href="/projects" className="rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors">
+                View projects
+              </Link>
             </div>
+            <p className="mt-4 text-xs text-(--color-muted)">
+              Reports are AI-generated by ExoAsia Intelligence and are not investment endorsements.
+            </p>
           </section>
         )}
 

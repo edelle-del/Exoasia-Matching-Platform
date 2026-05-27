@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS payments_session_id_idx ON public.payments (paymongo_
 -- RLS: members can read their own payments; service role handles writes via webhook
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "members_read_own_payments" ON public.payments;
 CREATE POLICY "members_read_own_payments"
   ON public.payments FOR SELECT
   USING (member_id = auth.uid());

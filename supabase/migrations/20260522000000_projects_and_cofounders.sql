@@ -14,15 +14,18 @@ CREATE TABLE IF NOT EXISTS public.projects (
 
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Owner can manage their projects" ON public.projects;
 CREATE POLICY "Owner can manage their projects"
   ON public.projects FOR ALL
   USING (auth.uid() = owner_id)
   WITH CHECK (auth.uid() = owner_id);
 
+DROP POLICY IF EXISTS "Advisors can read all projects" ON public.projects;
 CREATE POLICY "Advisors can read all projects"
   ON public.projects FOR SELECT
   USING (public.authorize('profiles.read'));
 
+DROP TRIGGER IF EXISTS set_projects_updated_at ON public.projects;
 CREATE TRIGGER set_projects_updated_at
   BEFORE UPDATE ON public.projects
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -43,11 +46,13 @@ CREATE TABLE IF NOT EXISTS public.cofounder_invites (
 
 ALTER TABLE public.cofounder_invites ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Inviter can manage their cofounder invites" ON public.cofounder_invites;
 CREATE POLICY "Inviter can manage their cofounder invites"
   ON public.cofounder_invites FOR ALL
   USING (auth.uid() = inviter_id)
   WITH CHECK (auth.uid() = inviter_id);
 
+DROP POLICY IF EXISTS "Advisors can read cofounder invites" ON public.cofounder_invites;
 CREATE POLICY "Advisors can read cofounder invites"
   ON public.cofounder_invites FOR SELECT
   USING (public.authorize('profiles.read'));
@@ -62,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.cofounder_links (
 
 ALTER TABLE public.cofounder_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Members can see their cofounder links" ON public.cofounder_links;
 CREATE POLICY "Members can see their cofounder links"
   ON public.cofounder_links FOR SELECT
   USING (
@@ -70,6 +76,7 @@ CREATE POLICY "Members can see their cofounder links"
     OR public.authorize('profiles.read')
   );
 
+DROP POLICY IF EXISTS "Founders can create cofounder links" ON public.cofounder_links;
 CREATE POLICY "Founders can create cofounder links"
   ON public.cofounder_links FOR INSERT
   WITH CHECK (auth.uid() = founder_profile_id);

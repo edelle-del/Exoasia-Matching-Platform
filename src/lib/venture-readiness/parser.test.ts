@@ -223,7 +223,9 @@ describe("extractSection", () => {
   });
 
   it("returns empty string when header not found", () => {
-    const result = extractSection("No relevant text.", "EXECUTIVE SUMMARY", ["CONCLUSION"]);
+    const result = extractSection("No relevant text.", "EXECUTIVE SUMMARY", [
+      "CONCLUSION",
+    ]);
     expect(result).toBe("");
   });
 
@@ -235,7 +237,10 @@ describe("extractSection", () => {
 
   it("stops at the earliest matching nextHeader when multiple are provided", () => {
     const text = `SECTION A\nContent A\nSECTION B\nContent B\nSECTION C\nContent C`;
-    const result = extractSection(text, "SECTION A", ["SECTION C", "SECTION B"]);
+    const result = extractSection(text, "SECTION A", [
+      "SECTION C",
+      "SECTION B",
+    ]);
     expect(result).toBe("Content A");
   });
 
@@ -263,6 +268,12 @@ describe("extractSection", () => {
     const result = extractSection(text, "SECTION A", ["SECTION B"]);
     expect(result).toBe("Content");
   });
+
+  it("matches OCR-spaced headers", () => {
+    const text = `K E Y S T R E N GT H S\nContent here.\nP R I O R I T Y AC T I O N S`;
+    const result = extractSection(text, "KEY STRENGTHS", ["PRIORITY ACTIONS"]);
+    expect(result).toBe("Content here.");
+  });
 });
 
 // ─── extractBulletItems ───────────────────────────────────────────────────────
@@ -270,7 +281,11 @@ describe("extractSection", () => {
 describe("extractBulletItems", () => {
   it("extracts • bullet items", () => {
     const text = "• First item\n• Second item\n• Third item";
-    expect(extractBulletItems(text)).toEqual(["First item", "Second item", "Third item"]);
+    expect(extractBulletItems(text)).toEqual([
+      "First item",
+      "Second item",
+      "Third item",
+    ]);
   });
 
   it("extracts - bullet items", () => {
@@ -312,10 +327,25 @@ describe("extractBulletItems", () => {
   });
 
   it("preserves items with special characters", () => {
-    const text = "• User feedback rates prototype >80% satisfaction\n• Cost: $1M–$2M";
+    const text =
+      "• User feedback rates prototype >80% satisfaction\n• Cost: $1M–$2M";
     const items = extractBulletItems(text);
     expect(items[0]).toBe("User feedback rates prototype >80% satisfaction");
     expect(items[1]).toBe("Cost: $1M–$2M");
+  });
+
+  it("extracts plain lines when bullets are omitted", () => {
+    const text = `Market need is clearly validated\nUnique value proposition differentiates from incumbents\nCustomer interviews show strong enthusiasm`;
+    expect(extractBulletItems(text)).toEqual([
+      "Market need is clearly validated",
+      "Unique value proposition differentiates from incumbents",
+      "Customer interviews show strong enthusiasm",
+    ]);
+  });
+
+  it("ignores OCR-style headers and page footers", () => {
+    const text = `F I N D I N G S\n• Keep this line\n-- 3 of 6 --`;
+    expect(extractBulletItems(text)).toEqual(["Keep this line"]);
   });
 });
 
@@ -366,7 +396,9 @@ describe("extractFieldValue", () => {
 
   it("extracts comma-separated values as a single string", () => {
     const text = "Target Regions    Asia Pacific, Latin America";
-    expect(extractFieldValue(text, "Target Regions")).toBe("Asia Pacific, Latin America");
+    expect(extractFieldValue(text, "Target Regions")).toBe(
+      "Asia Pacific, Latin America",
+    );
   });
 
   it("handles multi-word field labels", () => {
@@ -394,7 +426,9 @@ describe("extractFieldValue", () => {
 
 describe("parseReportDate", () => {
   it("extracts date from AS OF prefix", () => {
-    expect(parseReportDate("PROJECT PROFILE    AS OF 5/21/2026")).toBe("5/21/2026");
+    expect(parseReportDate("PROJECT PROFILE    AS OF 5/21/2026")).toBe(
+      "5/21/2026",
+    );
   });
 
   it("returns null when date is absent", () => {
@@ -413,13 +447,20 @@ describe("parseReportDate", () => {
   it("handles extra whitespace after AS OF", () => {
     expect(parseReportDate("AS OF  5/21/2026")).toBe("5/21/2026");
   });
+
+  it("handles OCR-spaced report dates", () => {
+    expect(
+      parseReportDate("PROJECT PROFILE         A S O F 5 / 2 1 / 2 0 2 6"),
+    ).toBe("5/21/2026");
+  });
 });
 
 // ─── parseAssessmentScores ────────────────────────────────────────────────────
 
 describe("parseAssessmentScores", () => {
   it("extracts all four scores with em-dash separator", () => {
-    const text = "Assessment snapshot — Technology: 2.0, Business: 2.0, Investment: 2.0, Team: 1.5.";
+    const text =
+      "Assessment snapshot — Technology: 2.0, Business: 2.0, Investment: 2.0, Team: 1.5.";
     const scores = parseAssessmentScores(text);
     expect(scores.technology).toBe(2.0);
     expect(scores.business).toBe(2.0);
@@ -428,7 +469,8 @@ describe("parseAssessmentScores", () => {
   });
 
   it("extracts scores with en-dash separator", () => {
-    const text = "Assessment snapshot – Technology: 3.0, Business: 4.5, Investment: 2.5, Team: 3.5.";
+    const text =
+      "Assessment snapshot – Technology: 3.0, Business: 4.5, Investment: 2.5, Team: 3.5.";
     const scores = parseAssessmentScores(text);
     expect(scores.technology).toBe(3.0);
     expect(scores.business).toBe(4.5);
@@ -437,7 +479,8 @@ describe("parseAssessmentScores", () => {
   });
 
   it("extracts scores with hyphen separator", () => {
-    const text = "Assessment snapshot - Technology: 1.0, Business: 1.0, Investment: 1.0, Team: 1.0.";
+    const text =
+      "Assessment snapshot - Technology: 1.0, Business: 1.0, Investment: 1.0, Team: 1.0.";
     const scores = parseAssessmentScores(text);
     expect(scores.technology).toBe(1.0);
     expect(scores.team).toBe(1.0);
@@ -445,11 +488,17 @@ describe("parseAssessmentScores", () => {
 
   it("returns all nulls when snapshot line is absent", () => {
     const scores = parseAssessmentScores("No snapshot here.");
-    expect(scores).toEqual({ technology: null, business: null, investment: null, team: null });
+    expect(scores).toEqual({
+      technology: null,
+      business: null,
+      investment: null,
+      team: null,
+    });
   });
 
   it("handles integer scores (no decimal)", () => {
-    const text = "Assessment snapshot — Technology: 5, Business: 7, Investment: 3, Team: 4.";
+    const text =
+      "Assessment snapshot — Technology: 5, Business: 7, Investment: 3, Team: 4.";
     const scores = parseAssessmentScores(text);
     expect(scores.technology).toBe(5);
     expect(scores.business).toBe(7);
@@ -458,7 +507,8 @@ describe("parseAssessmentScores", () => {
   });
 
   it("handles max score of 10", () => {
-    const text = "Assessment snapshot — Technology: 10.0, Business: 10.0, Investment: 10.0, Team: 10.0.";
+    const text =
+      "Assessment snapshot — Technology: 10.0, Business: 10.0, Investment: 10.0, Team: 10.0.";
     const scores = parseAssessmentScores(text);
     expect(scores.technology).toBe(10.0);
   });
@@ -603,14 +653,18 @@ PRIORITY ACTIONS
     const result = parseExecutiveSummary(EXEC_TEXT);
     expect(result.key_strengths).toHaveLength(3);
     expect(result.key_strengths[0]).toBe("Market need is clearly validated");
-    expect(result.key_strengths[2]).toBe("Customer interviews show strong enthusiasm");
+    expect(result.key_strengths[2]).toBe(
+      "Customer interviews show strong enthusiasm",
+    );
   });
 
   it("extracts priority actions", () => {
     const result = parseExecutiveSummary(EXEC_TEXT);
     expect(result.priority_actions).toHaveLength(3);
     expect(result.priority_actions[0]).toBe("Secure early adopter commitments");
-    expect(result.priority_actions[2]).toBe("Develop a concise pitch deck highlighting differentiation");
+    expect(result.priority_actions[2]).toBe(
+      "Develop a concise pitch deck highlighting differentiation",
+    );
   });
 
   it("returns empty arrays when sections are absent", () => {
@@ -619,9 +673,40 @@ PRIORITY ACTIONS
     expect(result.priority_actions).toEqual([]);
   });
 
+  it("handles OCR-spaced section headers from the PDF", () => {
+    const text = `
+Assessment snapshot — Technology: 2.0, Business: 2.0, Investment: 2.0, Team: 1.5.
+
+K E Y S T R E N GT H S
+Market need is clearly validated
+Unique value proposition differentiates from incumbents
+Customer interviews show strong enthusiasm
+
+P R I O R I T Y AC T I O N S
+Secure early adopter commitments
+File provisional patents where applicable
+Develop a concise pitch deck highlighting differentiation
+`.trim();
+
+    const result = parseExecutiveSummary(text);
+    expect(result.key_strengths).toHaveLength(3);
+    expect(result.key_strengths[0]).toBe("Market need is clearly validated");
+    expect(result.priority_actions).toHaveLength(3);
+    expect(result.priority_actions[2]).toBe(
+      "Develop a concise pitch deck highlighting differentiation",
+    );
+  });
+
   it("returns null scores when snapshot line is absent", () => {
-    const result = parseExecutiveSummary("KEY STRENGTHS\n• A strength\nPRIORITY ACTIONS\n• An action");
-    expect(result.assessment).toEqual({ technology: null, business: null, investment: null, team: null });
+    const result = parseExecutiveSummary(
+      "KEY STRENGTHS\n• A strength\nPRIORITY ACTIONS\n• An action",
+    );
+    expect(result.assessment).toEqual({
+      technology: null,
+      business: null,
+      investment: null,
+      team: null,
+    });
   });
 });
 
@@ -638,8 +723,12 @@ Recommended next steps: A ; B ; C
 `.trim();
     const result = parseConclusion(text);
     expect(result.recommended_next_steps).toHaveLength(3);
-    expect(result.recommended_next_steps[0]).toBe("Secure early adopter commitments");
-    expect(result.recommended_next_steps[2]).toBe("Create a go-to-market roadmap");
+    expect(result.recommended_next_steps[0]).toBe(
+      "Secure early adopter commitments",
+    );
+    expect(result.recommended_next_steps[2]).toBe(
+      "Create a go-to-market roadmap",
+    );
   });
 
   it("returns empty array when no bullet items present", () => {
@@ -649,6 +738,16 @@ Recommended next steps: A ; B ; C
 
   it("returns empty array for empty text", () => {
     expect(parseConclusion("").recommended_next_steps).toEqual([]);
+  });
+
+  it("extracts plain lines when the PDF omits bullet markers", () => {
+    const text = `Recommended next steps: Secure early adopter commitments ; File provisional patents where applicable\nSecure early adopter commitments\nFile provisional patents where applicable\nCreate a go-to-market roadmap`;
+    const result = parseConclusion(text);
+    expect(result.recommended_next_steps).toEqual([
+      "Secure early adopter commitments",
+      "File provisional patents where applicable",
+      "Create a go-to-market roadmap",
+    ]);
   });
 });
 
@@ -671,14 +770,20 @@ RECOMMENDATIONS
     const result = parseDimensionSection(SECTION_TEXT);
     expect(result.findings).toHaveLength(3);
     expect(result.findings[0]).toBe("Problem is acute and quantifiable");
-    expect(result.findings[2]).toBe("Existing alternatives are costly or inefficient");
+    expect(result.findings[2]).toBe(
+      "Existing alternatives are costly or inefficient",
+    );
   });
 
   it("extracts recommendations", () => {
     const result = parseDimensionSection(SECTION_TEXT);
     expect(result.recommendations).toHaveLength(3);
-    expect(result.recommendations[0]).toBe("Quantify total addressable pain in monetary terms");
-    expect(result.recommendations[2]).toBe("Map user journey to pinpoint friction points");
+    expect(result.recommendations[0]).toBe(
+      "Quantify total addressable pain in monetary terms",
+    );
+    expect(result.recommendations[2]).toBe(
+      "Map user journey to pinpoint friction points",
+    );
   });
 
   it("returns empty arrays when FINDINGS is absent", () => {
@@ -721,40 +826,132 @@ describe("parseVentureReadinessText", () => {
     expect(report.report_date).toBe("5/21/2026");
   });
 
+  it("handles OCR-spaced headers in the full report", () => {
+    const text = `
+Venture Confidence
+Report
+PROJECT PROFILE         A S O F 5 / 2 1 / 2 0 2 6
+Venture         Sample
+Project Name    Sample
+Website         https://example.com
+Industry        Healthcare
+Location        Belize
+Description     Sample
+First Name      Sample
+Last Name       Sample
+Business Name Sample
+Phone   Sample
+Role Title      Sample
+City    Sample
+Sector  Medtech
+Short Bio       Sample
+LinkedIn        Sample
+Employee Band 11-50
+Annual Revenue 20-100K
+Role    Startup / Founder
+Years In Operation
+Referral Source Referred by a Member
+Referral Name   Sample
+Target Regions Asia Pacific, Latin America
+Primary Industries Mobility & Transportation
+Fundraising Stage Pre-seed
+Product Stage   Traction
+Co-founders     2
+Technical Founder Yes
+Pitch Deck
+Target Raise Min 10000
+Target Raise Max 100000
+PDPA    Yes
+Additional Info         Sample
+EXECUTIVE SUMMARY
+Assessment snapshot — Technology: 2.0, Business: 2.0, Investment: 2.0, Team: 1.5.
+
+K E Y S T R E N GT H S
+Market need is clearly validated
+Unique value proposition differentiates from incumbents
+Customer interviews show strong enthusiasm
+
+P R I O R I T Y AC T I O N S
+Secure early adopter commitments
+File provisional patents where applicable
+Develop a concise pitch deck highlighting differentiation
+
+CONCLUSION
+Recommended next steps: Secure early adopter commitments ; File provisional patents where applicable ; Develop a concise pitch deck highlighting differentiation
+Secure early adopter commitments
+File provisional patents where applicable
+Develop a concise pitch deck highlighting differentiation
+
+IDEAS WORTH PURSUING
+F I N D I N G S
+Market need is clearly validated
+Unique value proposition differentiates from incumbents
+Customer interviews show strong enthusiasm
+R E C O M M E N DAT I O N S
+Secure early adopter commitments
+File provisional patents where applicable
+Develop a concise pitch deck highlighting differentiation
+`.trim();
+
+    const report = parseVentureReadinessText(text);
+    expect(report.report_date).toBe("5/21/2026");
+    expect(report.executive_summary.key_strengths).toHaveLength(3);
+    expect(report.executive_summary.priority_actions).toHaveLength(3);
+    expect(report.conclusion.recommended_next_steps).toHaveLength(3);
+    expect(report.sections.ideas_worth_pursuing.findings).toHaveLength(3);
+    expect(report.sections.ideas_worth_pursuing.recommendations).toHaveLength(
+      3,
+    );
+  });
+
   // Profile
   it("extracts profile.sector", () => {
-    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.sector).toBe("Medtech");
+    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.sector).toBe(
+      "Medtech",
+    );
   });
 
   it("extracts profile.industry", () => {
-    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.industry).toBe("Healthcare");
+    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.industry).toBe(
+      "Healthcare",
+    );
   });
 
   it("extracts profile.target_regions as array", () => {
-    const regions = parseVentureReadinessText(FULL_REPORT_TEXT).profile.target_regions;
+    const regions =
+      parseVentureReadinessText(FULL_REPORT_TEXT).profile.target_regions;
     expect(regions).toContain("Asia Pacific");
     expect(regions).toContain("Latin America");
   });
 
   it("extracts profile.fundraising_stage", () => {
-    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.fundraising_stage).toBe("Pre-seed");
+    expect(
+      parseVentureReadinessText(FULL_REPORT_TEXT).profile.fundraising_stage,
+    ).toBe("Pre-seed");
   });
 
   it("extracts profile.target_raise_min as number", () => {
-    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.target_raise_min).toBe(10000);
+    expect(
+      parseVentureReadinessText(FULL_REPORT_TEXT).profile.target_raise_min,
+    ).toBe(10000);
   });
 
   it("extracts profile.target_raise_max as number", () => {
-    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.target_raise_max).toBe(100000);
+    expect(
+      parseVentureReadinessText(FULL_REPORT_TEXT).profile.target_raise_max,
+    ).toBe(100000);
   });
 
   it("returns null for empty profile fields (Years In Operation)", () => {
-    expect(parseVentureReadinessText(FULL_REPORT_TEXT).profile.years_in_operation).toBeNull();
+    expect(
+      parseVentureReadinessText(FULL_REPORT_TEXT).profile.years_in_operation,
+    ).toBeNull();
   });
 
   // Executive summary
   it("extracts executive_summary.assessment scores", () => {
-    const { assessment } = parseVentureReadinessText(FULL_REPORT_TEXT).executive_summary;
+    const { assessment } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).executive_summary;
     expect(assessment.technology).toBe(2.0);
     expect(assessment.business).toBe(2.0);
     expect(assessment.investment).toBe(2.0);
@@ -762,92 +959,116 @@ describe("parseVentureReadinessText", () => {
   });
 
   it("extracts executive_summary.key_strengths", () => {
-    const strengths = parseVentureReadinessText(FULL_REPORT_TEXT).executive_summary.key_strengths;
+    const strengths =
+      parseVentureReadinessText(FULL_REPORT_TEXT).executive_summary
+        .key_strengths;
     expect(strengths.length).toBeGreaterThanOrEqual(3);
     expect(strengths).toContain("Market need is clearly validated");
   });
 
   it("extracts executive_summary.priority_actions", () => {
-    const actions = parseVentureReadinessText(FULL_REPORT_TEXT).executive_summary.priority_actions;
+    const actions =
+      parseVentureReadinessText(FULL_REPORT_TEXT).executive_summary
+        .priority_actions;
     expect(actions.length).toBeGreaterThanOrEqual(3);
     expect(actions).toContain("Secure early adopter commitments");
   });
 
   // Conclusion
   it("extracts conclusion.recommended_next_steps", () => {
-    const steps = parseVentureReadinessText(FULL_REPORT_TEXT).conclusion.recommended_next_steps;
+    const steps =
+      parseVentureReadinessText(FULL_REPORT_TEXT).conclusion
+        .recommended_next_steps;
     expect(steps.length).toBeGreaterThanOrEqual(2);
     expect(steps).toContain("Secure early adopter commitments");
   });
 
   // Dimension sections – IDEAS WORTH PURSUING
   it("extracts ideas_worth_pursuing findings", () => {
-    const { findings } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.ideas_worth_pursuing;
+    const { findings } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.ideas_worth_pursuing;
     expect(findings).toHaveLength(5);
     expect(findings[0]).toBe("Market need is clearly validated");
   });
 
   it("extracts ideas_worth_pursuing recommendations", () => {
-    const { recommendations } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.ideas_worth_pursuing;
+    const { recommendations } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.ideas_worth_pursuing;
     expect(recommendations).toHaveLength(5);
   });
 
   // Dimension sections – PROBLEM (must not be confused with PROBLEM WORTH SOLVING)
   it("extracts problem findings without conflating PROBLEM WORTH SOLVING", () => {
-    const { findings } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.problem;
+    const { findings } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.problem;
     expect(findings.length).toBeGreaterThan(0);
     expect(findings[0]).toBe("Problem is acute and quantifiable");
   });
 
   it("extracts problem recommendations", () => {
-    const { recommendations } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.problem;
+    const { recommendations } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.problem;
     expect(recommendations.length).toBeGreaterThan(0);
-    expect(recommendations[0]).toBe("Quantify total addressable pain in monetary terms");
+    expect(recommendations[0]).toBe(
+      "Quantify total addressable pain in monetary terms",
+    );
   });
 
   // SOLUTION
   it("extracts solution findings", () => {
-    const { findings } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.solution;
+    const { findings } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.solution;
     expect(findings[0]).toBe("Solution directly addresses core pain points");
   });
 
   // TEAM
   it("extracts team findings", () => {
-    const { findings } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.team;
+    const { findings } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.team;
     expect(findings[0]).toBe("Founders possess complementary skill sets");
   });
 
   it("extracts team recommendations", () => {
-    const { recommendations } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.team;
+    const { recommendations } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.team;
     expect(recommendations[0]).toBe("Formalize equity and vesting agreements");
   });
 
   // SCALABILITY
   it("extracts scalability findings", () => {
-    const { findings } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.scalability;
+    const { findings } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.scalability;
     expect(findings[0]).toBe("Current architecture supports moderate growth");
   });
 
   // BM VIABILITY
   it("extracts bm_viability findings", () => {
-    const { findings } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.bm_viability;
+    const { findings } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.bm_viability;
     expect(findings[0]).toBe("Revenue model is clearly defined and tested");
   });
 
   it("extracts bm_viability recommendations", () => {
-    const { recommendations } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.bm_viability;
-    expect(recommendations[0]).toBe("Run financial projections for 3 and 5-year horizons");
+    const { recommendations } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.bm_viability;
+    expect(recommendations[0]).toBe(
+      "Run financial projections for 3 and 5-year horizons",
+    );
   });
 
   // RISK MITIGATION
   it("extracts risk_mitigation findings", () => {
-    const { findings } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.risk_mitigation;
+    const { findings } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.risk_mitigation;
     expect(findings[0]).toBe("Major risks have been identified and documented");
   });
 
   it("extracts risk_mitigation recommendations", () => {
-    const { recommendations } = parseVentureReadinessText(FULL_REPORT_TEXT).sections.risk_mitigation;
-    expect(recommendations[0]).toBe("Create a formal risk register and review quarterly");
+    const { recommendations } =
+      parseVentureReadinessText(FULL_REPORT_TEXT).sections.risk_mitigation;
+    expect(recommendations[0]).toBe(
+      "Create a formal risk register and review quarterly",
+    );
   });
 
   // Edge cases
@@ -875,7 +1096,9 @@ describe("parseVentureReadinessText", () => {
   });
 
   it("returns empty dimension arrays when sections are missing", () => {
-    const report = parseVentureReadinessText("PROJECT PROFILE\nVenture    X\nEXECUTIVE SUMMARY\nAssessment snapshot — Technology: 1.0, Business: 1.0, Investment: 1.0, Team: 1.0.");
+    const report = parseVentureReadinessText(
+      "PROJECT PROFILE\nVenture    X\nEXECUTIVE SUMMARY\nAssessment snapshot — Technology: 1.0, Business: 1.0, Investment: 1.0, Team: 1.0.",
+    );
     expect(report.sections.problem.findings).toEqual([]);
     expect(report.sections.scalability.recommendations).toEqual([]);
   });

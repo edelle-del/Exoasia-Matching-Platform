@@ -1,4 +1,5 @@
 -- Allow investors to browse all active startup projects
+DROP POLICY IF EXISTS "Investors can read all active projects" ON public.projects;
 CREATE POLICY "Investors can read all active projects"
   ON public.projects FOR SELECT
   USING (

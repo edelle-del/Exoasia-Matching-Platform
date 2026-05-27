@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers";
@@ -8,42 +9,107 @@ import { useAuth } from "../providers";
 // ─── Static lists ────────────────────────────────────────────────────────────
 
 const sectorOptions = [
-  "Advanced Manufacturing", "Aerospace & Defense", "Agtech", "Animal Health",
-  "Brand & Retail", "Crypto & Digital Assets", "Deeptech", "Energy",
-  "Enterprise & AI", "Fintech", "Food & Beverage", "GOAL", "Health",
-  "Insurtech", "Lifetech", "Maritime", "Media & Advertising", "Medtech",
-  "Mobility & Physical AI", "New Materials & Packaging",
-  "Real Estate & Construction", "Semiconductors", "Smart Cities", "Sportstech",
-  "Supply Chain", "Sustainability", "Travel & Hospitality",
+  "Advanced Manufacturing",
+  "Aerospace & Defense",
+  "Agtech",
+  "Animal Health",
+  "Brand & Retail",
+  "Crypto & Digital Assets",
+  "Deeptech",
+  "Energy",
+  "Enterprise & AI",
+  "Fintech",
+  "Food & Beverage",
+  "GOAL",
+  "Health",
+  "Insurtech",
+  "Lifetech",
+  "Maritime",
+  "Media & Advertising",
+  "Medtech",
+  "Mobility & Physical AI",
+  "New Materials & Packaging",
+  "Real Estate & Construction",
+  "Semiconductors",
+  "Smart Cities",
+  "Sportstech",
+  "Supply Chain",
+  "Sustainability",
+  "Travel & Hospitality",
 ];
 
 const employeeBands = ["1-10", "11-50", "51-200", "201-500", "500+"];
 const revenueRanges = [
-  "Under $20K", "$20K – $100K", "$100K – $350K", "$350K – $1M",
-  "$1M – $2M", "$2M – $10M", "$10M+",
+  "Under $20K",
+  "$20K – $100K",
+  "$100K – $350K",
+  "$350K – $1M",
+  "$1M – $2M",
+  "$2M – $10M",
+  "$10M+",
 ];
 const hearAboutOptions = [
-  "Masterclass", "Referred by a member", "L&D Workshop", "Social Media", "Other",
+  "Masterclass",
+  "Referred by a member",
+  "L&D Workshop",
+  "Social Media",
+  "Other",
 ];
 const yearsOptions = ["Less than 1 year", "1-3 years", "3-5 years", "5+ years"];
 
 const REGIONS = [
-  "Global", "United States", "Canada", "United Kingdom", "Europe",
-  "Israel", "Latin America", "Middle East", "Africa", "Asia Pacific", "Other regions",
+  "Global",
+  "United States",
+  "Canada",
+  "United Kingdom",
+  "Europe",
+  "Israel",
+  "Latin America",
+  "Middle East",
+  "Africa",
+  "Asia Pacific",
+  "Other regions",
 ];
 
 const INDUSTRIES = [
-  "AI", "B2B SaaS", "B2C", "Fintech", "Healthcare", "Biotech", "ClimateTech",
-  "Energy", "Deep Tech", "Future of Work / HRtech", "Mobility & Transportation",
-  "E-com & Retail", "Cybersecurity", "AgriTech", "SpaceTech", "Blockchain / Crypto",
-  "PropTech / Real Estate", "Education", "InsurTech", "Marketing / Adtech",
-  "CPG", "Foodtech", "Hardware", "Tourism & Hospitality", "Sportstech",
+  "AI",
+  "B2B SaaS",
+  "B2C",
+  "Fintech",
+  "Healthcare",
+  "Biotech",
+  "ClimateTech",
+  "Energy",
+  "Deep Tech",
+  "Future of Work / HRtech",
+  "Mobility & Transportation",
+  "E-com & Retail",
+  "Cybersecurity",
+  "AgriTech",
+  "SpaceTech",
+  "Blockchain / Crypto",
+  "PropTech / Real Estate",
+  "Education",
+  "InsurTech",
+  "Marketing / Adtech",
+  "CPG",
+  "Foodtech",
+  "Hardware",
+  "Tourism & Hospitality",
+  "Sportstech",
 ];
 
 const STAGES = [
-  "Pre-revenue Startups", "Cash-flow Businesses", "Dividend-paying Companies",
-  "Pre-seed", "Seed", "Series A", "Series B", "Series C",
-  "Pre-IPO / Late-Stage", "Public Companies",
+  "Pre-revenue Startups",
+  "Cash-flow Businesses",
+  "Dividend-paying Companies",
+  "Pre-seed",
+  "Seed",
+  "Series A",
+  "Series B",
+  "Series C",
+  "Pre-IPO / Late-Stage",
+  "Public Companies",
 ];
 
 const PRODUCT_STAGES = ["Working Prototype", "MVP", "Traction"];
@@ -73,10 +139,22 @@ const SUPPORT_TYPES = [
 ];
 
 const ENTITY_CLASSES = [
-  "Single Family Office", "Multi Family Office", "Limited Partner", "Fund of Funds",
-  "High Net Worth Indiv. ($1M+)", "Ultra HNWI ($30M+)", "Angel", "VC Fund",
-  "Private Equity Fund", "Real Estate Fund", "Accelerator", "Venture Studio",
-  "Hedge Fund", "Crypto Fund", "Private Credit Fund", "Corporation / CVC",
+  "Single Family Office",
+  "Multi Family Office",
+  "Limited Partner",
+  "Fund of Funds",
+  "High Net Worth Indiv. ($1M+)",
+  "Ultra HNWI ($30M+)",
+  "Angel",
+  "VC Fund",
+  "Private Equity Fund",
+  "Real Estate Fund",
+  "Accelerator",
+  "Venture Studio",
+  "Hedge Fund",
+  "Crypto Fund",
+  "Private Credit Fund",
+  "Corporation / CVC",
   "Fundraising Agent",
 ];
 
@@ -118,7 +196,9 @@ function SectionCard({
           {label}
         </p>
         {description && (
-          <p className="mt-0.5 text-xs text-[var(--color-muted)]">{description}</p>
+          <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+            {description}
+          </p>
         )}
       </div>
       <div className="space-y-6">{children}</div>
@@ -165,7 +245,9 @@ function PillToggle({
     if (singleSelect) {
       onChange(value[0] === opt ? [] : [opt]);
     } else {
-      onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt]);
+      onChange(
+        value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt],
+      );
     }
   }
   return (
@@ -325,7 +407,9 @@ function SearchableMultiSelect({
 
       {open && available.length === 0 && query.length > 0 && (
         <div className="absolute z-20 mt-1 w-full rounded-lg border border-[var(--color-hairline)] bg-[#12121A] px-3 py-2.5 shadow-xl">
-          <p className="text-sm text-[var(--color-muted)]">No results for &ldquo;{query}&rdquo;</p>
+          <p className="text-sm text-[var(--color-muted)]">
+            No results for &ldquo;{query}&rdquo;
+          </p>
         </div>
       )}
     </div>
@@ -359,7 +443,9 @@ function CheckSizePair({
           <div key={lbl} className="flex-1 min-w-0">
             <p className="mb-1 text-xs text-[var(--color-muted)]">{lbl}</p>
             <div className="flex items-center rounded-[8px] border border-[var(--color-hairline)] bg-[var(--color-canvas)] px-3 py-[13px] transition-colors focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(70,4,121,0.1)]">
-              <span className="select-none shrink-0 text-sm text-[var(--color-muted)] mr-1">$</span>
+              <span className="select-none shrink-0 text-sm text-[var(--color-muted)] mr-1">
+                $
+              </span>
               <input
                 type="text"
                 className="min-w-0 flex-1 bg-transparent text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-muted)]"
@@ -417,7 +503,9 @@ function RoleCard({
       </div>
       <div>
         <p className="font-semibold text-[var(--color-ink)]">{title}</p>
-        <p className="mt-0.5 text-xs text-[var(--color-muted)]">{description}</p>
+        <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+          {description}
+        </p>
       </div>
     </button>
   );
@@ -547,7 +635,8 @@ function PdfUploadCard({
           Upload your Venture Confidence Assessment report
         </p>
         <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-          We&apos;ll extract your fundraising details to auto-fill the fields below.
+          We&apos;ll extract your fundraising details to auto-fill the fields
+          below.
         </p>
       </div>
 
@@ -555,44 +644,93 @@ function PdfUploadCard({
       {status === "done" ? (
         <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500">
-            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            <svg
+              className="h-4 w-4 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-emerald-800">Fields filled from {file?.name}</p>
-            <p className="text-xs text-emerald-600">Review and adjust the fields below.</p>
+            <p className="truncate text-sm font-semibold text-emerald-800">
+              Fields filled from {file?.name}
+            </p>
+            <p className="text-xs text-emerald-600">
+              Review and adjust the fields below.
+            </p>
           </div>
-          <button type="button" onClick={onClear} className="shrink-0 text-xs text-emerald-700 underline hover:text-emerald-900">
+          <button
+            type="button"
+            onClick={onClear}
+            className="shrink-0 text-xs text-emerald-700 underline hover:text-emerald-900"
+          >
             Change file
           </button>
         </div>
-
-      /* Parsing */
-      ) : status === "parsing" ? (
+      ) : /* Parsing */
+      status === "parsing" ? (
         <div className="flex items-center gap-3 rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] px-4 py-4">
-          <svg className="h-5 w-5 shrink-0 animate-spin text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          <svg
+            className="h-5 w-5 shrink-0 animate-spin text-[var(--color-primary)]"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
           </svg>
           <div>
-            <p className="text-sm font-semibold text-[var(--color-ink)]">Analysing your document…</p>
-            <p className="text-xs text-[var(--color-muted)]">This takes a few seconds</p>
+            <p className="text-sm font-semibold text-[var(--color-ink)]">
+              Analysing your document…
+            </p>
+            <p className="text-xs text-[var(--color-muted)]">
+              This takes a few seconds
+            </p>
           </div>
         </div>
-
-      /* File selected */
-      ) : file ? (
+      ) : /* File selected */
+      file ? (
         <div className="space-y-3">
           <div className="flex items-center gap-3 rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] px-4 py-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.8}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-[var(--color-ink)]">{file.name}</p>
-              <p className="text-xs text-[var(--color-muted)]">{formatBytes(file.size)}</p>
+              <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
+                {file.name}
+              </p>
+              <p className="text-xs text-[var(--color-muted)]">
+                {formatBytes(file.size)}
+              </p>
             </div>
             <button
               type="button"
@@ -600,8 +738,18 @@ function PdfUploadCard({
               aria-label="Remove file"
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
             >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -612,16 +760,25 @@ function PdfUploadCard({
               onClick={onParse}
               className="flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
               Auto-fill from this PDF
             </button>
           )}
         </div>
-
-      /* Drop zone */
       ) : (
+        /* Drop zone */
         <div>
           <div
             role="button"
@@ -638,12 +795,21 @@ function PdfUploadCard({
             }`}
           >
             <div className="flex flex-col items-center gap-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors ${isDragging ? "bg-[var(--color-primary)]/10" : "bg-[var(--color-canvas)]"}`}>
+              <div
+                className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors ${isDragging ? "bg-[var(--color-primary)]/10" : "bg-[var(--color-canvas)]"}`}
+              >
                 <svg
                   className={`h-6 w-6 transition-colors ${isDragging ? "text-[var(--color-primary)]" : "text-[var(--color-muted)]"}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
                 </svg>
               </div>
               <div>
@@ -651,10 +817,15 @@ function PdfUploadCard({
                   {isDragging ? "Drop to upload" : "Drop your PDF here"}
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                  or <span className="font-medium text-[var(--color-primary)]">click to browse</span>
+                  or{" "}
+                  <span className="font-medium text-[var(--color-primary)]">
+                    click to browse
+                  </span>
                 </p>
               </div>
-              <p className="text-[11px] text-[var(--color-muted)]">PDF only · Max 10 MB</p>
+              <p className="text-[11px] text-[var(--color-muted)]">
+                PDF only · Max 10 MB
+              </p>
             </div>
           </div>
           {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
@@ -742,15 +913,22 @@ export default function OnboardingForm() {
         if (profile && mounted) {
           const existingName = (profile.full_name ?? metadataFullName) || "";
           const spaceIdx = existingName.indexOf(" ");
-          const loadedFirst = spaceIdx >= 0 ? existingName.slice(0, spaceIdx) : existingName;
-          const loadedLast = spaceIdx >= 0 ? existingName.slice(spaceIdx + 1) : "";
+          const loadedFirst =
+            spaceIdx >= 0 ? existingName.slice(0, spaceIdx) : existingName;
+          const loadedLast =
+            spaceIdx >= 0 ? existingName.slice(spaceIdx + 1) : "";
           const extended = parseExtended(profile.asks_summary);
 
           // Map stored referrals array back to individual form fields
           const storedRaw = (() => {
-            try { return JSON.parse(profile.asks_summary ?? ""); } catch { return null; }
+            try {
+              return JSON.parse(profile.asks_summary ?? "");
+            } catch {
+              return null;
+            }
           })();
-          const refs: { name?: string; contact?: string }[] = storedRaw?.referrals ?? [];
+          const refs: { name?: string; contact?: string }[] =
+            storedRaw?.referrals ?? [];
 
           setForm((prev) => ({
             ...prev,
@@ -763,12 +941,20 @@ export default function OnboardingForm() {
             how_heard_about: profile.how_heard_about ?? prev.how_heard_about,
             referred_by: profile.referred_by ?? prev.referred_by,
             phone_whatsapp: profile.phone_whatsapp ?? prev.phone_whatsapp,
-            years_in_operation: profile.years_in_operation ?? prev.years_in_operation,
+            years_in_operation:
+              profile.years_in_operation ?? prev.years_in_operation,
             sector: profile.sector ?? prev.sector,
             employee_band: profile.employee_band ?? prev.employee_band,
-            annual_revenue_estimate: profile.annual_revenue_estimate ?? prev.annual_revenue_estimate,
-            member_role: (profile.member_role as "" | "investor" | "startup" | "ecosystem_partner") ?? prev.member_role,
-            pdpa_matching_consent: profile.pdpa_matching_consent ?? prev.pdpa_matching_consent,
+            annual_revenue_estimate:
+              profile.annual_revenue_estimate ?? prev.annual_revenue_estimate,
+            member_role:
+              (profile.member_role as
+                | ""
+                | "investor"
+                | "startup"
+                | "ecosystem_partner") ?? prev.member_role,
+            pdpa_matching_consent:
+              profile.pdpa_matching_consent ?? prev.pdpa_matching_consent,
             additional_notes: profile.additional_notes ?? prev.additional_notes,
             offers_summary: profile.offers_summary ?? prev.offers_summary,
             linkedin_url: (profile as any).linkedin_url ?? prev.linkedin_url,
@@ -787,10 +973,16 @@ export default function OnboardingForm() {
 
         if (mounted && metadataFullName) {
           const spaceIdx = metadataFullName.indexOf(" ");
-          const metaFirst = spaceIdx >= 0 ? metadataFullName.slice(0, spaceIdx) : metadataFullName;
-          const metaLast = spaceIdx >= 0 ? metadataFullName.slice(spaceIdx + 1) : "";
+          const metaFirst =
+            spaceIdx >= 0
+              ? metadataFullName.slice(0, spaceIdx)
+              : metadataFullName;
+          const metaLast =
+            spaceIdx >= 0 ? metadataFullName.slice(spaceIdx + 1) : "";
           setForm((prev) =>
-            prev.first_name.trim() ? prev : { ...prev, first_name: metaFirst, last_name: metaLast },
+            prev.first_name.trim()
+              ? prev
+              : { ...prev, first_name: metaFirst, last_name: metaLast },
           );
         }
         if (mounted) setProfileLoaded(true);
@@ -798,7 +990,9 @@ export default function OnboardingForm() {
         // ignore
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [supabase]);
 
   const set = (field: string, value: string) => {
@@ -812,11 +1006,15 @@ export default function OnboardingForm() {
   };
 
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const [pendingRole, setPendingRole] = useState<"investor" | "startup" | "ecosystem_partner" | null>(null);
+  const [pendingRole, setPendingRole] = useState<
+    "investor" | "startup" | "ecosystem_partner" | null
+  >(null);
 
   // PDF upload state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfStatus, setPdfStatus] = useState<"idle" | "parsing" | "done" | "error">("idle");
+  const [pdfStatus, setPdfStatus] = useState<
+    "idle" | "parsing" | "done" | "error"
+  >("idle");
   const [pdfError, setPdfError] = useState("");
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
 
@@ -847,7 +1045,10 @@ export default function OnboardingForm() {
     try {
       const fd = new FormData();
       fd.append("file", pdfFile);
-      const res = await fetch("/api/venture-readiness/parse", { method: "POST", body: fd });
+      const res = await fetch("/api/venture-readiness/parse", {
+        method: "POST",
+        body: fd,
+      });
       const json = (await res.json()) as {
         success?: boolean;
         error?: string;
@@ -892,19 +1093,27 @@ export default function OnboardingForm() {
       const p = json.data?.profile ?? {};
 
       // Case-insensitive partial match against a list of allowed option strings
-      const matchOpt = (value: string | null | undefined, options: string[]): string => {
+      const matchOpt = (
+        value: string | null | undefined,
+        options: string[],
+      ): string => {
         if (!value) return "";
         const v = value.toLowerCase();
         return (
           options.find((o) => o.toLowerCase() === v) ??
-          options.find((o) => o.toLowerCase().includes(v) || v.includes(o.toLowerCase())) ??
+          options.find(
+            (o) => o.toLowerCase().includes(v) || v.includes(o.toLowerCase()),
+          ) ??
           ""
         );
       };
 
       // Revenue matching: handles shorthand like "20-100K" → "$20K – $100K"
       const parseRevenueNum = (s: string): number => {
-        const m = s.replace(/[$,\s]/g, "").toLowerCase().match(/^([\d.]+)([km]?)$/);
+        const m = s
+          .replace(/[$,\s]/g, "")
+          .toLowerCase()
+          .match(/^([\d.]+)([km]?)$/);
         if (!m) return NaN;
         const n = parseFloat(m[1]);
         if (m[2] === "k") return n * 1000;
@@ -921,18 +1130,25 @@ export default function OnboardingForm() {
           const oLow = parseRevenueNum(op[0]);
           const oHigh = op[1] ? parseRevenueNum(op[1]) : NaN;
           if (isNaN(rawLow) || isNaN(oLow)) continue;
-          const lowMatch = Math.abs(rawLow - oLow) < 1 || Math.abs(rawLow * 1000 - oLow) < 1;
+          const lowMatch =
+            Math.abs(rawLow - oLow) < 1 || Math.abs(rawLow * 1000 - oLow) < 1;
           if (!lowMatch) continue;
-          const highMatch = (isNaN(rawHigh) && isNaN(oHigh)) ||
-            (!isNaN(rawHigh) && !isNaN(oHigh) &&
-              (Math.abs(rawHigh - oHigh) < 1 || Math.abs(rawHigh * 1000 - oHigh) < 1));
+          const highMatch =
+            (isNaN(rawHigh) && isNaN(oHigh)) ||
+            (!isNaN(rawHigh) &&
+              !isNaN(oHigh) &&
+              (Math.abs(rawHigh - oHigh) < 1 ||
+                Math.abs(rawHigh * 1000 - oHigh) < 1));
           if (highMatch) return opt;
         }
         return matchOpt(raw, revenueRanges);
       };
 
       // Array field matchers
-      const matchList = (items: string[] | null | undefined, options: string[]): string[] =>
+      const matchList = (
+        items: string[] | null | undefined,
+        options: string[],
+      ): string[] =>
         (items ?? []).map((r) => matchOpt(r, options)).filter(Boolean);
 
       const techFounder = p.technical_founder?.toLowerCase();
@@ -948,23 +1164,43 @@ export default function OnboardingForm() {
         short_bio: p.short_bio || prev.short_bio,
         linkedin_url: p.linkedin || prev.linkedin_url,
         sector: matchOpt(p.sector, sectorOptions) || prev.sector,
-        employee_band: matchOpt(p.employee_band, employeeBands) || prev.employee_band,
-        annual_revenue_estimate: matchRevenue(p.annual_revenue) || prev.annual_revenue_estimate,
-        years_in_operation: matchOpt(p.years_in_operation, yearsOptions) || prev.years_in_operation,
-        how_heard_about: matchOpt(p.referral_source, hearAboutOptions) || prev.how_heard_about,
+        employee_band:
+          matchOpt(p.employee_band, employeeBands) || prev.employee_band,
+        annual_revenue_estimate:
+          matchRevenue(p.annual_revenue) || prev.annual_revenue_estimate,
+        years_in_operation:
+          matchOpt(p.years_in_operation, yearsOptions) ||
+          prev.years_in_operation,
+        how_heard_about:
+          matchOpt(p.referral_source, hearAboutOptions) || prev.how_heard_about,
         referred_by: p.referral_name || prev.referred_by,
         member_role: prev.member_role || "startup",
         // Extended startup fields
         target_regions: matchList(p.target_regions, REGIONS).length
-          ? matchList(p.target_regions, REGIONS) : prev.target_regions,
+          ? matchList(p.target_regions, REGIONS)
+          : prev.target_regions,
         target_industries: matchList(p.primary_industries, INDUSTRIES).length
-          ? matchList(p.primary_industries, INDUSTRIES) : prev.target_industries,
-        fundraising_stage: matchOpt(p.fundraising_stage, STAGES) || prev.fundraising_stage,
-        product_stage: matchOpt(p.product_stage, PRODUCT_STAGES) || prev.product_stage,
+          ? matchList(p.primary_industries, INDUSTRIES)
+          : prev.target_industries,
+        fundraising_stage:
+          matchOpt(p.fundraising_stage, STAGES) || prev.fundraising_stage,
+        product_stage:
+          matchOpt(p.product_stage, PRODUCT_STAGES) || prev.product_stage,
         total_cofounders: p.co_founders || prev.total_cofounders,
-        has_technical_founder: techFounder === "yes" ? "yes" : techFounder === "no" ? "no" : prev.has_technical_founder,
-        target_raise_min: p.target_raise_min != null ? String(p.target_raise_min) : prev.target_raise_min,
-        target_raise_max: p.target_raise_max != null ? String(p.target_raise_max) : prev.target_raise_max,
+        has_technical_founder:
+          techFounder === "yes"
+            ? "yes"
+            : techFounder === "no"
+              ? "no"
+              : prev.has_technical_founder,
+        target_raise_min:
+          p.target_raise_min != null
+            ? String(p.target_raise_min)
+            : prev.target_raise_min,
+        target_raise_max:
+          p.target_raise_max != null
+            ? String(p.target_raise_max)
+            : prev.target_raise_max,
       }));
 
       // Pre-fill the project form (used in step 2)
@@ -974,14 +1210,6 @@ export default function OnboardingForm() {
         stage: matchOpt(p.product_stage, PRODUCT_STAGES) || prev.stage,
         sector: matchOpt(p.sector, sectorOptions) || prev.sector,
       }));
-
-      // Persist the full report so the profile page can show the metrics immediately
-      if (user?.id) {
-        await supabase
-          .from("profiles")
-          .update({ venture_readiness_report: json.data })
-          .eq("id", user.id);
-      }
 
       setPdfStatus("done");
       return true;
@@ -995,7 +1223,11 @@ export default function OnboardingForm() {
 
   const confirmRoleSelect = () => {
     if (!pendingRole) return;
-    setForm((prev) => ({ ...prev, member_role: pendingRole, ...EMPTY_EXTENDED }));
+    setForm((prev) => ({
+      ...prev,
+      member_role: pendingRole,
+      ...EMPTY_EXTENDED,
+    }));
     setError("");
     setPendingRole(null);
     setStep("profile");
@@ -1011,18 +1243,27 @@ export default function OnboardingForm() {
     if (!form.last_name.trim()) return fail("Last name is required.");
     if (!form.business_name.trim()) return fail("Business name is required.");
     if (!form.sector) return fail("Please choose a sector.");
-    if (!form.how_heard_about) return fail("Please tell us how you heard about FOUNDERS ARENA.");
-    if (form.how_heard_about === "Referred by a member" && !form.referred_by.trim())
+    if (!form.how_heard_about)
+      return fail("Please tell us how you heard about FOUNDERS ARENA.");
+    if (
+      form.how_heard_about === "Referred by a member" &&
+      !form.referred_by.trim()
+    )
       return fail("Please add the name of the person who referred you.");
-    if (!form.phone_whatsapp.trim()) return fail("Phone Number / WhatsApp is required.");
-    if (!form.years_in_operation) return fail("Please select your years in operation.");
+    if (!form.phone_whatsapp.trim())
+      return fail("Phone Number / WhatsApp is required.");
+    if (!form.years_in_operation)
+      return fail("Please select your years in operation.");
     if (!form.employee_band) return fail("Please select your employee band.");
-    if (!form.annual_revenue_estimate) return fail("Please select your annual revenue range.");
+    if (!form.annual_revenue_estimate)
+      return fail("Please select your annual revenue range.");
     if (!form.role_title.trim()) return fail("Role / title is required.");
     if (!form.city.trim()) return fail("City is required.");
     if (!form.short_bio.trim()) return fail("Short bio is required.");
-    if (!form.linkedin_url.trim()) return fail("LinkedIn profile URL is required.");
-    if (!isAdminView && !form.member_role) return fail("Please select your role.");
+    if (!form.linkedin_url.trim())
+      return fail("LinkedIn profile URL is required.");
+    if (!isAdminView && !form.member_role)
+      return fail("Please select your role.");
 
     const investorHasFundInterests = form.investment_interests.some(
       (i) => i.includes("Funds") || i.includes("Fund Manager"),
@@ -1030,29 +1271,47 @@ export default function OnboardingForm() {
 
     if (!isAdminView && form.member_role === "investor") {
       if (!form.investor_type) return fail("Please select your investor type.");
-      if (!form.entity_class.length) return fail("Please select at least one entity class.");
-      if (!form.investment_interests.length) return fail("Please select at least one investment interest.");
-      if (!form.target_regions.length) return fail("Please select at least one target region.");
-      if (!form.target_industries.length) return fail("Please select at least one target industry.");
-      if (!form.target_stages.length) return fail("Please select a target stage.");
+      if (!form.entity_class.length)
+        return fail("Please select at least one entity class.");
+      if (!form.investment_interests.length)
+        return fail("Please select at least one investment interest.");
+      if (!form.target_regions.length)
+        return fail("Please select at least one target region.");
+      if (!form.target_industries.length)
+        return fail("Please select at least one target industry.");
+      if (!form.target_stages.length)
+        return fail("Please select a target stage.");
       if (investorHasFundInterests) {
-        if (!form.lp_check_min.trim()) return fail("Please enter a minimum LP investment check size.");
-        if (!form.lp_check_max.trim()) return fail("Please enter a maximum LP investment check size.");
+        if (!form.lp_check_min.trim())
+          return fail("Please enter a minimum LP investment check size.");
+        if (!form.lp_check_max.trim())
+          return fail("Please enter a maximum LP investment check size.");
       }
-      if (!form.direct_check_min.trim()) return fail("Please enter a minimum direct startup check size.");
-      if (!form.direct_check_max.trim()) return fail("Please enter a maximum direct startup check size.");
-      if (!form.referral_1_name.trim() || !form.referral_1_contact.trim()) return fail("Referral 1 name and contact are required.");
-      if (!form.referral_2_name.trim() || !form.referral_2_contact.trim()) return fail("Referral 2 name and contact are required.");
-      if (!form.referral_3_name.trim() || !form.referral_3_contact.trim()) return fail("Referral 3 name and contact are required.");
+      if (!form.direct_check_min.trim())
+        return fail("Please enter a minimum direct startup check size.");
+      if (!form.direct_check_max.trim())
+        return fail("Please enter a maximum direct startup check size.");
+      if (!form.referral_1_name.trim() || !form.referral_1_contact.trim())
+        return fail("Referral 1 name and contact are required.");
+      if (!form.referral_2_name.trim() || !form.referral_2_contact.trim())
+        return fail("Referral 2 name and contact are required.");
+      if (!form.referral_3_name.trim() || !form.referral_3_contact.trim())
+        return fail("Referral 3 name and contact are required.");
     }
 
     if (!isAdminView && form.member_role === "ecosystem_partner") {
-      if (!form.support_types.length) return fail("Please select at least one type of support you offer.");
-      if (!form.target_industries.length) return fail("Please select at least one target industry.");
-      if (!form.target_regions.length) return fail("Please select at least one target region.");
-      if (!form.referral_1_name.trim() || !form.referral_1_contact.trim()) return fail("Referral 1 name and contact are required.");
-      if (!form.referral_2_name.trim() || !form.referral_2_contact.trim()) return fail("Referral 2 name and contact are required.");
-      if (!form.referral_3_name.trim() || !form.referral_3_contact.trim()) return fail("Referral 3 name and contact are required.");
+      if (!form.support_types.length)
+        return fail("Please select at least one type of support you offer.");
+      if (!form.target_industries.length)
+        return fail("Please select at least one target industry.");
+      if (!form.target_regions.length)
+        return fail("Please select at least one target region.");
+      if (!form.referral_1_name.trim() || !form.referral_1_contact.trim())
+        return fail("Referral 1 name and contact are required.");
+      if (!form.referral_2_name.trim() || !form.referral_2_contact.trim())
+        return fail("Referral 2 name and contact are required.");
+      if (!form.referral_3_name.trim() || !form.referral_3_contact.trim())
+        return fail("Referral 3 name and contact are required.");
     }
 
     if (!form.pdpa_matching_consent)
@@ -1070,19 +1329,21 @@ export default function OnboardingForm() {
         form.member_role === "investor"
           ? ["Deal flow / Investment opportunities"]
           : form.member_role === "startup"
-          ? ["Funding / Investment capital"]
-          : form.member_role === "ecosystem_partner"
-          ? ["Startups to support / mentor"]
-          : ["General networking"];
+            ? ["Funding / Investment capital"]
+            : form.member_role === "ecosystem_partner"
+              ? ["Startups to support / mentor"]
+              : ["General networking"];
 
       const offer_categories =
         form.member_role === "investor"
           ? ["Capital / Funding"]
           : form.member_role === "startup"
-          ? ["Technology / Product"]
-          : form.member_role === "ecosystem_partner"
-          ? form.support_types.length ? form.support_types : ["Ecosystem support"]
-          : ["Industry expertise"];
+            ? ["Technology / Product"]
+            : form.member_role === "ecosystem_partner"
+              ? form.support_types.length
+                ? form.support_types
+                : ["Ecosystem support"]
+              : ["Industry expertise"];
 
       // Startup extended fields are collected in the dedicated "startup" step
       const extendedPayload =
@@ -1102,25 +1363,43 @@ export default function OnboardingForm() {
               anp_affiliated: form.anp_affiliated,
               demo_day_judge: form.demo_day_judge,
               referrals: [
-                { name: form.referral_1_name, contact: form.referral_1_contact },
-                { name: form.referral_2_name, contact: form.referral_2_contact },
-                { name: form.referral_3_name, contact: form.referral_3_contact },
+                {
+                  name: form.referral_1_name,
+                  contact: form.referral_1_contact,
+                },
+                {
+                  name: form.referral_2_name,
+                  contact: form.referral_2_contact,
+                },
+                {
+                  name: form.referral_3_name,
+                  contact: form.referral_3_contact,
+                },
               ],
             }
           : form.member_role === "ecosystem_partner"
-          ? {
-              _v: 2,
-              support_types: form.support_types,
-              target_industries: form.target_industries,
-              target_regions: form.target_regions,
-              target_stages: form.target_stages,
-              referrals: [
-                { name: form.referral_1_name, contact: form.referral_1_contact },
-                { name: form.referral_2_name, contact: form.referral_2_contact },
-                { name: form.referral_3_name, contact: form.referral_3_contact },
-              ],
-            }
-          : null;
+            ? {
+                _v: 2,
+                support_types: form.support_types,
+                target_industries: form.target_industries,
+                target_regions: form.target_regions,
+                target_stages: form.target_stages,
+                referrals: [
+                  {
+                    name: form.referral_1_name,
+                    contact: form.referral_1_contact,
+                  },
+                  {
+                    name: form.referral_2_name,
+                    contact: form.referral_2_contact,
+                  },
+                  {
+                    name: form.referral_3_name,
+                    contact: form.referral_3_contact,
+                  },
+                ],
+              }
+            : null;
 
       const payload = {
         full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
@@ -1139,7 +1418,9 @@ export default function OnboardingForm() {
         annual_revenue_estimate: form.annual_revenue_estimate,
         ask_categories,
         offer_categories,
-        asks_summary: extendedPayload ? JSON.stringify(extendedPayload) : undefined,
+        asks_summary: extendedPayload
+          ? JSON.stringify(extendedPayload)
+          : undefined,
         offers_summary: form.offers_summary.trim() || undefined,
         pdpa_matching_consent: form.pdpa_matching_consent,
         additional_notes: form.additional_notes.trim() || undefined,
@@ -1182,14 +1463,22 @@ export default function OnboardingForm() {
       return undefined as never;
     }
 
-    if (!form.target_regions.length) return failStartup("Please select at least one target region.");
-    if (!form.target_industries.length) return failStartup("Please select at least one target industry.");
-    if (!form.fundraising_stage) return failStartup("Please select your current fundraising stage.");
-    if (!form.product_stage) return failStartup("Please select your product stage.");
-    if (!form.total_cofounders.trim()) return failStartup("Please enter the number of co-founders.");
-    if (!form.target_raise_min.trim()) return failStartup("Please enter a minimum target raise amount.");
-    if (!form.target_raise_max.trim()) return failStartup("Please enter a maximum target raise amount.");
-    if (!skipProject && !projectForm.name.trim()) return failStartup("Project name is required.");
+    if (!form.target_regions.length)
+      return failStartup("Please select at least one target region.");
+    if (!form.target_industries.length)
+      return failStartup("Please select at least one target industry.");
+    if (!form.fundraising_stage)
+      return failStartup("Please select your current fundraising stage.");
+    if (!form.product_stage)
+      return failStartup("Please select your product stage.");
+    if (!form.total_cofounders.trim())
+      return failStartup("Please enter the number of co-founders.");
+    if (!form.target_raise_min.trim())
+      return failStartup("Please enter a minimum target raise amount.");
+    if (!form.target_raise_max.trim())
+      return failStartup("Please enter a maximum target raise amount.");
+    if (!skipProject && !projectForm.name.trim())
+      return failStartup("Project name is required.");
 
     try {
       const startupExtended = {
@@ -1252,7 +1541,7 @@ export default function OnboardingForm() {
         }
       }
 
-      router.push("/dashboard");
+      router.push("/projects/new");
     } catch (err) {
       setStartupError(err instanceof Error ? err.message : "Save failed.");
       setStartupLoading(false);
@@ -1287,26 +1576,34 @@ export default function OnboardingForm() {
       if (!res.ok) throw new Error(data?.error || "Failed to accept invite.");
       router.push("/dashboard");
     } catch (err) {
-      setInviteError(err instanceof Error ? err.message : "Failed to accept invite.");
+      setInviteError(
+        err instanceof Error ? err.message : "Failed to accept invite.",
+      );
       setInviteLoading(false);
     }
   };
 
-  const ROLE_META: Record<"investor" | "startup" | "ecosystem_partner", { label: string; description: string; detail: string }> = {
+  const ROLE_META: Record<
+    "investor" | "startup" | "ecosystem_partner",
+    { label: string; description: string; detail: string }
+  > = {
     investor: {
       label: "Investor",
       description: "I deploy capital and seek deal flow",
-      detail: "You'll be asked to fill in your investment thesis, check sizes, target stages, and 3 referrals who can verify your role.",
+      detail:
+        "You'll be asked to fill in your investment thesis, check sizes, target stages, and 3 referrals who can verify your role.",
     },
     startup: {
       label: "Startup / Founder",
       description: "I'm building a company and raising capital",
-      detail: "You'll complete a fundraising profile including your stage, raise target, and product details — then add your first project.",
+      detail:
+        "You'll complete a fundraising profile including your stage, raise target, and product details — then add your first project.",
     },
     ecosystem_partner: {
       label: "Ecosystem Partner",
       description: "I support startups — not through capital, but expertise",
-      detail: "You'll describe the type of support you offer (mentorship, legal, technical, etc.) and 3 referrals who can verify your role.",
+      detail:
+        "You'll describe the type of support you offer (mentorship, legal, technical, etc.) and 3 referrals who can verify your role.",
     },
   };
 
@@ -1336,7 +1633,8 @@ export default function OnboardingForm() {
                 {ROLE_META[pendingRole].detail}
               </p>
               <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
-                Your role cannot be changed after confirmation. Make sure this is correct.
+                Your role cannot be changed after confirmation. Make sure this
+                is correct.
               </p>
               <div className="mt-6 flex gap-3">
                 <button
@@ -1367,7 +1665,9 @@ export default function OnboardingForm() {
                 What brings you to FOUNDERS ARENA?
               </h1>
               <p className="mt-3 text-sm text-[var(--color-body)]">
-                Choose the role that best describes you. This shapes how we match you and what information we collect — it can&apos;t be changed later.
+                Choose the role that best describes you. This shapes how we
+                match you and what information we collect — it can&apos;t be
+                changed later.
               </p>
               <div className="mt-8 flex flex-col gap-4">
                 <RoleCard
@@ -1377,7 +1677,15 @@ export default function OnboardingForm() {
                   title="Startup / Founder"
                   description="I'm building a company and raising capital"
                   icon={
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5"
+                    >
                       <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   }
@@ -1389,7 +1697,15 @@ export default function OnboardingForm() {
                   title="Investor"
                   description="I deploy capital and seek deal flow"
                   icon={
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5"
+                    >
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
                       <path d="M12 6v6l4 2" />
                     </svg>
@@ -1402,7 +1718,15 @@ export default function OnboardingForm() {
                   title="Ecosystem Partner"
                   description="I support startups — not through capital, but expertise"
                   icon={
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5"
+                    >
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                       <circle cx="9" cy="7" r="4" />
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -1418,7 +1742,6 @@ export default function OnboardingForm() {
     );
   }
 
-
   if (step === "startup") {
     return (
       <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
@@ -1426,253 +1749,28 @@ export default function OnboardingForm() {
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
             Step 2 of 2
           </div>
-          <h1 className="text-2xl font-700 text-[var(--color-ink)]">
-            {startupMode === "join" ? "Join a startup" : "Register your startup"}
-          </h1>
-          <p className="mt-2 text-sm text-[var(--color-body)]">
-            {startupMode === "join"
-              ? "Paste the invite link sent by your co-founder to connect your profile to their project."
-              : "Tell investors what you’re building and what you’re raising. Your first project slot is free."}
-          </p>
-
-          {/* Mode toggle */}
-          <div className="mt-6 flex rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-1">
-            <button
-              type="button"
-              onClick={() => { setStartupMode("create"); setInviteError(""); }}
-              className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-                startupMode === "create"
-                  ? "bg-[var(--color-primary)] text-white shadow-sm"
-                  : "text-[var(--color-muted)] hover:text-[var(--color-ink)]"
-              }`}
-            >
-              Start a new startup
-            </button>
-            <button
-              type="button"
-              onClick={() => { setStartupMode("join"); setStartupError(""); }}
-              className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-                startupMode === "join"
-                  ? "bg-[var(--color-primary)] text-white shadow-sm"
-                  : "text-[var(--color-muted)] hover:text-[var(--color-ink)]"
-              }`}
-            >
-              I was invited as a co-founder
-            </button>
-          </div>
-
-          {/* ── JOIN MODE ─────────────────────────────────────────────── */}
-          {startupMode === "join" && (
-            <div className="mt-6 space-y-5">
-              {inviteError && (
-                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{inviteError}</div>
-              )}
-              <div>
-                <label htmlFor="invite-link" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  Invite link <Req />
-                </label>
-                <input
-                  id="invite-link"
-                  type="text"
-                  className="gn-input mt-1"
-                  value={inviteLink}
-                  onChange={(e) => { setInviteLink(e.target.value); setInviteError(""); }}
-                  placeholder="https://…/accept-invite?token=…"
-                />
-                <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  Paste the full invite URL or just the token your co-founder shared with you.
-                </p>
-              </div>
+          <div className="mt-6 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-6 space-y-4">
+            <h1 className="text-2xl font-700 text-[var(--color-ink)]">
+              Founder profile saved
+            </h1>
+            <p className="text-sm text-[var(--color-body)]">
+              Next, register your startup/project profile. The Venture
+              Confidence Assessment belongs on the project record, not the
+              founder profile.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/projects/new" className="gn-btn-primary">
+                Register a project
+              </Link>
               <button
                 type="button"
                 onClick={handleInviteAccept}
-                disabled={inviteLoading}
-                className="gn-btn-primary disabled:opacity-50"
+                className="rounded-xl border border-[var(--color-hairline)] px-4 py-2 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-canvas)]"
               >
-                {inviteLoading ? "Accepting…" : "Accept invite & continue"}
+                I was invited as a co-founder
               </button>
             </div>
-          )}
-
-          {/* ── CREATE MODE ───────────────────────────────────────────── */}
-          {startupMode === "create" && (
-            <div className="mt-6 space-y-6">
-              {startupError && (
-                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{startupError}</div>
-              )}
-
-              {pdfStatus === "done" && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                  <p className="text-sm font-semibold text-amber-800">
-                    Auto-filled from your Venture Confidence Assessment report — please review all fields
-                  </p>
-                  <p className="mt-0.5 text-xs text-amber-700">
-                    Some values may have been extracted incorrectly. Double-check every field before saving.
-                  </p>
-                </div>
-              )}
-
-              {/* PDF quick-fill */}
-              <PdfUploadCard
-                file={pdfFile}
-                status={pdfStatus}
-                error={pdfError}
-                isDragging={isDraggingPdf}
-                onDragOver={(e) => { e.preventDefault(); setIsDraggingPdf(true); }}
-                onDragLeave={() => setIsDraggingPdf(false)}
-                onDrop={(e) => { e.preventDefault(); setIsDraggingPdf(false); const f = e.dataTransfer.files[0]; if (f) handlePdfFile(f); }}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfFile(f); }}
-                onParse={handlePdfParse}
-                onClear={clearPdf}
-              />
-
-              {/* Project basics */}
-              <div>
-                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  Project name <Req />
-                </label>
-                <input
-                  className="gn-input mt-1"
-                  value={projectForm.name}
-                  onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g. SmartSupply PH"
-                />
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-                  Description
-                </label>
-                <textarea
-                  className="gn-input mt-1 h-24"
-                  value={projectForm.description}
-                  onChange={(e) => setProjectForm((p) => ({ ...p, description: e.target.value }))}
-                  placeholder="Brief description of what the project does and the problem it solves."
-                />
-              </div>
-
-              {/* Section A */}
-              <SectionCard label="Section A — Fundraising Target">
-                <FieldRow>
-                  <Field label="Target Regions" req>
-                    <SearchableMultiSelect
-                      options={REGIONS}
-                      value={form.target_regions}
-                      onChange={(v) => setArr("target_regions", v)}
-                      placeholder="Search regions…"
-                    />
-                  </Field>
-
-                  <Field label="Primary &amp; Secondary Industries" req>
-                    <SearchableMultiSelect
-                      options={INDUSTRIES}
-                      value={form.target_industries}
-                      onChange={(v) => setArr("target_industries", v)}
-                      placeholder="Search industries…"
-                      allowSelectAll
-                    />
-                  </Field>
-                </FieldRow>
-
-                <Field label="Current Fundraising Stage" req>
-                  <div className="flex flex-wrap gap-2">
-                    {STAGES.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => set("fundraising_stage", form.fundraising_stage === s ? "" : s)}
-                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                          form.fundraising_stage === s
-                            ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                            : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-
-                <Field label="Product Stage" req>
-                  <PillToggle
-                    options={PRODUCT_STAGES}
-                    value={form.product_stage ? [form.product_stage] : []}
-                    onChange={(v) => set("product_stage", v[v.length - 1] ?? "")}
-                    singleSelect
-                  />
-                </Field>
-
-                <FieldRow>
-                  <Field label="Total Co-founders" req>
-                    <input
-                      type="number"
-                      min={1}
-                      className="gn-input"
-                      placeholder="e.g. 2"
-                      value={form.total_cofounders}
-                      onChange={(e) => set("total_cofounders", e.target.value)}
-                    />
-                    <p className="mt-1 text-xs text-[var(--color-muted)]">
-                      Minimum 2 required for Demo Day tracking.
-                    </p>
-                  </Field>
-
-                  <Field label="Includes a Technical Founder">
-                    <YesNoToggle
-                      value={form.has_technical_founder as "" | "yes" | "no"}
-                      onChange={(v) => set("has_technical_founder", v)}
-                    />
-                  </Field>
-                </FieldRow>
-
-                <Field label="Pitch Deck Link">
-                  <input
-                    type="url"
-                    placeholder="https://drive.google.com/... or Notion, Docsend, etc."
-                    value={form.pitch_deck_url}
-                    onChange={(e) => set("pitch_deck_url", e.target.value)}
-                    className="gn-input"
-                  />
-                  <p className="mt-1 text-xs text-[var(--color-muted)]">
-                    Paste a shareable link (Google Drive, Docsend, Notion, etc.). Max 10 slides.
-                  </p>
-                </Field>
-              </SectionCard>
-
-              {/* Section B */}
-              <SectionCard
-                label="Section B — Financials"
-                description="Approximate raise target in USD. Used for matching precision only."
-              >
-                <CheckSizePair
-                  label="Target Raise Amount"
-                  minValue={form.target_raise_min}
-                  maxValue={form.target_raise_max}
-                  onMinChange={(v) => set("target_raise_min", v)}
-                  onMaxChange={(v) => set("target_raise_max", v)}
-                  req
-                />
-              </SectionCard>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleStartupSubmit(false)}
-                  disabled={startupLoading}
-                  className="gn-btn-primary disabled:opacity-50"
-                >
-                  {startupLoading ? "Saving…" : "Complete registration"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStartupSubmit(true)}
-                  className="text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)] underline"
-                >
-                  Skip project for now
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     );
@@ -1682,7 +1780,8 @@ export default function OnboardingForm() {
     (i) => i.includes("Funds") || i.includes("Fund Manager"),
   );
   const showAnpBadge =
-    form.investor_type === "Angel Networks" || form.entity_class.includes("Angel");
+    form.investor_type === "Angel Networks" ||
+    form.entity_class.includes("Angel");
 
   return (
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
@@ -1692,93 +1791,186 @@ export default function OnboardingForm() {
             Step 1 of 2
           </div>
         )}
-        <h1 className="text-2xl font-700 text-[var(--color-ink)]">Complete your profile</h1>
+        <h1 className="text-2xl font-700 text-[var(--color-ink)]">
+          Complete your profile
+        </h1>
         <p className="mt-2 text-sm text-[var(--color-body)]">
-          Provide the key details we use to generate curated strategic matches for you.
+          Provide the key details we use to generate curated strategic matches
+          for you.
         </p>
 
         {error && (
-          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
         )}
         {success && (
-          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</div>
+          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+            {success}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-
           {/* Basic profile fields */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="first_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="first_name"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 First name <Req />
               </label>
-              <input id="first_name" className="gn-input mt-1" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} required />
+              <input
+                id="first_name"
+                className="gn-input mt-1"
+                value={form.first_name}
+                onChange={(e) => set("first_name", e.target.value)}
+                required
+              />
             </div>
             <div>
-              <label htmlFor="last_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="last_name"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 Last name <Req />
               </label>
-              <input id="last_name" className="gn-input mt-1" value={form.last_name} onChange={(e) => set("last_name", e.target.value)} required />
+              <input
+                id="last_name"
+                className="gn-input mt-1"
+                value={form.last_name}
+                onChange={(e) => set("last_name", e.target.value)}
+                required
+              />
             </div>
           </div>
 
           <div>
-            <label htmlFor="business_name" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+            <label
+              htmlFor="business_name"
+              className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+            >
               Business name <Req />
             </label>
-            <input id="business_name" className="gn-input mt-1" value={form.business_name} onChange={(e) => set("business_name", e.target.value)} />
+            <input
+              id="business_name"
+              className="gn-input mt-1"
+              value={form.business_name}
+              onChange={(e) => set("business_name", e.target.value)}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="how_heard_about" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="how_heard_about"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 How did you hear about FOUNDERS ARENA? <Req />
               </label>
-              <select id="how_heard_about" className="gn-input mt-1" value={form.how_heard_about} onChange={(e) => set("how_heard_about", e.target.value)}>
+              <select
+                id="how_heard_about"
+                className="gn-input mt-1"
+                value={form.how_heard_about}
+                onChange={(e) => set("how_heard_about", e.target.value)}
+              >
                 <option value="">Select one</option>
-                {hearAboutOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+                {hearAboutOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label htmlFor="referred_by" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="referred_by"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 If referred, who referred you?{" "}
                 {form.how_heard_about === "Referred by a member" && <Req />}
               </label>
-              <input id="referred_by" className="gn-input mt-1" value={form.referred_by} onChange={(e) => set("referred_by", e.target.value)} placeholder="Referral name — type none if none" />
-              <p className="mt-1 text-xs text-[var(--color-muted)]">Type <span className="font-medium">none</span> if you were not referred by anyone.</p>
+              <input
+                id="referred_by"
+                className="gn-input mt-1"
+                value={form.referred_by}
+                onChange={(e) => set("referred_by", e.target.value)}
+                placeholder="Referral name — type none if none"
+              />
+              <p className="mt-1 text-xs text-[var(--color-muted)]">
+                Type <span className="font-medium">none</span> if you were not
+                referred by anyone.
+              </p>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="phone_whatsapp" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="phone_whatsapp"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 Phone Number / WhatsApp <Req />
               </label>
-              <input id="phone_whatsapp" className="gn-input mt-1" value={form.phone_whatsapp} onChange={(e) => set("phone_whatsapp", e.target.value)} placeholder="+63…" />
+              <input
+                id="phone_whatsapp"
+                className="gn-input mt-1"
+                value={form.phone_whatsapp}
+                onChange={(e) => set("phone_whatsapp", e.target.value)}
+                placeholder="+63…"
+              />
             </div>
             <div>
-              <label htmlFor="years_in_operation" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="years_in_operation"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 Years in Operation <Req />
               </label>
-              <select id="years_in_operation" className="gn-input mt-1" value={form.years_in_operation} onChange={(e) => set("years_in_operation", e.target.value)}>
+              <select
+                id="years_in_operation"
+                className="gn-input mt-1"
+                value={form.years_in_operation}
+                onChange={(e) => set("years_in_operation", e.target.value)}
+              >
                 <option value="">Select one</option>
-                {yearsOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+                {yearsOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="role_title" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="role_title"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 Role / title <Req />
               </label>
-              <input id="role_title" className="gn-input mt-1" value={form.role_title} onChange={(e) => set("role_title", e.target.value)} />
+              <input
+                id="role_title"
+                className="gn-input mt-1"
+                value={form.role_title}
+                onChange={(e) => set("role_title", e.target.value)}
+              />
             </div>
             <div>
-              <label htmlFor="city" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="city"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 City <Req />
               </label>
-              <input id="city" className="gn-input mt-1" value={form.city} onChange={(e) => set("city", e.target.value)} />
+              <input
+                id="city"
+                className="gn-input mt-1"
+                value={form.city}
+                onChange={(e) => set("city", e.target.value)}
+              />
             </div>
           </div>
 
@@ -1788,12 +1980,18 @@ export default function OnboardingForm() {
             </p>
             {form.sector && (
               <p className="mt-1 text-xs text-[var(--color-muted)]">
-                Selected: <span className="font-600 text-[var(--color-primary)]">{form.sector}</span>
+                Selected:{" "}
+                <span className="font-600 text-[var(--color-primary)]">
+                  {form.sector}
+                </span>
               </p>
             )}
             <div className="mt-2 flex flex-wrap gap-2">
               {sectorOptions.map((s) => (
-                <button key={s} type="button" onClick={() => set("sector", form.sector === s ? "" : s)}
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => set("sector", form.sector === s ? "" : s)}
                   className={`rounded-full border px-3 py-1 text-xs font-500 transition-colors ${
                     form.sector === s
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
@@ -1807,14 +2005,25 @@ export default function OnboardingForm() {
           </div>
 
           <div>
-            <label htmlFor="short_bio" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+            <label
+              htmlFor="short_bio"
+              className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+            >
               Short bio (1–2 sentences) <Req />
             </label>
-            <textarea id="short_bio" className="gn-input mt-1 h-24" value={form.short_bio} onChange={(e) => set("short_bio", e.target.value)} />
+            <textarea
+              id="short_bio"
+              className="gn-input mt-1 h-24"
+              value={form.short_bio}
+              onChange={(e) => set("short_bio", e.target.value)}
+            />
           </div>
 
           <div>
-            <label htmlFor="linkedin_url" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+            <label
+              htmlFor="linkedin_url"
+              className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+            >
               LinkedIn Profile URL <Req />
             </label>
             <input
@@ -1829,21 +2038,45 @@ export default function OnboardingForm() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="employee_band" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="employee_band"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 Employee band <Req />
               </label>
-              <select id="employee_band" className="gn-input mt-1" value={form.employee_band} onChange={(e) => set("employee_band", e.target.value)}>
+              <select
+                id="employee_band"
+                className="gn-input mt-1"
+                value={form.employee_band}
+                onChange={(e) => set("employee_band", e.target.value)}
+              >
                 <option value="">Choose band</option>
-                {employeeBands.map((b) => <option key={b} value={b}>{b}</option>)}
+                {employeeBands.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label htmlFor="annual_revenue_estimate" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+              <label
+                htmlFor="annual_revenue_estimate"
+                className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+              >
                 Annual revenue (estimate) <Req />
               </label>
-              <select id="annual_revenue_estimate" className="gn-input mt-1" value={form.annual_revenue_estimate} onChange={(e) => set("annual_revenue_estimate", e.target.value)}>
+              <select
+                id="annual_revenue_estimate"
+                className="gn-input mt-1"
+                value={form.annual_revenue_estimate}
+                onChange={(e) => set("annual_revenue_estimate", e.target.value)}
+              >
                 <option value="">Choose range</option>
-                {revenueRanges.map((r) => <option key={r} value={r}>{r}</option>)}
+                {revenueRanges.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -1867,8 +2100,8 @@ export default function OnboardingForm() {
                       {form.member_role === "investor"
                         ? "Investor"
                         : form.member_role === "startup"
-                        ? "Startup / Founder"
-                        : "Ecosystem Partner"}
+                          ? "Startup / Founder"
+                          : "Ecosystem Partner"}
                     </span>
                     <span className="rounded-full bg-[var(--color-primary)]/10 px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">
                       Locked
@@ -1883,7 +2116,15 @@ export default function OnboardingForm() {
                       title="Investor"
                       description="I deploy capital and seek deal flow"
                       icon={
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.8}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-5 w-5"
+                        >
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
                           <path d="M12 6v6l4 2" />
                         </svg>
@@ -1896,7 +2137,15 @@ export default function OnboardingForm() {
                       title="Startup / Founder"
                       description="I'm building a company and raising capital"
                       icon={
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.8}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-5 w-5"
+                        >
                           <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       }
@@ -1908,7 +2157,15 @@ export default function OnboardingForm() {
                       title="Ecosystem Partner"
                       description="I support startups — not through capital, but expertise"
                       icon={
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.8}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-5 w-5"
+                        >
                           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                           <circle cx="9" cy="7" r="4" />
                           <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -1923,7 +2180,6 @@ export default function OnboardingForm() {
               {/* ─── Investor sections ─────────────────────────────────────── */}
               {form.member_role === "investor" && (
                 <div className="space-y-4">
-
                   <SectionCard label="Section A — Profile & Type">
                     <FieldRow>
                       <Field label="Type of Investor" req>
@@ -1934,7 +2190,11 @@ export default function OnboardingForm() {
                           onChange={(e) => set("investor_type", e.target.value)}
                         >
                           <option value="">Select type</option>
-                          {INVESTOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                          {INVESTOR_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
                         </select>
                       </Field>
 
@@ -1954,15 +2214,23 @@ export default function OnboardingForm() {
                         <input
                           type="checkbox"
                           checked={form.anp_affiliated}
-                          onChange={(e) => setForm((prev) => ({ ...prev, anp_affiliated: e.target.checked }))}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              anp_affiliated: e.target.checked,
+                            }))
+                          }
                           className="mt-0.5 h-4 w-4 accent-violet-600"
                         />
                         <div>
                           <p className="text-sm font-semibold text-violet-800">
-                            Associate profile with ANP – Bit Angels (Manila Chapter)
+                            Associate profile with ANP – Bit Angels (Manila
+                            Chapter)
                           </p>
                           <p className="mt-0.5 text-xs text-violet-600">
-                            Link your profile to the Angel Network Philippines Bit Angels chapter for shared deal flow and co-investment visibility.
+                            Link your profile to the Angel Network Philippines
+                            Bit Angels chapter for shared deal flow and
+                            co-investment visibility.
                           </p>
                         </div>
                       </label>
@@ -1978,7 +2246,9 @@ export default function OnboardingForm() {
 
                   <SectionCard label="Section B — Investment Focus">
                     <Field label="Investment Interests" req>
-                      <p className="mb-2 text-xs text-[var(--color-muted)]">Select all that apply.</p>
+                      <p className="mb-2 text-xs text-[var(--color-muted)]">
+                        Select all that apply.
+                      </p>
                       <PillToggle
                         options={INVESTMENT_INTERESTS}
                         value={form.investment_interests}
@@ -2041,18 +2311,32 @@ export default function OnboardingForm() {
                     />
                   </SectionCard>
 
-                  <SectionCard label="Section D — Referrals" description="Provide 3 people who can verify your role as an investor. All fields required.">
+                  <SectionCard
+                    label="Section D — Referrals"
+                    description="Provide 3 people who can verify your role as an investor. All fields required."
+                  >
                     {([1, 2, 3] as const).map((n) => (
-                      <div key={n} className="space-y-3 rounded-lg border border-[var(--color-hairline)] p-4">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted)]">Referral {n}</p>
+                      <div
+                        key={n}
+                        className="space-y-3 rounded-lg border border-[var(--color-hairline)] p-4"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                          Referral {n}
+                        </p>
                         <FieldRow>
                           <Field label="Full Name" req>
                             <input
                               type="text"
                               className="gn-input"
                               placeholder="e.g. Juan dela Cruz"
-                              value={form[`referral_${n}_name` as keyof typeof form] as string}
-                              onChange={(e) => set(`referral_${n}_name`, e.target.value)}
+                              value={
+                                form[
+                                  `referral_${n}_name` as keyof typeof form
+                                ] as string
+                              }
+                              onChange={(e) =>
+                                set(`referral_${n}_name`, e.target.value)
+                              }
                             />
                           </Field>
                           <Field label="Email / LinkedIn / Phone" req>
@@ -2060,15 +2344,20 @@ export default function OnboardingForm() {
                               type="text"
                               className="gn-input"
                               placeholder="email, linkedin.com/in/... or +63..."
-                              value={form[`referral_${n}_contact` as keyof typeof form] as string}
-                              onChange={(e) => set(`referral_${n}_contact`, e.target.value)}
+                              value={
+                                form[
+                                  `referral_${n}_contact` as keyof typeof form
+                                ] as string
+                              }
+                              onChange={(e) =>
+                                set(`referral_${n}_contact`, e.target.value)
+                              }
                             />
                           </Field>
                         </FieldRow>
                       </div>
                     ))}
                   </SectionCard>
-
                 </div>
               )}
 
@@ -2077,7 +2366,9 @@ export default function OnboardingForm() {
                 <div className="space-y-4">
                   <SectionCard label="Section A — Support Profile">
                     <Field label="Type of Support You Offer" req>
-                      <p className="mb-2 text-xs text-[var(--color-muted)]">Select all that apply.</p>
+                      <p className="mb-2 text-xs text-[var(--color-muted)]">
+                        Select all that apply.
+                      </p>
                       <PillToggle
                         options={SUPPORT_TYPES}
                         value={form.support_types}
@@ -2133,18 +2424,32 @@ export default function OnboardingForm() {
                     </Field>
                   </SectionCard>
 
-                  <SectionCard label="Section B — Referrals" description="Provide 3 people who can verify your role as an ecosystem partner. All fields required.">
+                  <SectionCard
+                    label="Section B — Referrals"
+                    description="Provide 3 people who can verify your role as an ecosystem partner. All fields required."
+                  >
                     {([1, 2, 3] as const).map((n) => (
-                      <div key={n} className="space-y-3 rounded-lg border border-[var(--color-hairline)] p-4">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted)]">Referral {n}</p>
+                      <div
+                        key={n}
+                        className="space-y-3 rounded-lg border border-[var(--color-hairline)] p-4"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                          Referral {n}
+                        </p>
                         <FieldRow>
                           <Field label="Full Name" req>
                             <input
                               type="text"
                               className="gn-input"
                               placeholder="e.g. Juan dela Cruz"
-                              value={form[`referral_${n}_name` as keyof typeof form] as string}
-                              onChange={(e) => set(`referral_${n}_name`, e.target.value)}
+                              value={
+                                form[
+                                  `referral_${n}_name` as keyof typeof form
+                                ] as string
+                              }
+                              onChange={(e) =>
+                                set(`referral_${n}_name`, e.target.value)
+                              }
                             />
                           </Field>
                           <Field label="Email / LinkedIn / Phone" req>
@@ -2152,8 +2457,14 @@ export default function OnboardingForm() {
                               type="text"
                               className="gn-input"
                               placeholder="email, linkedin.com/in/... or +63..."
-                              value={form[`referral_${n}_contact` as keyof typeof form] as string}
-                              onChange={(e) => set(`referral_${n}_contact`, e.target.value)}
+                              value={
+                                form[
+                                  `referral_${n}_contact` as keyof typeof form
+                                ] as string
+                              }
+                              onChange={(e) =>
+                                set(`referral_${n}_contact`, e.target.value)
+                              }
                             />
                           </Field>
                         </FieldRow>
@@ -2177,18 +2488,27 @@ export default function OnboardingForm() {
               <input
                 type="checkbox"
                 checked={form.pdpa_matching_consent}
-                onChange={(e) => setForm((prev) => ({ ...prev, pdpa_matching_consent: e.target.checked }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    pdpa_matching_consent: e.target.checked,
+                  }))
+                }
                 className="mt-1"
               />
               <span>
-                I agree to have my professional data used for the purpose of business matching in
-                compliance with the Data Privacy Act of the Philippines (PDPA).
+                I agree to have my professional data used for the purpose of
+                business matching in compliance with the Data Privacy Act of the
+                Philippines (PDPA).
               </span>
             </label>
           </div>
 
           <div>
-            <label htmlFor="additional_notes" className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
+            <label
+              htmlFor="additional_notes"
+              className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+            >
               Anything else you&apos;d like us to know?
             </label>
             <textarea
@@ -2205,7 +2525,6 @@ export default function OnboardingForm() {
               {loading ? "Saving…" : "Save and continue"}
             </button>
           </div>
-
         </form>
       </div>
     </div>

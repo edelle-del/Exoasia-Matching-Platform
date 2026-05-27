@@ -25,7 +25,11 @@ type CofounderLink = {
   id: string;
   cofounder_profile_id: string;
   created_at: string;
-  profile: { full_name: string | null; business_name: string | null; email: string | null } | null;
+  profile: {
+    full_name: string | null;
+    business_name: string | null;
+    email: string | null;
+  } | null;
 };
 
 // ─── Matching profile renderer ────────────────────────────────────────────────
@@ -61,11 +65,15 @@ type V2EcosystemPartner = {
   target_stages?: string[];
 };
 
-function parseV2(raw: string | null | undefined): V2Investor | V2Startup | null {
+function parseV2(
+  raw: string | null | undefined,
+): V2Investor | V2Startup | null {
   try {
     const parsed = JSON.parse(raw ?? "");
     if (parsed?._v === 2) return parsed;
-  } catch { /* legacy */ }
+  } catch {
+    /* legacy */
+  }
   return null;
 }
 
@@ -77,7 +85,13 @@ function ProfileTag({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProfileRow({ label, children }: { label: string; children: React.ReactNode }) {
+function ProfileRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
@@ -92,7 +106,9 @@ function TagList({ items }: { items: string[] }) {
   if (!items.length) return <p className="text-sm text-(--color-muted)">—</p>;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {items.map((item) => <ProfileTag key={item}>{item}</ProfileTag>)}
+      {items.map((item) => (
+        <ProfileTag key={item}>{item}</ProfileTag>
+      ))}
     </div>
   );
 }
@@ -179,7 +195,11 @@ function StartupMatchingProfile({ data }: { data: V2Startup }) {
   );
 }
 
-function EcosystemPartnerMatchingProfile({ data }: { data: V2EcosystemPartner }) {
+function EcosystemPartnerMatchingProfile({
+  data,
+}: {
+  data: V2EcosystemPartner;
+}) {
   return (
     <div className="space-y-5">
       {!!data.support_types?.length && (
@@ -212,7 +232,9 @@ export default function ProfilePage() {
   const [invites, setInvites] = useState<CofounderInvite[]>([]);
   const [cofounders, setCofounders] = useState<CofounderLink[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [inviteUidType, setInviteUidType] = useState<"email" | "phone">("email");
+  const [inviteUidType, setInviteUidType] = useState<"email" | "phone">(
+    "email",
+  );
   const [inviteUidValue, setInviteUidValue] = useState("");
   const [inviteProjectId, setInviteProjectId] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -228,8 +250,14 @@ export default function ProfilePage() {
   const reportInputRef = useRef<HTMLInputElement>(null);
 
   const handleReportFile = (file: File) => {
-    if (file.type !== "application/pdf") { setReportError("Please upload a PDF file."); return; }
-    if (file.size > 10 * 1024 * 1024) { setReportError("File must be under 10 MB."); return; }
+    if (file.type !== "application/pdf") {
+      setReportError("Please upload a PDF file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setReportError("File must be under 10 MB.");
+      return;
+    }
     setReportFile(file);
     setReportError("");
     setReportSuccess(false);
@@ -243,7 +271,10 @@ export default function ProfilePage() {
     try {
       const form = new FormData();
       form.append("file", reportFile);
-      const res = await fetch("/api/venture-readiness/parse", { method: "POST", body: form });
+      const res = await fetch("/api/venture-readiness/parse", {
+        method: "POST",
+        body: form,
+      });
       const json = await res.json();
       if (!res.ok) {
         setReportError(json?.error ?? "Upload failed. Please try again.");
@@ -251,7 +282,9 @@ export default function ProfilePage() {
       }
       const primaryProject = projects[0];
       if (!primaryProject) {
-        setReportError("Create a project first so the report can be attached to it.");
+        setReportError(
+          "Create a project first so the report can be attached to it.",
+        );
         return;
       }
 
@@ -272,7 +305,6 @@ export default function ProfilePage() {
       setReportUploading(false);
     }
   };
-
 
   const loadProfile = useCallback(async () => {
     if (!user?.id) return;
@@ -299,16 +331,20 @@ export default function ProfilePage() {
     const res = await fetch("/api/projects");
     if (res.ok) {
       const data = await res.json();
-      setProjects((data.projects ?? []).map((p: any) => ({ id: p.id, name: p.name })));
+      setProjects(
+        (data.projects ?? []).map((p: any) => ({ id: p.id, name: p.name })),
+      );
     }
   }, [user?.id]);
 
   const copyInviteLink = (token: string) => {
     const siteUrl = window.location.origin;
-    navigator.clipboard.writeText(`${siteUrl}/accept-invite?token=${token}`).then(() => {
-      setCopiedToken(token);
-      setTimeout(() => setCopiedToken(null), 2000);
-    });
+    navigator.clipboard
+      .writeText(`${siteUrl}/accept-invite?token=${token}`)
+      .then(() => {
+        setCopiedToken(token);
+        setTimeout(() => setCopiedToken(null), 2000);
+      });
   };
 
   const handleInviteCofounder = async (e: React.FormEvent) => {
@@ -391,18 +427,22 @@ export default function ProfilePage() {
               >
                 ← Back to dashboard
               </Link>
-              <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">Profile</h1>
+              <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
+                Profile
+              </h1>
               <p className="mt-2 text-sm text-(--color-body)">
                 {profile?.full_name || "Member profile"} · Stage{" "}
                 {profile?.stage || "0"}
               </p>
               {profile?.business_name && (
-                <p className="mt-1 text-sm text-(--color-muted)">{profile.business_name}</p>
+                <p className="mt-1 text-sm text-(--color-muted)">
+                  {profile.business_name}
+                </p>
               )}
             </div>
             <Link
               href="/account-settings"
-              className="mt-1 shrink-0 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+              className="mt-1 shrink-0 whitespace-nowrap rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
             >
               Account Settings
             </Link>
@@ -432,6 +472,36 @@ export default function ProfilePage() {
           const roleLabel =
             profile?.member_role === "investor"
               ? "Investor"
+              : profile?.member_role === "startup"
+                ? "Startup"
+                : profile?.member_role === "ecosystem_partner"
+                  ? "Ecosystem Partner"
+                  : "Member";
+
+          if (!v2) return null;
+
+          return (
+            <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+                Structured matching profile
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">
+                {roleLabel} matching preferences
+              </h2>
+              <div className="mt-4">
+                {profile?.member_role === "investor" && (
+                  <InvestorMatchingProfile data={v2 as V2Investor} />
+                )}
+                {profile?.member_role === "startup" && (
+                  <StartupMatchingProfile data={v2 as V2Startup} />
+                )}
+                {profile?.member_role === "ecosystem_partner" && (
+                  <p className="text-sm text-(--color-muted)">
+                    No structured matching profile is available yet.
+                  </p>
+                )}
+              </div>
+            </section>
           );
         })()}
 
@@ -439,171 +509,234 @@ export default function ProfilePage() {
           <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Venture Confidence Assessment</p>
-                <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">Project-centered startup setup</h2>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+                  Venture Confidence Assessment
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">
+                  Project-centered startup setup
+                </h2>
                 <p className="mt-1 text-sm text-(--color-body)">
-                  Create your startup/project profile first. The Venture Confidence Assessment belongs on the project record, so the report stays tied to the actual venture entity.
+                  Create your startup/project profile first. The Venture
+                  Confidence Assessment belongs on the project record, so the
+                  report stays tied to the actual venture entity.
                 </p>
               </div>
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/projects/new" className="gn-btn-primary">
+              <Link
+                href="/projects/new"
+                className="gn-btn-primary whitespace-nowrap"
+              >
                 Register a project
               </Link>
-              <Link href="/projects" className="rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors">
+              <Link
+                href="/projects"
+                className="inline-flex h-[46px] items-center justify-center whitespace-nowrap rounded-xl border border-(--color-hairline) px-4 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+              >
                 View projects
               </Link>
             </div>
             <p className="mt-4 text-xs text-(--color-muted)">
-              Reports are AI-generated by ExoAsia Intelligence and are not investment endorsements.
+              Reports are AI-generated by ExoAsia Intelligence and are not
+              investment endorsements.
             </p>
           </section>
         )}
 
-        {profile?.member_role === "startup" && <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
-          <h2 className="text-lg font-semibold text-(--color-ink)">My Team / Cofounders</h2>
-          <p className="mt-1 text-sm text-(--color-body)">
-            Invite cofounders by email or phone number. They&apos;ll receive a link to join your team.
-          </p>
+        {profile?.member_role === "startup" && (
+          <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
+            <h2 className="text-lg font-semibold text-(--color-ink)">
+              My Team / Cofounders
+            </h2>
+            <p className="mt-1 text-sm text-(--color-body)">
+              Invite cofounders by email or phone number. They&apos;ll receive a
+              link to join your team.
+            </p>
 
-          {cofounders.length > 0 && (
-            <div className="mt-4 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">Linked Cofounders</p>
-              {cofounders.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-xl border border-(--color-hairline) px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-(--color-ink)">
-                      {c.profile?.full_name || c.profile?.email || "Team member"}
-                    </p>
-                    {c.profile?.business_name && (
-                      <p className="text-xs text-(--color-muted)">{c.profile.business_name}</p>
-                    )}
-                  </div>
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    Active
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {invites.filter((i) => i.status === "pending").length > 0 && (
-            <div className="mt-4 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">Pending Invites</p>
-              {invites.filter((i) => i.status === "pending").map((inv) => (
-                <div key={inv.id} className="rounded-xl border border-(--color-hairline) px-4 py-3">
-                  <div className="flex items-center justify-between">
+            {cofounders.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
+                  Linked Cofounders
+                </p>
+                {cofounders.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between rounded-xl border border-(--color-hairline) px-4 py-3"
+                  >
                     <div>
-                      <p className="text-sm font-medium text-(--color-ink)">{inv.uid_value}</p>
-                      <p className="text-xs text-(--color-muted)">
-                        via {inv.uid_type} · expires {new Date(inv.expires_at).toLocaleDateString()}
-                        {inv.project_id && projects.find((p) => p.id === inv.project_id) && (
-                          <> · {projects.find((p) => p.id === inv.project_id)!.name}</>
-                        )}
+                      <p className="text-sm font-medium text-(--color-ink)">
+                        {c.profile?.full_name ||
+                          c.profile?.email ||
+                          "Team member"}
                       </p>
+                      {c.profile?.business_name && (
+                        <p className="text-xs text-(--color-muted)">
+                          {c.profile.business_name}
+                        </p>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCancelInvite(inv.id)}
-                      className="text-xs text-red-500 hover:underline"
-                    >
-                      Cancel
-                    </button>
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      Active
+                    </span>
                   </div>
-                  {inv.uid_type === "email" && (
-                    <button
-                      type="button"
-                      onClick={() => copyInviteLink(inv.token)}
-                      className="mt-2 text-xs text-(--color-primary) hover:underline"
-                    >
-                      {copiedToken === inv.token ? "Copied!" : "Copy invite link"}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <form onSubmit={handleInviteCofounder} className="mt-5 space-y-3">
-            <p className="text-sm font-semibold text-(--color-ink)">Invite a cofounder</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setInviteUidType("email")}
-                className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
-                  inviteUidType === "email"
-                    ? "border-(--color-primary) bg-(--color-primary) text-white"
-                    : "border-(--color-hairline) text-(--color-body) hover:border-(--color-primary) hover:text-(--color-primary)"
-                }`}
-              >
-                Email
-              </button>
-              <button
-                type="button"
-                onClick={() => setInviteUidType("phone")}
-                className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
-                  inviteUidType === "phone"
-                    ? "border-(--color-primary) bg-(--color-primary) text-white"
-                    : "border-(--color-hairline) text-(--color-body) hover:border-(--color-primary) hover:text-(--color-primary)"
-                }`}
-              >
-                Phone
-              </button>
-            </div>
-            {projects.length > 0 && (
-              <select
-                aria-label="Select project for invite"
-                className="gn-input w-full"
-                value={inviteProjectId}
-                onChange={(e) => setInviteProjectId(e.target.value)}
-              >
-                <option value="">Select project (optional)</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
-              </select>
+              </div>
             )}
-            <div className="flex gap-2">
-              <input
-                type={inviteUidType === "email" ? "email" : "tel"}
-                className="gn-input flex-1"
-                value={inviteUidValue}
-                onChange={(e) => { setInviteUidValue(e.target.value); setInviteError(""); }}
-                placeholder={inviteUidType === "email" ? "cofounder@email.com" : "+63 912 345 6789"}
-              />
-              <button
-                type="submit"
-                disabled={inviteLoading}
-                className="gn-btn-primary whitespace-nowrap disabled:opacity-50"
-              >
-                {inviteLoading ? "Sending..." : "Send invite"}
-              </button>
-            </div>
-            {inviteUidType === "email" && (
-              <p className="text-xs text-(--color-muted)">
-                An invite email will be sent. You can also copy the link from the pending invites list to share manually.
+
+            {invites.filter((i) => i.status === "pending").length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
+                  Pending Invites
+                </p>
+                {invites
+                  .filter((i) => i.status === "pending")
+                  .map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="rounded-xl border border-(--color-hairline) px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-(--color-ink)">
+                            {inv.uid_value}
+                          </p>
+                          <p className="text-xs text-(--color-muted)">
+                            via {inv.uid_type} · expires{" "}
+                            {new Date(inv.expires_at).toLocaleDateString()}
+                            {inv.project_id &&
+                              projects.find((p) => p.id === inv.project_id) && (
+                                <>
+                                  {" "}
+                                  ·{" "}
+                                  {
+                                    projects.find(
+                                      (p) => p.id === inv.project_id,
+                                    )!.name
+                                  }
+                                </>
+                              )}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelInvite(inv.id)}
+                          className="whitespace-nowrap text-xs text-red-500 hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      {inv.uid_type === "email" && (
+                        <button
+                          type="button"
+                          onClick={() => copyInviteLink(inv.token)}
+                          className="mt-2 whitespace-nowrap text-xs text-(--color-primary) hover:underline"
+                        >
+                          {copiedToken === inv.token
+                            ? "Copied!"
+                            : "Copy invite link"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            <form onSubmit={handleInviteCofounder} className="mt-5 space-y-3">
+              <p className="text-sm font-semibold text-(--color-ink)">
+                Invite a cofounder
               </p>
-            )}
-            {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
-            {inviteSuccess && <p className="text-xs text-green-600">{inviteSuccess}</p>}
-          </form>
-        </section>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInviteUidType("email")}
+                  className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
+                    inviteUidType === "email"
+                      ? "border-(--color-primary) bg-(--color-primary) text-white"
+                      : "border-(--color-hairline) text-(--color-body) hover:border-(--color-primary) hover:text-(--color-primary)"
+                  }`}
+                >
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInviteUidType("phone")}
+                  className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
+                    inviteUidType === "phone"
+                      ? "border-(--color-primary) bg-(--color-primary) text-white"
+                      : "border-(--color-hairline) text-(--color-body) hover:border-(--color-primary) hover:text-(--color-primary)"
+                  }`}
+                >
+                  Phone
+                </button>
+              </div>
+              {projects.length > 0 && (
+                <select
+                  aria-label="Select project for invite"
+                  className="gn-input w-full"
+                  value={inviteProjectId}
+                  onChange={(e) => setInviteProjectId(e.target.value)}
+                >
+                  <option value="">Select project (optional)</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type={inviteUidType === "email" ? "email" : "tel"}
+                  className="gn-input flex-1"
+                  value={inviteUidValue}
+                  onChange={(e) => {
+                    setInviteUidValue(e.target.value);
+                    setInviteError("");
+                  }}
+                  placeholder={
+                    inviteUidType === "email"
+                      ? "cofounder@email.com"
+                      : "+63 912 345 6789"
+                  }
+                />
+                <button
+                  type="submit"
+                  disabled={inviteLoading}
+                  className="gn-btn-primary whitespace-nowrap disabled:opacity-50"
+                >
+                  {inviteLoading ? "Sending..." : "Send invite"}
+                </button>
+              </div>
+              {inviteUidType === "email" && (
+                <p className="text-xs text-(--color-muted)">
+                  An invite email will be sent. You can also copy the link from
+                  the pending invites list to share manually.
+                </p>
+              )}
+              {inviteError && (
+                <p className="text-xs text-red-600">{inviteError}</p>
+              )}
+              {inviteSuccess && (
+                <p className="text-xs text-green-600">{inviteSuccess}</p>
+              )}
+            </form>
+          </section>
+        )}
 
         <section className="flex items-center justify-between gap-4">
           <Link
             href="/onboarding"
-            className="text-sm text-(--color-primary) hover:underline"
+            className="whitespace-nowrap text-sm text-(--color-primary) hover:underline"
           >
             Update your profile →
           </Link>
           <Link
             href="/payments"
-            className="inline-flex items-center rounded-[10px] bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white hover:bg-(--color-primary-active)"
+            className="inline-flex items-center whitespace-nowrap rounded-[10px] bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white hover:bg-(--color-primary-active)"
           >
             Purchase credits
           </Link>
         </section>
-
       </div>
     </div>
   );

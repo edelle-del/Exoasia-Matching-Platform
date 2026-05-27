@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { Star, Handshake, CheckCircle2, Bell, ArrowRight, LucideIcon } from "lucide-react";
+import { Star, Handshake, CheckCircle2, Bell, LucideIcon } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -31,10 +31,17 @@ type HeroSectionProps = {
   nextStep?: string;
 };
 
-export function HeroSection({ name, stage, verificationStatus, nextStep }: HeroSectionProps) {
+export function HeroSection({
+  name,
+  stage,
+  verificationStatus,
+  nextStep,
+}: HeroSectionProps) {
   const greeting = getGreeting();
   const isVerified = verificationStatus === "verified";
-  const badgeLabel = isVerified ? "Verified Founder" : `Stage ${stage ?? "0"} Member`;
+  const badgeLabel = isVerified
+    ? "Verified Founder"
+    : `Stage ${stage ?? "0"} Member`;
 
   return (
     <section className="flex flex-col gap-6 rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-8 sm:flex-row sm:items-center sm:justify-between">
@@ -42,7 +49,11 @@ export function HeroSection({ name, stage, verificationStatus, nextStep }: HeroS
       <div>
         <p className="text-sm font-medium text-[#8B8BA7]">{greeting}</p>
         <h1 className="mt-1 text-4xl font-bold tracking-tight text-[#F4F4FF]">
-          {name || "there"} 👋
+          {name || "there"}{" "}
+          <i
+            className="ri-hand-line text-3xl align-middle text-(--color-primary)"
+            aria-hidden="true"
+          />
         </h1>
         <div className="mt-3 flex items-center gap-2">
           <span
@@ -69,13 +80,18 @@ export function HeroSection({ name, stage, verificationStatus, nextStep }: HeroS
       {nextStep && (
         <div className="flex shrink-0 items-start gap-3 rounded-2xl bg-[#1A1A26] border border-[#2A2A3E] px-5 py-4 sm:max-w-xs">
           <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
-            <ArrowRight className="h-4 w-4 text-indigo-400" />
+            <i
+              className="ri-arrow-right-line text-sm text-indigo-400"
+              aria-hidden="true"
+            />
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-[#8B8BA7]">
               Next step
             </p>
-            <p className="mt-0.5 text-sm font-medium text-[#C4C4D4]">{nextStep}</p>
+            <p className="mt-0.5 text-sm font-medium text-[#C4C4D4]">
+              {nextStep}
+            </p>
           </div>
         </div>
       )}
@@ -88,14 +104,21 @@ export function HeroSection({ name, stage, verificationStatus, nextStep }: HeroS
 type MetricCardProps = {
   label: string;
   value: string;
-  accent: string;  // Tailwind text color class
+  accent: string; // Tailwind text color class
   sub?: string;
 };
 
-export function AirbnbMetricCard({ label, value, accent, sub }: MetricCardProps) {
+export function AirbnbMetricCard({
+  label,
+  value,
+  accent,
+  sub,
+}: MetricCardProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-1 rounded-3xl bg-[#12121A] border border-[#2A2A3E] py-8 text-center">
-      <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
+        {label}
+      </p>
       <p className={`text-5xl font-bold tabular-nums ${accent}`}>{value}</p>
       {sub && <p className="text-xs text-[#8B8BA7]">{sub}</p>}
     </div>
@@ -124,20 +147,24 @@ export function ProfileStrength({ percent, nextStep }: ProfileStrengthProps) {
         <svg width={140} height={140} className="-rotate-90">
           <defs>
             <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%"   stopColor="#FB7185" />
+              <stop offset="0%" stopColor="#FB7185" />
               <stop offset="100%" stopColor="#FB923C" />
             </linearGradient>
           </defs>
           {/* Track */}
           <circle
-            cx={70} cy={70} r={r}
+            cx={70}
+            cy={70}
+            r={r}
             fill="none"
             stroke="#2A2A3E"
             strokeWidth={12}
           />
           {/* Progress */}
           <circle
-            cx={70} cy={70} r={r}
+            cx={70}
+            cy={70}
+            r={r}
             fill="none"
             stroke="url(#ringGradient)"
             strokeWidth={12}
@@ -149,7 +176,9 @@ export function ProfileStrength({ percent, nextStep }: ProfileStrengthProps) {
         </svg>
         <div className="absolute flex flex-col items-center">
           <span className="text-3xl font-bold text-[#F4F4FF]">{percent}%</span>
-          <span className="text-[11px] font-medium text-[#8B8BA7]">complete</span>
+          <span className="text-[11px] font-medium text-[#8B8BA7]">
+            complete
+          </span>
         </div>
       </div>
 
@@ -181,18 +210,28 @@ export function PipelineSummaryCard({
   isLoading,
 }: PipelineSummaryCardProps) {
   const isInvestor = memberRole === "investor";
-  const fitColor = bestFit >= 80 ? "text-emerald-400" : bestFit >= 65 ? "text-indigo-400" : "text-amber-400";
+  const fitColor =
+    bestFit >= 80
+      ? "text-emerald-400"
+      : bestFit >= 65
+        ? "text-indigo-400"
+        : "text-amber-400";
 
   return (
     <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Project pipeline</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            Project pipeline
+          </p>
           <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
             {isInvestor ? "Your matched opportunities" : "Your active projects"}
           </p>
         </div>
-        <Link href="/matches" className="text-xs font-semibold text-indigo-400 hover:underline">
+        <Link
+          href="/matches"
+          className="text-xs font-semibold text-indigo-400 hover:underline"
+        >
           Next steps →
         </Link>
       </div>
@@ -200,7 +239,9 @@ export function PipelineSummaryCard({
       {/* Stats */}
       <div className="mb-6 grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
-          <p className={`text-3xl font-extrabold ${!isLoading && activeProjects > 0 ? "text-indigo-400" : "text-[#4A4A6A]"}`}>
+          <p
+            className={`text-3xl font-extrabold ${!isLoading && activeProjects > 0 ? "text-indigo-400" : "text-[#4A4A6A]"}`}
+          >
             {isLoading ? "…" : activeProjects > 0 ? activeProjects : "—"}
           </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
@@ -208,7 +249,9 @@ export function PipelineSummaryCard({
           </p>
         </div>
         <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
-          <p className={`text-3xl font-extrabold ${!isLoading && investorMatches > 0 ? "text-violet-400" : "text-[#4A4A6A]"}`}>
+          <p
+            className={`text-3xl font-extrabold ${!isLoading && investorMatches > 0 ? "text-violet-400" : "text-[#4A4A6A]"}`}
+          >
             {isLoading ? "…" : investorMatches > 0 ? investorMatches : "—"}
           </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
@@ -216,10 +259,14 @@ export function PipelineSummaryCard({
           </p>
         </div>
         <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
-          <p className={`text-3xl font-extrabold ${isLoading || bestFit === 0 ? "text-[#4A4A6A]" : fitColor}`}>
+          <p
+            className={`text-3xl font-extrabold ${isLoading || bestFit === 0 ? "text-[#4A4A6A]" : fitColor}`}
+          >
             {isLoading ? "…" : bestFit > 0 ? `${bestFit}%` : "—"}
           </p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Best fit</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            Best fit
+          </p>
         </div>
       </div>
 
@@ -235,7 +282,13 @@ export function PipelineSummaryCard({
               ? `View next steps for your ${isInvestor ? "opportunities" : "projects"}`
               : "Set up your first project to get matched"}
         </p>
-        <svg className="h-4 w-4 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg
+          className="h-4 w-4 shrink-0 text-indigo-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </Link>
@@ -250,10 +303,17 @@ export function PartnerPortfolioCard() {
     <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Portfolio</p>
-          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">Your portfolio command center</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            Portfolio
+          </p>
+          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
+            Your portfolio command center
+          </p>
         </div>
-        <Link href="/ecosystem" className="text-xs font-semibold text-violet-400 hover:underline">
+        <Link
+          href="/ecosystem"
+          className="text-xs font-semibold text-violet-400 hover:underline"
+        >
           Open →
         </Link>
       </div>
@@ -264,12 +324,24 @@ export function PartnerPortfolioCard() {
           className="flex flex-col gap-1.5 rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 transition hover:border-violet-500/40"
         >
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20">
-            <svg className="h-3.5 w-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <svg
+              className="h-3.5 w-3.5 text-violet-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
             </svg>
           </div>
           <p className="text-xs font-bold text-[#F4F4FF]">Portfolio overview</p>
-          <p className="text-[10px] text-[#8B8BA7]">Stats, company feed, deep-dive</p>
+          <p className="text-[10px] text-[#8B8BA7]">
+            Stats, company feed, deep-dive
+          </p>
         </Link>
 
         <Link
@@ -277,12 +349,24 @@ export function PartnerPortfolioCard() {
           className="flex flex-col gap-1.5 rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 transition hover:border-indigo-500/40"
         >
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20">
-            <svg className="h-3.5 w-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+            <svg
+              className="h-3.5 w-3.5 text-indigo-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"
+              />
             </svg>
           </div>
           <p className="text-xs font-bold text-[#F4F4FF]">Co-Pilot Kanban</p>
-          <p className="text-[10px] text-[#8B8BA7]">Live intro statuses, stale alerts</p>
+          <p className="text-[10px] text-[#8B8BA7]">
+            Live intro statuses, stale alerts
+          </p>
         </Link>
       </div>
 
@@ -293,7 +377,13 @@ export function PartnerPortfolioCard() {
         <p className="text-xs font-medium text-violet-300">
           Nominate a startup or track your pipeline
         </p>
-        <svg className="h-4 w-4 shrink-0 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg
+          className="h-4 w-4 shrink-0 text-violet-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </Link>
@@ -310,7 +400,10 @@ type BenchmarkingChartProps = {
   label?: string;
 };
 
-export function BenchmarkingChart({ data, label = "Active deals" }: BenchmarkingChartProps) {
+export function BenchmarkingChart({
+  data,
+  label = "Active deals",
+}: BenchmarkingChartProps) {
   return (
     <div className="rounded-[16px] bg-[#12121A] border border-[#2A2A3E] px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
@@ -381,10 +474,10 @@ const DOT_MAP: Record<
   ActivityEvent["type"],
   { color: string; Icon: LucideIcon }
 > = {
-  match:   { color: "bg-indigo-500",  Icon: Star         },
-  deal:    { color: "bg-emerald-500", Icon: Handshake    },
-  intro:   { color: "bg-purple-500",  Icon: CheckCircle2 },
-  general: { color: "bg-gray-300",    Icon: Bell         },
+  match: { color: "bg-indigo-500", Icon: Star },
+  deal: { color: "bg-emerald-500", Icon: Handshake },
+  intro: { color: "bg-purple-500", Icon: CheckCircle2 },
+  general: { color: "bg-gray-300", Icon: Bell },
 };
 
 export function ActivityFeed({ events }: ActivityFeedProps) {
@@ -409,15 +502,21 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
                 <span className="absolute left-[9px] top-5 h-full w-px bg-[#2A2A3E]" />
               )}
               {/* dot */}
-              <span className={`mt-1 h-[18px] w-[18px] shrink-0 rounded-full ${color} flex items-center justify-center`}>
+              <span
+                className={`mt-1 h-[18px] w-[18px] shrink-0 rounded-full ${color} flex items-center justify-center`}
+              >
                 <Icon className="h-2.5 w-2.5 text-white" />
               </span>
               <div className="pb-5 min-w-0">
-                <p className="text-sm font-medium text-[#F4F4FF] leading-snug">{event.label}</p>
+                <p className="text-sm font-medium text-[#F4F4FF] leading-snug">
+                  {event.label}
+                </p>
                 {event.subtext && (
                   <p className="text-xs text-[#8B8BA7]">{event.subtext}</p>
                 )}
-                <p className="mt-0.5 text-[11px] text-[#4A4A6A]">{event.time}</p>
+                <p className="mt-0.5 text-[11px] text-[#4A4A6A]">
+                  {event.time}
+                </p>
               </div>
             </li>
           );

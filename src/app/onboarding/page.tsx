@@ -386,7 +386,11 @@ function SearchableMultiSelect({
               }}
               className="w-full px-3 py-2 text-left text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5"
             >
-              ✓ All Industries (Agnostic)
+              <i
+                className="ri-check-line mr-2 align-[-2px]"
+                aria-hidden="true"
+              />
+              All Industries (Agnostic)
             </button>
           )}
           {available.map((opt) => (
@@ -489,7 +493,10 @@ function RoleCard({
     >
       {active && (
         <span className="absolute right-4 top-4 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-[10px] text-white">
-          ✓
+          <i
+            className="ri-check-line text-[11px] leading-none"
+            aria-hidden="true"
+          />
         </span>
       )}
       <div

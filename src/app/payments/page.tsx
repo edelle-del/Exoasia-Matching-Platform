@@ -39,7 +39,8 @@ const creditHistory = [
 
 export default function PaymentsPage() {
   const currentPlanDetails =
-    SUBSCRIPTION_PLANS.find((plan) => plan.id === currentSubscription.plan) ?? SUBSCRIPTION_PLANS[0];
+    SUBSCRIPTION_PLANS.find((plan) => plan.id === currentSubscription.plan) ??
+    SUBSCRIPTION_PLANS[0];
 
   const handleUpgradePlan = (planId: string) => {
     console.log("upgrade-plan", planId);
@@ -49,7 +50,8 @@ export default function PaymentsPage() {
     console.log("purchase-credits", packageId);
   };
 
-  const getTransactionIcon = (type: string) => (type === "purchase" ? "💳" : "📤");
+  const getTransactionIcon = (type: string) =>
+    type === "purchase" ? "ri-bank-card-line" : "ri-send-plane-line";
 
   return (
     <div className="min-h-screen bg-[var(--color-canvas)]">
@@ -86,7 +88,11 @@ export default function PaymentsPage() {
                     {currentPlanDetails.name}
                   </h3>
                   <p className="mt-1 text-sm text-[var(--color-body)]">
-                    {currentPlanDetails.credits} credits/month · ₱{(currentPlanDetails.price / currentPlanDetails.credits).toFixed(2)} per credit
+                    {currentPlanDetails.credits} credits/month · ₱
+                    {(
+                      currentPlanDetails.price / currentPlanDetails.credits
+                    ).toFixed(2)}{" "}
+                    per credit
                   </p>
                   <p className="mt-2 text-xs text-[var(--color-muted)]">
                     Renews on {currentSubscription.renewalDate}
@@ -97,7 +103,11 @@ export default function PaymentsPage() {
                     ₱{currentPlanDetails.price}/mo
                   </div>
                   <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-600 text-green-700">
-                    ✓ Active
+                    <i
+                      className="ri-check-line mr-1 align-[-2px]"
+                      aria-hidden="true"
+                    />
+                    Active
                   </span>
                 </div>
               </div>
@@ -139,7 +149,9 @@ export default function PaymentsPage() {
                 <div
                   key={plan.id}
                   className={`rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-6 ${
-                    plan.id === currentSubscription.plan ? 'ring-2 ring-[var(--color-primary)]' : ''
+                    plan.id === currentSubscription.plan
+                      ? "ring-2 ring-[var(--color-primary)]"
+                      : ""
                   }`}
                 >
                   <div className="text-center">
@@ -230,9 +242,10 @@ export default function PaymentsPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="text-2xl">
-                        {getTransactionIcon(transaction.type)}
-                      </div>
+                      <i
+                        className={`${getTransactionIcon(transaction.type)} text-2xl text-[var(--color-primary)]`}
+                        aria-hidden="true"
+                      />
                       <div>
                         <h3 className="font-600 text-[var(--color-ink)]">
                           {transaction.description}
@@ -243,10 +256,15 @@ export default function PaymentsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`text-lg font-600 ${
-                        transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.amount > 0 ? '+' : ''}{transaction.amount} credits
+                      <div
+                        className={`text-lg font-600 ${
+                          transaction.amount > 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {transaction.amount > 0 ? "+" : ""}
+                        {transaction.amount} credits
                       </div>
                       {transaction.cost > 0 && (
                         <p className="text-sm text-[var(--color-muted)]">
@@ -268,7 +286,9 @@ export default function PaymentsPage() {
             <ul className="mt-4 space-y-3 text-sm text-[var(--color-body)]">
               <li>• All payments are processed securely through PayMongo</li>
               <li>• Accepted: GCash, Maya, GrabPay, Visa/Mastercard</li>
-              <li>• Credits are added to your account immediately after payment</li>
+              <li>
+                • Credits are added to your account immediately after payment
+              </li>
               <li>• Subscription renews automatically unless cancelled</li>
               <li>• Refunds available within 30 days for unused credits</li>
             </ul>

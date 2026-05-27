@@ -14,32 +14,35 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
 ];
 
 // Stage Configuration
-export const STAGE_CONFIG: Record<Stage, { label: string; title: string; description: string }> = {
+export const STAGE_CONFIG: Record<
+  Stage,
+  { label: string; title: string; description: string }
+> = {
   "0": {
     label: "Discover",
     title: "Masterclass & Intake",
-    description: "Introduction to the platform"
+    description: "Introduction to the platform",
   },
   "1": {
     label: "Ignite",
     title: "Member Onboarding",
-    description: "Build context and prepare for verification"
+    description: "Build context and prepare for verification",
   },
   "2": {
     label: "Match",
     title: "Active Matching",
-    description: "Access verified matches and deal flow"
+    description: "Access verified matches and deal flow",
   },
   "3": {
     label: "Commit",
     title: "Guided Growth",
-    description: "Advisor-led deal structuring"
+    description: "Advisor-led deal structuring",
   },
   "4": {
     label: "Guide",
     title: "Strategic Advisor",
-    description: "Advisor status within the network"
-  }
+    description: "Advisor status within the network",
+  },
 };
 
 // Credit Configuration
@@ -86,7 +89,7 @@ export const DEAL_STAGES = [
 ] as const;
 
 export const DEAL_STAGE_DESCRIPTIONS: Record<string, string> = {
-  "Discover": "Initial ASK/OFFER qualified",
+  Discover: "Initial ASK/OFFER qualified",
   "Intro & Scoping": "Curated intro complete and scope alignment in progress",
   "Proposal/Pilot": "Proposal sent or pilot design in review",
   "Negotiation/Legal": "Terms redlining, legal, and compliance checks",
@@ -96,17 +99,17 @@ export const DEAL_STAGE_DESCRIPTIONS: Record<string, string> = {
 
 // Event Types
 export const EVENT_TYPES = {
-  dinner: { label: "Private Dinner", icon: "🍽️" },
-  "pitch-night": { label: "Pitch Night", icon: "🎤" },
-  masterclass: { label: "Masterclass", icon: "🎓" },
-  session: { label: "Weekly Session", icon: "📋" },
+  dinner: { label: "Private Dinner", icon: "ri-restaurant-line" },
+  "pitch-night": { label: "Pitch Night", icon: "ri-mic-line" },
+  masterclass: { label: "Masterclass", icon: "ri-graduation-cap-line" },
+  session: { label: "Weekly Session", icon: "ri-clipboard-line" },
 };
 
 // Document Types
 export const DOCUMENT_TYPES = {
   "sec-certificate": "SEC Certificate of Registration",
   "dti-registration": "DTI Business Name Registration",
-  "other": "Other Documentation",
+  other: "Other Documentation",
 };
 
 // Verification Requirements by Stage
@@ -121,9 +124,12 @@ export const VERIFICATION_REQUIREMENTS: Record<Stage, string[]> = {
 // Default Notifications
 export const DEFAULT_NOTIFICATIONS = {
   MATCH: "New match available! Check your matches to accept or decline.",
-  INTRO_REQUEST: "Waiting for the other party to accept your introduction request.",
-  DOCUMENT_APPROVED: "Your documents have been approved! You're now Stage 2 verified.",
-  CREDITS_LOW: "Your credits are running low. Upgrade your subscription to continue.",
+  INTRO_REQUEST:
+    "Waiting for the other party to accept your introduction request.",
+  DOCUMENT_APPROVED:
+    "Your documents have been approved! You're now Stage 2 verified.",
+  CREDITS_LOW:
+    "Your credits are running low. Upgrade your subscription to continue.",
   EVENT_REMINDER: "Upcoming event reminder. Don't forget to register!",
   DEAL_UPDATE: "Your deal has been updated. Check the deal board for details.",
 };

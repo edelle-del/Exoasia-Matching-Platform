@@ -71,7 +71,10 @@ export default function AdvisorMatchQueuePage() {
     return (
       <div className="min-h-screen px-[5%] py-12">
         <p className="text-sm text-(--color-body)">Not authorized.</p>
-        <Link href="/dashboard" className="text-(--color-primary) hover:underline">
+        <Link
+          href="/dashboard"
+          className="text-(--color-primary) hover:underline"
+        >
           Back to dashboard
         </Link>
       </div>
@@ -117,7 +120,10 @@ export default function AdvisorMatchQueuePage() {
         prev.map((m) => (m.id === matchId ? { ...m, status: "flagged" } : m)),
       );
       setMessages((prev) =>
-        new Map(prev).set(matchId, { text: "Flagged for follow-up.", ok: true }),
+        new Map(prev).set(matchId, {
+          text: "Flagged for follow-up.",
+          ok: true,
+        }),
       );
     }
   };
@@ -133,7 +139,6 @@ export default function AdvisorMatchQueuePage() {
   return (
     <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
       <div className="mx-auto w-full max-w-5xl space-y-8">
-
         {/* Header */}
         <div>
           <Link
@@ -191,7 +196,9 @@ export default function AdvisorMatchQueuePage() {
                   : "text-(--color-muted) hover:text-(--color-body)"
               }`}
             >
-              {f === "all" ? `All (${matches.length})` : `Flagged (${flaggedCount})`}
+              {f === "all"
+                ? `All (${matches.length})`
+                : `Flagged (${flaggedCount})`}
             </button>
           ))}
         </div>
@@ -266,7 +273,9 @@ function MemberSideCard({
         </div>
         <Badge
           label={`S${member.stage} · ${stageLabel}`}
-          colorClass={STAGE_COLORS[member.stage] ?? "bg-slate-100 text-slate-600"}
+          colorClass={
+            STAGE_COLORS[member.stage] ?? "bg-slate-100 text-slate-600"
+          }
         />
       </div>
 
@@ -346,7 +355,11 @@ function MatchReviewCard({
       {isFlagged && (
         <div className="mb-4 flex items-center gap-2">
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-            ⚑ Flagged for follow-up
+            <i
+              className="ri-flag-2-line mr-1 align-[-2px]"
+              aria-hidden="true"
+            />
+            Flagged for follow-up
           </span>
         </div>
       )}

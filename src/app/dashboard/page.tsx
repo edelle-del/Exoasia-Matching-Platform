@@ -31,26 +31,29 @@ import {
 // ─── Profile strength helpers ─────────────────────────────────────────────────
 
 const PROFILE_FIELDS: { key: keyof DashboardProfile; label: string }[] = [
-  { key: "full_name",        label: "Add your full name"          },
-  { key: "business_name",    label: "Add your business name"      },
-  { key: "role_title",       label: "Add your role title"         },
-  { key: "sector",           label: "Add your industry sector"    },
-  { key: "city",             label: "Add your city"               },
-  { key: "short_bio",        label: "Write a short bio"           },
-  { key: "phone_whatsapp",   label: "Add a WhatsApp number"       },
-  { key: "ask_categories",   label: "Add what you're looking for" },
-  { key: "offer_categories", label: "Add what you can offer"      },
-  { key: "asks_summary",     label: "Describe your asks"          },
-  { key: "offers_summary",   label: "Describe your offers"        },
+  { key: "full_name", label: "Add your full name" },
+  { key: "business_name", label: "Add your business name" },
+  { key: "role_title", label: "Add your role title" },
+  { key: "sector", label: "Add your industry sector" },
+  { key: "city", label: "Add your city" },
+  { key: "short_bio", label: "Write a short bio" },
+  { key: "phone_whatsapp", label: "Add a WhatsApp number" },
+  { key: "ask_categories", label: "Add what you're looking for" },
+  { key: "offer_categories", label: "Add what you can offer" },
+  { key: "asks_summary", label: "Describe your asks" },
+  { key: "offers_summary", label: "Describe your offers" },
 ];
 
 function computeProfileStrength(profile: DashboardProfile | null) {
-  if (!profile) return { percent: 0, nextStep: "Complete your profile to get started" };
+  if (!profile)
+    return { percent: 0, nextStep: "Complete your profile to get started" };
   let filled = 0;
   let nextStep: string | undefined;
   for (const { key, label } of PROFILE_FIELDS) {
     const val = profile[key];
-    const isDefined = Array.isArray(val) ? val.length > 0 : val !== null && val !== "";
+    const isDefined = Array.isArray(val)
+      ? val.length > 0
+      : val !== null && val !== "";
     if (isDefined) {
       filled++;
     } else if (!nextStep) {
@@ -155,8 +158,10 @@ export default function DashboardPage() {
     );
 
     advisorData.matches.forEach((match) => {
-      const nameA = companyNameById.get(match.member_a_id) ?? "Verified company";
-      const nameB = companyNameById.get(match.member_b_id) ?? "Verified company";
+      const nameA =
+        companyNameById.get(match.member_a_id) ?? "Verified company";
+      const nameB =
+        companyNameById.get(match.member_b_id) ?? "Verified company";
 
       counts.set(match.member_a_id, (counts.get(match.member_a_id) ?? 0) + 1);
       counts.set(match.member_b_id, (counts.get(match.member_b_id) ?? 0) + 1);
@@ -187,14 +192,25 @@ export default function DashboardPage() {
     );
     const companiesWithMatches = advisorData.companies
       .filter((company) => (counts.get(company.id) ?? 0) > 0)
-      .map((company) => ({ ...company, matches: matchGroups.get(company.id) ?? [] }));
+      .map((company) => ({
+        ...company,
+        matches: matchGroups.get(company.id) ?? [],
+      }));
 
-    const pendingPairs = advisorData.matches.filter((m) => m.status === "pending").length;
+    const pendingPairs = advisorData.matches.filter(
+      (m) => m.status === "pending",
+    ).length;
     const acceptedPairs = advisorData.matches.filter((m) =>
       ["approved", "accepted", "introduced"].includes(m.status),
     ).length;
 
-    return { totalCompanies: advisorData.companies.length, companiesWithoutMatches, companiesWithMatches, pendingPairs, acceptedPairs };
+    return {
+      totalCompanies: advisorData.companies.length,
+      companiesWithoutMatches,
+      companiesWithMatches,
+      pendingPairs,
+      acceptedPairs,
+    };
   }, [advisorData]);
 
   // ─── Advisor view ───────────────────────────────────────────────────────────
@@ -203,7 +219,6 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-[#F7F7F7] px-[5%] py-12">
         <div className="mx-auto w-full max-w-7xl space-y-8">
-
           <SystemPulseHeader
             displayName={displayName}
             role={role ?? null}
@@ -213,14 +228,28 @@ export default function DashboardPage() {
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <AdvisorMetricCard
               label="Total companies"
-              value={isLoading ? "..." : String(advisorDashboard.totalCompanies)}
+              value={
+                isLoading ? "..." : String(advisorDashboard.totalCompanies)
+              }
               accent="text-gray-900"
             />
             <AdvisorMetricCard
               label="Need matching"
-              value={isLoading ? "..." : String(advisorDashboard.companiesWithoutMatches.length)}
-              accent={advisorDashboard.companiesWithoutMatches.length > 0 ? "text-rose-500" : "text-emerald-600"}
-              sub={advisorDashboard.companiesWithoutMatches.length > 0 ? "Require attention" : "All matched"}
+              value={
+                isLoading
+                  ? "..."
+                  : String(advisorDashboard.companiesWithoutMatches.length)
+              }
+              accent={
+                advisorDashboard.companiesWithoutMatches.length > 0
+                  ? "text-rose-500"
+                  : "text-emerald-600"
+              }
+              sub={
+                advisorDashboard.companiesWithoutMatches.length > 0
+                  ? "Require attention"
+                  : "All matched"
+              }
             />
             <AdvisorMetricCard
               label="Pending pairs"
@@ -243,12 +272,13 @@ export default function DashboardPage() {
               isLoading={isLoading}
             />
             <MatchingFunnelPanel
-              companies={advisorDashboard.companiesWithMatches as CompanyWithMatches[]}
+              companies={
+                advisorDashboard.companiesWithMatches as CompanyWithMatches[]
+              }
               isLoading={isLoading}
             />
             <SectorPieChart companies={advisorData.companies} />
           </section>
-
         </div>
       </div>
     );
@@ -257,26 +287,30 @@ export default function DashboardPage() {
   // ─── Member view ────────────────────────────────────────────────────────────
 
   const rawName = displayName || summary.profile?.full_name || "";
-  const firstName = rawName.includes("@") ? "there" : (rawName.split(" ")[0] || "there");
+  const firstName = rawName.includes("@")
+    ? "there"
+    : rawName.split(" ")[0] || "there";
 
   const portalLabel =
-    summary.profile?.member_role === "investor"         ? "Investor Profile"
-    : summary.profile?.member_role === "startup"        ? "Startup Profile"
-    : summary.profile?.member_role === "ecosystem_partner" ? "Partner Profile"
-    : "Member Portal";
+    summary.profile?.member_role === "investor"
+      ? "Investor Profile"
+      : summary.profile?.member_role === "startup"
+        ? "Startup Profile"
+        : summary.profile?.member_role === "ecosystem_partner"
+          ? "Partner Profile"
+          : "Member Portal";
 
   const { percent: profilePercent, nextStep: profileNextStep } =
     computeProfileStrength(summary.profile);
 
   const benchmarkData = [
-    { name: "You",        value: isLoading ? 0 : summary.activeDeals    },
+    { name: "You", value: isLoading ? 0 : summary.activeDeals },
     { name: "Sector avg", value: isLoading ? 0 : summary.sectorAvgDeals },
   ];
 
   return (
     <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
       <div className="mx-auto w-full max-w-7xl space-y-8">
-
         {/* Greeting */}
         <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-8">
           <div className="flex items-start justify-between gap-4">
@@ -289,7 +323,8 @@ export default function DashboardPage() {
                 <span className="text-(--color-primary)">{firstName}</span>
               </h1>
               <p className="mt-2 text-sm text-(--color-body)">
-                You're a member at Stage {summary.profile?.stage || "0"} · Verification{" "}
+                You're a member at Stage {summary.profile?.stage || "0"} ·
+                Verification{" "}
                 {summary.profile?.verification_status || "unverified"}
               </p>
             </div>
@@ -298,10 +333,10 @@ export default function DashboardPage() {
               className="relative mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-(--color-hairline) bg-(--color-canvas) text-(--color-ink) transition-colors hover:bg-(--color-surface-soft)"
               aria-label="Notifications"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
+              <i
+                className="ri-notification-3-line text-lg"
+                aria-hidden="true"
+              />
               {unreadCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
                   {unreadCount > 9 ? "9+" : unreadCount}
@@ -313,9 +348,21 @@ export default function DashboardPage() {
 
         {/* Row 1: 4 metric cards */}
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard label="Pending matches" value={isLoading ? "..." : String(summary.pendingMatches)} valueColor="text-amber-500"   />
-          <MetricCard label="Active deals"    value={isLoading ? "..." : String(summary.activeDeals)}    valueColor="text-emerald-600" />
-          <MetricCard label="Credits"      value={isLoading ? "..." : String(summary.credits)}      valueColor="text-blue-600"    />
+          <MetricCard
+            label="Pending matches"
+            value={isLoading ? "..." : String(summary.pendingMatches)}
+            valueColor="text-amber-500"
+          />
+          <MetricCard
+            label="Active deals"
+            value={isLoading ? "..." : String(summary.activeDeals)}
+            valueColor="text-emerald-600"
+          />
+          <MetricCard
+            label="Credits"
+            value={isLoading ? "..." : String(summary.credits)}
+            valueColor="text-blue-600"
+          />
           <BenchmarkingChart data={benchmarkData} label="Active deals" />
         </section>
 
@@ -325,7 +372,8 @@ export default function DashboardPage() {
             percent={isLoading ? 0 : profilePercent}
             nextStep={profileNextStep}
           />
-          {(memberRole ?? summary.profile?.member_role) === "ecosystem_partner" ? (
+          {(memberRole ?? summary.profile?.member_role) ===
+          "ecosystem_partner" ? (
             <PartnerPortfolioCard />
           ) : (
             <PipelineSummaryCard
@@ -337,20 +385,25 @@ export default function DashboardPage() {
             />
           )}
         </section>
-
       </div>
     </div>
   );
 }
 
-function MetricCard({ label, value, valueColor = "text-(--color-primary)" }: {
+function MetricCard({
+  label,
+  value,
+  valueColor = "text-(--color-primary)",
+}: {
   label: string;
   value: string;
   valueColor?: string;
 }) {
   return (
     <div className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.12em] text-(--color-muted)">{label}</p>
+      <p className="text-xs uppercase tracking-[0.12em] text-(--color-muted)">
+        {label}
+      </p>
       <p className={`mt-1 text-2xl font-semibold ${valueColor}`}>{value}</p>
     </div>
   );

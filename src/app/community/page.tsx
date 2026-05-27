@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { fetchCommunityMembers, type CommunityMemberRecord } from "@/lib/app-data";
+import {
+  fetchCommunityMembers,
+  type CommunityMemberRecord,
+} from "@/lib/app-data";
 import { STAGE_CONFIG } from "@/types/constants";
 
 export default function CommunityPage() {
@@ -26,13 +29,17 @@ export default function CommunityPage() {
 
   const sectors = useMemo(
     () =>
-      Array.from(new Set(members.map((m) => m.sector).filter(Boolean))).sort() as string[],
+      Array.from(
+        new Set(members.map((m) => m.sector).filter(Boolean)),
+      ).sort() as string[],
     [members],
   );
 
   const cities = useMemo(
     () =>
-      Array.from(new Set(members.map((m) => m.city).filter(Boolean))).sort() as string[],
+      Array.from(
+        new Set(members.map((m) => m.city).filter(Boolean)),
+      ).sort() as string[],
     [members],
   );
 
@@ -49,11 +56,22 @@ export default function CommunityPage() {
       if (filterCity !== "all" && m.city !== filterCity) return false;
       if (filterRole !== "all" && m.member_role !== filterRole) return false;
       if (filterStage !== "all" && m.stage !== filterStage) return false;
-      if (filterVerification !== "all" && m.verification_status !== filterVerification)
+      if (
+        filterVerification !== "all" &&
+        m.verification_status !== filterVerification
+      )
         return false;
       return true;
     });
-  }, [members, search, filterSector, filterCity, filterRole, filterStage, filterVerification]);
+  }, [
+    members,
+    search,
+    filterSector,
+    filterCity,
+    filterRole,
+    filterStage,
+    filterVerification,
+  ]);
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
@@ -62,7 +80,9 @@ export default function CommunityPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
             FOUNDERS ARENA
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-(--color-ink)">Community</h1>
+          <h1 className="mt-2 text-3xl font-semibold text-(--color-ink)">
+            Community
+          </h1>
           <p className="mt-1 text-sm text-(--color-body)">
             Browse all members in the network.
           </p>
@@ -198,7 +218,8 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
     .join("");
 
   const stageLabel =
-    STAGE_CONFIG[m.stage as keyof typeof STAGE_CONFIG]?.label ?? `Stage ${m.stage}`;
+    STAGE_CONFIG[m.stage as keyof typeof STAGE_CONFIG]?.label ??
+    `Stage ${m.stage}`;
 
   const roleBadge =
     m.member_role === "investor"
@@ -237,9 +258,13 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
           {initials || "?"}
         </div>
         <div className="min-w-0">
-          <p className="truncate font-semibold text-(--color-ink)">{m.full_name || "—"}</p>
+          <p className="truncate font-semibold text-(--color-ink)">
+            {m.full_name || "—"}
+          </p>
           {m.business_name && (
-            <p className="truncate text-sm text-(--color-body)">{m.business_name}</p>
+            <p className="truncate text-sm text-(--color-body)">
+              {m.business_name}
+            </p>
           )}
           {(m.city || m.sector) && (
             <p className="truncate text-xs text-(--color-muted)">
@@ -252,7 +277,9 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
       {/* Badges */}
       <div className="flex flex-wrap gap-1.5">
         {roleBadge && (
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${roleBadge.cls}`}>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${roleBadge.cls}`}
+          >
             {roleBadge.label}
           </span>
         )}
@@ -268,7 +295,9 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
 
       {/* Bio */}
       {m.short_bio && (
-        <p className="line-clamp-2 text-sm text-(--color-body)">{m.short_bio}</p>
+        <p className="line-clamp-2 text-sm text-(--color-body)">
+          {m.short_bio}
+        </p>
       )}
 
       {/* Ask categories */}

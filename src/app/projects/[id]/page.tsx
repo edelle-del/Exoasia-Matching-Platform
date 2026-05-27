@@ -1356,7 +1356,7 @@ export default function ProjectDetailPage({
                     className={`text-sm font-semibold ${matchesGenerated && investorMatches.length > 0 ? "text-green-600" : "text-(--color-ink)"}`}
                   >
                     {matchesGenerated && investorMatches.length > 0
-                      ? "✓ Investor matches"
+                      ? "Investor matches"
                       : "Investor matches"}
                   </h2>
                   <button

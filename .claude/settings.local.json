@@ -15,7 +15,15 @@
       "Bash(npm install *)",
       "Bash(mkdir -p \"C:\\\\Claude-dev\\\\projects\\\\Exoasia-Matching-Platform\\\\src\\\\lib\\\\venture-readiness\")",
       "Bash(mkdir -p \"C:\\\\Claude-dev\\\\projects\\\\Exoasia-Matching-Platform\\\\src\\\\app\\\\api\\\\venture-readiness\\\\parse\")",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(node -e \"const p = require\\('pdf-parse'\\); console.log\\(typeof p, typeof p.default, Object.keys\\(p\\).slice\\(0,5\\)\\)\")",
+      "Bash(node -e \"const p = require\\('pdf-parse'\\); console.log\\(Object.keys\\(p\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const p = require\\('pdf-parse'\\); console.log\\('type:', typeof p\\); const keys = Object.keys\\(p\\); console.log\\('keys:', keys\\); const PDFParse = p.PDFParse; console.log\\('PDFParse type:', typeof PDFParse\\); if \\(PDFParse\\) { const inst = new PDFParse\\(\\); console.log\\('instance methods:', Object.getOwnPropertyNames\\(Object.getPrototypeOf\\(inst\\)\\)\\); }\")"
     ]
   }
 }

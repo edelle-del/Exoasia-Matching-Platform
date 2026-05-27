@@ -202,17 +202,32 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
 
   const roleBadge =
     m.member_role === "investor"
-      ? { label: "Investor", cls: "bg-violet-500/20 text-violet-300" }
+      ? {
+          label: "Investor",
+          cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-accent-gold)",
+        }
       : m.member_role === "startup"
-        ? { label: "Startup", cls: "bg-blue-500/20 text-blue-300" }
+        ? {
+            label: "Startup",
+            cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-primary)",
+          }
         : null;
 
   const verificationBadge =
     m.verification_status === "verified"
-      ? { label: "Verified", cls: "bg-emerald-500/20 text-emerald-300" }
+      ? {
+          label: "Verified",
+          cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-accent-gold)",
+        }
       : m.verification_status === "pending"
-        ? { label: "Pending", cls: "bg-amber-500/20 text-amber-300" }
-        : { label: "Unverified", cls: "bg-[#2A2A3E] text-[#8B8BA7]" };
+        ? {
+            label: "Pending",
+            cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-body)",
+          }
+        : {
+            label: "Unverified",
+            cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-muted)",
+          };
 
   return (
     <article className="flex flex-col gap-3 rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-5">
@@ -241,7 +256,7 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
             {roleBadge.label}
           </span>
         )}
-        <span className="rounded-full bg-[#2A2A3E] px-2 py-0.5 text-xs font-medium text-[#8B8BA7]">
+        <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-muted)">
           Stage {m.stage} · {stageLabel}
         </span>
         <span
@@ -266,7 +281,7 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
             {m.ask_categories.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="rounded-[6px] bg-rose-50 px-2 py-0.5 text-xs text-rose-700"
+                className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-primary)"
               >
                 {tag}
               </span>
@@ -290,7 +305,7 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
             {m.offer_categories.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="rounded-[6px] bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+                className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-accent-gold)"
               >
                 {tag}
               </span>

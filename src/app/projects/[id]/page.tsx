@@ -680,7 +680,6 @@ export default function ProjectDetailPage({
                       });
                     }}
                     className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 text-xs font-semibold text-(--color-ink) transition-colors hover:bg-(--color-surface-soft)"
-                    aria-expanded={reportExpanded}
                     aria-controls="venture-confidence-report-body"
                   >
                     {reportExpanded ? "Collapse" : "Expand"}
@@ -705,7 +704,7 @@ export default function ProjectDetailPage({
               )}
 
               {!reportExpanded ? (
-                <div className="mt-4 space-y-4">
+                <div id="venture-confidence-report-body" className="mt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {(
                       [
@@ -735,11 +734,7 @@ export default function ProjectDetailPage({
                 </div>
               ) : (
                 <div className="mt-5 space-y-5">
-                  <div
-                    role="tablist"
-                    aria-label="Venture Confidence report sections"
-                    className="flex flex-wrap gap-2"
-                  >
+                  <div className="flex flex-wrap gap-2">
                     {(
                       [
                         ["summary", "Summary"],
@@ -753,8 +748,6 @@ export default function ProjectDetailPage({
                         <button
                           key={key}
                           type="button"
-                          role="tab"
-                          aria-selected={active}
                           onClick={() => setReportTab(key)}
                           className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${active ? "border-(--color-primary) bg-(--color-primary) text-white" : "border-(--color-hairline) bg-(--color-canvas) text-(--color-ink) hover:bg-(--color-surface-soft)"}`}
                         >

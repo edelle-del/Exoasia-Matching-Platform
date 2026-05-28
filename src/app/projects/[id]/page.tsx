@@ -97,6 +97,36 @@ const sectorOptions = [
   "Travel & Hospitality",
 ];
 
+function matchStage(
+  productStage: string | null,
+  fundraisingStage: string | null,
+): string {
+  const raw = (productStage ?? fundraisingStage ?? "").toLowerCase().trim();
+  if (!raw) return "";
+  for (const s of projectStages) {
+    if (raw.includes(s.toLowerCase())) return s;
+  }
+  if (raw.includes("prototype") || raw.includes("idea")) return "Ideation";
+  if (raw.includes("traction")) return "Growth";
+  if (raw.includes("scale") || raw.includes("scal")) return "Scaling";
+  if (raw.includes("revenue") || raw.includes("generating"))
+    return "Revenue-Generating";
+  return "";
+}
+
+function matchSector(sector: string | null, industry: string | null): string {
+  const raw = (sector ?? industry ?? "").toLowerCase().trim();
+  if (raw.length < 2) return "";
+  for (const s of sectorOptions) {
+    if (raw.includes(s.toLowerCase())) return s;
+  }
+  for (const s of sectorOptions) {
+    const words = s.toLowerCase().split(/\s+/);
+    if (words.some((w) => w.length > 3 && raw.includes(w))) return s;
+  }
+  return "";
+}
+
 function ScoreBadge({ score, large }: { score: number; large?: boolean }) {
   const cls =
     score >= 80
@@ -433,6 +463,18 @@ export default function ProjectDetailPage({
           : current,
       );
       setReportExpanded(true);
+
+      const p = parsedReport.profile;
+      setForm({
+        name: p.project_name || p.business_name || project?.name || "",
+        description: p.description || project?.description || "",
+        stage:
+          matchStage(p.product_stage, p.fundraising_stage) ||
+          project?.stage ||
+          "",
+        sector: matchSector(p.sector, p.industry) || project?.sector || "",
+      });
+      setEditing(true);
     } catch (err) {
       setReportReparseError(
         err instanceof Error ? err.message : "Failed to reparse report.",
@@ -598,20 +640,21 @@ export default function ProjectDetailPage({
         </div>
       </section>
 
+      <input
+        ref={reportInputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        className="hidden"
+        aria-label="Upload Venture Confidence Report PDF"
+        onChange={(e) =>
+          void handleReportReparseChange(e.target.files?.[0] ?? null)
+        }
+      />
+
       {report && (
         <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-8">
           <div className="w-full">
             <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4 md:rounded-2xl md:p-6 lg:p-8">
-              <input
-                ref={reportInputRef}
-                type="file"
-                accept=".pdf,application/pdf"
-                className="hidden"
-                aria-label="Reparse Venture Confidence Report PDF"
-                onChange={(e) =>
-                  void handleReportReparseChange(e.target.files?.[0] ?? null)
-                }
-              />
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
@@ -1128,6 +1171,45 @@ export default function ProjectDetailPage({
       )}
 
       <div className="mx-auto max-w-2xl px-[5%] py-10">
+        {isOwner && !report && (
+          <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+                  Venture Confidence Assessment
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
+                  Attach a report to this project
+                </h2>
+                <p className="mt-1 text-sm text-(--color-body)">
+                  Upload the assessment PDF here so the parsed report is stored
+                  on the project profile.
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-(--color-primary)/10 px-2.5 py-1 text-xs font-semibold text-(--color-primary)">
+                Optional
+              </span>
+            </div>
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={handleReportReparseClick}
+                disabled={reportReparsing}
+                className="gn-btn-secondary text-sm disabled:opacity-50"
+              >
+                {reportReparsing ? "Analysing…" : "Upload PDF"}
+              </button>
+              {reportReparseError && (
+                <p className="text-xs text-red-600">{reportReparseError}</p>
+              )}
+              <p className="text-xs text-(--color-muted)">
+                PDF only · max 20 MB. Fields below will be filled automatically
+                from the report.
+              </p>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">
             {error}

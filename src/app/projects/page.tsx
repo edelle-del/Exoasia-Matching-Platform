@@ -169,7 +169,14 @@ export default function ProjectsPage() {
             </p>
           </div>
           {!isInvestor && (
-            <Link href="/projects/new" className="gn-btn-primary">
+            <Link
+              href={
+                !loading && !hasActiveSub && projects.length >= 1
+                  ? "/payments"
+                  : "/projects/new"
+              }
+              className="gn-btn-primary"
+            >
               + New project
             </Link>
           )}

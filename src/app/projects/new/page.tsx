@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { VentureReadinessReport } from "@/lib/venture-readiness/types";
@@ -43,6 +43,36 @@ const sectorOptions = [
   "Travel & Hospitality",
 ];
 
+function matchStage(
+  productStage: string | null,
+  fundraisingStage: string | null,
+): string {
+  const raw = (productStage ?? fundraisingStage ?? "").toLowerCase().trim();
+  if (!raw) return "";
+  for (const s of projectStages) {
+    if (raw.includes(s.toLowerCase())) return s;
+  }
+  if (raw.includes("prototype") || raw.includes("idea")) return "Ideation";
+  if (raw.includes("traction")) return "Growth";
+  if (raw.includes("scale") || raw.includes("scal")) return "Scaling";
+  if (raw.includes("revenue") || raw.includes("generating"))
+    return "Revenue-Generating";
+  return "";
+}
+
+function matchSector(sector: string | null, industry: string | null): string {
+  const raw = (sector ?? industry ?? "").toLowerCase().trim();
+  if (raw.length < 2) return "";
+  for (const s of sectorOptions) {
+    if (raw.includes(s.toLowerCase())) return s;
+  }
+  for (const s of sectorOptions) {
+    const words = s.toLowerCase().split(/\s+/);
+    if (words.some((w) => w.length > 3 && raw.includes(w))) return s;
+  }
+  return "";
+}
+
 export default function NewProjectPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -53,6 +83,7 @@ export default function NewProjectPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [slotChecked, setSlotChecked] = useState(false);
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [reportError, setReportError] = useState("");
   const [reportStatus, setReportStatus] = useState<
@@ -60,6 +91,19 @@ export default function NewProjectPage() {
   >("idle");
   const [ventureReport, setVentureReport] =
     useState<VentureReadinessReport | null>(null);
+
+  useEffect(() => {
+    fetch("/api/projects/slot-check")
+      .then((r) => r.json())
+      .then((data: { canCreate?: boolean }) => {
+        if (data.canCreate === false) {
+          router.replace("/payments");
+        } else {
+          setSlotChecked(true);
+        }
+      })
+      .catch(() => setSlotChecked(true));
+  }, [router]);
 
   const parseReport = async (file: File) => {
     setReportStatus("parsing");
@@ -154,7 +198,14 @@ export default function NewProjectPage() {
     }
 
     try {
-      await parseReport(file);
+      const parsed = await parseReport(file);
+      const p = parsed.profile;
+      setForm((f) => ({
+        name: p.project_name || p.business_name || f.name,
+        description: p.description || f.description,
+        stage: matchStage(p.product_stage, p.fundraising_stage) || f.stage,
+        sector: matchSector(p.sector, p.industry) || f.sector,
+      }));
     } catch (err) {
       setReportError(
         err instanceof Error
@@ -164,6 +215,14 @@ export default function NewProjectPage() {
       setReportStatus("idle");
     }
   };
+
+  if (!slotChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-(--color-canvas)">
+        <p className="text-sm text-(--color-muted)">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
@@ -227,7 +286,8 @@ export default function NewProjectPage() {
               )}
               {reportStatus === "ready" && ventureReport && (
                 <p className="text-xs text-emerald-600">
-                  Assessment parsed and ready to save with this project.
+                  Assessment parsed — fields below have been filled from the
+                  report.
                 </p>
               )}
               <p className="text-xs text-(--color-muted)">

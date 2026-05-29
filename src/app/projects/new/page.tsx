@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { VentureReadinessReport } from "@/lib/venture-readiness/types";
 
 const projectStages = [
   "Ideation",
@@ -43,36 +42,6 @@ const sectorOptions = [
   "Travel & Hospitality",
 ];
 
-function matchStage(
-  productStage: string | null,
-  fundraisingStage: string | null,
-): string {
-  const raw = (productStage ?? fundraisingStage ?? "").toLowerCase().trim();
-  if (!raw) return "";
-  for (const s of projectStages) {
-    if (raw.includes(s.toLowerCase())) return s;
-  }
-  if (raw.includes("prototype") || raw.includes("idea")) return "Ideation";
-  if (raw.includes("traction")) return "Growth";
-  if (raw.includes("scale") || raw.includes("scal")) return "Scaling";
-  if (raw.includes("revenue") || raw.includes("generating"))
-    return "Revenue-Generating";
-  return "";
-}
-
-function matchSector(sector: string | null, industry: string | null): string {
-  const raw = (sector ?? industry ?? "").toLowerCase().trim();
-  if (raw.length < 2) return "";
-  for (const s of sectorOptions) {
-    if (raw.includes(s.toLowerCase())) return s;
-  }
-  for (const s of sectorOptions) {
-    const words = s.toLowerCase().split(/\s+/);
-    if (words.some((w) => w.length > 3 && raw.includes(w))) return s;
-  }
-  return "";
-}
-
 export default function NewProjectPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -84,13 +53,6 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [slotChecked, setSlotChecked] = useState(false);
-  const [reportFile, setReportFile] = useState<File | null>(null);
-  const [reportError, setReportError] = useState("");
-  const [reportStatus, setReportStatus] = useState<
-    "idle" | "parsing" | "ready"
-  >("idle");
-  const [ventureReport, setVentureReport] =
-    useState<VentureReadinessReport | null>(null);
 
   useEffect(() => {
     fetch("/api/projects/slot-check")
@@ -105,31 +67,7 @@ export default function NewProjectPage() {
       .catch(() => setSlotChecked(true));
   }, [router]);
 
-  const parseReport = async (file: File) => {
-    setReportStatus("parsing");
-    setReportError("");
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/venture-readiness/parse", {
-      method: "POST",
-      body: fd,
-    });
-    const json = (await res.json()) as {
-      success?: boolean;
-      error?: string;
-      data?: VentureReadinessReport;
-    };
-    if (!res.ok || !json.success || !json.data) {
-      throw new Error(
-        json.error ?? "Failed to parse Venture Confidence Assessment.",
-      );
-    }
-    setVentureReport(json.data);
-    setReportStatus("ready");
-    return json.data;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.name.trim()) {
       setError("Project name is required.");
@@ -137,20 +75,6 @@ export default function NewProjectPage() {
     }
     setLoading(true);
     setError("");
-    let reportPayload: VentureReadinessReport | undefined;
-    if (reportFile) {
-      try {
-        reportPayload = ventureReport ?? (await parseReport(reportFile));
-      } catch (err) {
-        setLoading(false);
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to parse Venture Confidence Assessment.",
-        );
-        return;
-      }
-    }
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -159,7 +83,6 @@ export default function NewProjectPage() {
         description: form.description.trim() || undefined,
         stage: form.stage || undefined,
         sector: form.sector || undefined,
-        venture_readiness_report: reportPayload,
       }),
     });
     setLoading(false);
@@ -175,45 +98,6 @@ export default function NewProjectPage() {
       return;
     }
     router.push(`/projects/${data.project.id}`);
-  };
-
-  const handleReportChange = async (file: File | null) => {
-    setReportFile(file);
-    setReportError("");
-    setVentureReport(null);
-    setReportStatus("idle");
-
-    if (!file) {
-      return;
-    }
-
-    if (file.type !== "application/pdf") {
-      setReportError("Please upload a PDF file.");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      setReportError("File must be under 10 MB.");
-      return;
-    }
-
-    try {
-      const parsed = await parseReport(file);
-      const p = parsed.profile;
-      setForm((f) => ({
-        name: p.project_name || p.business_name || f.name,
-        description: p.description || f.description,
-        stage: matchStage(p.product_stage, p.fundraising_stage) || f.stage,
-        sector: matchSector(p.sector, p.industry) || f.sector,
-      }));
-    } catch (err) {
-      setReportError(
-        err instanceof Error
-          ? err.message
-          : "Failed to parse Venture Confidence Assessment.",
-      );
-      setReportStatus("idle");
-    }
   };
 
   if (!slotChecked) {
@@ -248,54 +132,6 @@ export default function NewProjectPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
-                  Venture Confidence Assessment
-                </p>
-                <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
-                  Attach a report to this project
-                </h2>
-                <p className="mt-1 text-sm text-(--color-body)">
-                  Upload the assessment PDF here so the parsed report is stored
-                  on the project profile.
-                </p>
-              </div>
-              <span className="rounded-full bg-(--color-primary)/10 px-2.5 py-1 text-xs font-semibold text-(--color-primary)">
-                Optional
-              </span>
-            </div>
-            <div className="mt-4 space-y-3">
-              <input
-                type="file"
-                accept=".pdf,application/pdf"
-                aria-label="Upload Venture Confidence Assessment PDF"
-                className="block w-full text-sm text-(--color-body) file:mr-4 file:rounded-xl file:border-0 file:bg-(--color-primary) file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:opacity-90"
-                onChange={(e) =>
-                  void handleReportChange(e.target.files?.[0] ?? null)
-                }
-              />
-              {reportError && (
-                <p className="text-xs text-red-600">{reportError}</p>
-              )}
-              {reportStatus === "parsing" && (
-                <p className="text-xs text-(--color-muted)">
-                  Analysing assessment…
-                </p>
-              )}
-              {reportStatus === "ready" && ventureReport && (
-                <p className="text-xs text-emerald-600">
-                  Assessment parsed — fields below have been filled from the
-                  report.
-                </p>
-              )}
-              <p className="text-xs text-(--color-muted)">
-                Reports are AI-generated and are not investment endorsements.
-              </p>
-            </div>
-          </div>
-
           <div>
             <label
               htmlFor="proj-name"

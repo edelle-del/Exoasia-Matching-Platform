@@ -1299,11 +1299,11 @@ export default function OnboardingForm() {
       if (!form.direct_check_max.trim())
         return fail("Please enter a maximum direct startup check size.");
       if (!form.referral_1_name.trim() || !form.referral_1_contact.trim())
-        return fail("Referral 1 name and contact are required.");
+        return fail("Reference 1 name and contact are required.");
       if (!form.referral_2_name.trim() || !form.referral_2_contact.trim())
-        return fail("Referral 2 name and contact are required.");
+        return fail("Reference 2 name and contact are required.");
       if (!form.referral_3_name.trim() || !form.referral_3_contact.trim())
-        return fail("Referral 3 name and contact are required.");
+        return fail("Reference 3 name and contact are required.");
     }
 
     if (!isAdminView && form.member_role === "ecosystem_partner") {
@@ -1314,11 +1314,11 @@ export default function OnboardingForm() {
       if (!form.target_regions.length)
         return fail("Please select at least one target region.");
       if (!form.referral_1_name.trim() || !form.referral_1_contact.trim())
-        return fail("Referral 1 name and contact are required.");
+        return fail("Reference 1 name and contact are required.");
       if (!form.referral_2_name.trim() || !form.referral_2_contact.trim())
-        return fail("Referral 2 name and contact are required.");
+        return fail("Reference 2 name and contact are required.");
       if (!form.referral_3_name.trim() || !form.referral_3_contact.trim())
-        return fail("Referral 3 name and contact are required.");
+        return fail("Reference 3 name and contact are required.");
     }
 
     if (!form.pdpa_matching_consent)
@@ -1598,7 +1598,7 @@ export default function OnboardingForm() {
       label: "Investor",
       description: "I deploy capital and seek deal flow",
       detail:
-        "You'll be asked to fill in your investment thesis, check sizes, target stages, and 3 referrals who can verify your role.",
+        "You'll be asked to fill in your investment thesis, check sizes, target stages, and 3 references who can verify your role.",
     },
     startup: {
       label: "Startup / Founder",
@@ -1610,7 +1610,7 @@ export default function OnboardingForm() {
       label: "Ecosystem Partner",
       description: "I support startups — not through capital, but expertise",
       detail:
-        "You'll describe the type of support you offer (mentorship, legal, technical, etc.) and 3 referrals who can verify your role.",
+        "You'll describe the type of support you offer (mentorship, legal, technical, etc.) and 3 references who can verify your role.",
     },
   };
 
@@ -2319,7 +2319,7 @@ export default function OnboardingForm() {
                   </SectionCard>
 
                   <SectionCard
-                    label="Section D — Referrals"
+                    label="Section D — References"
                     description="Provide 3 people who can verify your role as an investor. All fields required."
                   >
                     {([1, 2, 3] as const).map((n) => (
@@ -2328,7 +2328,7 @@ export default function OnboardingForm() {
                         className="space-y-3 rounded-lg border border-[var(--color-hairline)] p-4"
                       >
                         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted)]">
-                          Referral {n}
+                          Reference {n}
                         </p>
                         <FieldRow>
                           <Field label="Full Name" req>
@@ -2432,7 +2432,7 @@ export default function OnboardingForm() {
                   </SectionCard>
 
                   <SectionCard
-                    label="Section B — Referrals"
+                    label="Section B — References"
                     description="Provide 3 people who can verify your role as an ecosystem partner. All fields required."
                   >
                     {([1, 2, 3] as const).map((n) => (
@@ -2441,7 +2441,7 @@ export default function OnboardingForm() {
                         className="space-y-3 rounded-lg border border-[var(--color-hairline)] p-4"
                       >
                         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted)]">
-                          Referral {n}
+                          Reference {n}
                         </p>
                         <FieldRow>
                           <Field label="Full Name" req>

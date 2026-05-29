@@ -545,6 +545,33 @@ export default function ProfilePage() {
 
         {profile?.member_role === "startup" && (
           <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+                  Data Room
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-(--color-ink)">
+                  Your data room
+                </h2>
+                <p className="mt-1 text-sm text-(--color-body)">
+                  Upload pitch decks, financials, and other documents for
+                  investors. They must request access before viewing your files.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5">
+              <Link
+                href="/data-room"
+                className="gn-btn-primary whitespace-nowrap"
+              >
+                Manage data room →
+              </Link>
+            </div>
+          </section>
+        )}
+
+        {profile?.member_role === "startup" && (
+          <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
             <h2 className="text-lg font-semibold text-(--color-ink)">
               My Team / Cofounders
             </h2>

@@ -308,6 +308,23 @@ export default function ProjectDetailPage({
   const [reportReparseError, setReportReparseError] = useState("");
   const reportInputRef = useRef<HTMLInputElement>(null);
 
+  // data room (investor view)
+  type DataRoomFile = {
+    id: string;
+    name: string;
+    file_size: number | null;
+    mime_type: string | null;
+    created_at: string;
+  };
+  const [dataRoomStatus, setDataRoomStatus] = useState<
+    "loading" | "none" | "pending" | "approved" | "denied"
+  >("loading");
+  const [dataRoomFiles, setDataRoomFiles] = useState<DataRoomFile[]>([]);
+  const [dataRoomRequesting, setDataRoomRequesting] = useState(false);
+  const [dataRoomDownloadingId, setDataRoomDownloadingId] = useState<
+    string | null
+  >(null);
+
   useEffect(() => {
     Promise.all([
       fetch(`/api/projects/${id}`).then((r) => r.json()),
@@ -368,6 +385,66 @@ export default function ProjectDetailPage({
         });
     }
   }, [user?.id, project, id]);
+
+  // Load data room access status for non-owners
+  useEffect(() => {
+    if (!user?.id || !project) return;
+    if (project.owner_id === user.id) {
+      setDataRoomStatus("none");
+      return;
+    }
+    fetch(`/api/data-room/${project.owner_id}/request`)
+      .then((r) => r.json())
+      .then(
+        (data: {
+          request?: { status: string } | null;
+        }) => {
+          const s = data.request?.status;
+          if (!s) setDataRoomStatus("none");
+          else if (s === "approved") {
+            setDataRoomStatus("approved");
+            fetch(`/api/data-room/projects/${id}`)
+              .then((r) => r.json())
+              .then((d: { files?: DataRoomFile[] }) => {
+                setDataRoomFiles(d.files ?? []);
+              });
+          } else if (s === "pending") setDataRoomStatus("pending");
+          else setDataRoomStatus("denied");
+        },
+      );
+  }, [user?.id, project]);
+
+  const handleDataRoomRequest = async () => {
+    if (!project) return;
+    setDataRoomRequesting(true);
+    try {
+      const res = await fetch(
+        `/api/data-room/${project.owner_id}/request`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) },
+      );
+      if (res.ok) setDataRoomStatus("pending");
+    } finally {
+      setDataRoomRequesting(false);
+    }
+  };
+
+  const handleDataRoomDownload = async (fileId: string, fileName: string) => {
+    setDataRoomDownloadingId(fileId);
+    try {
+      const res = await fetch(`/api/data-room/files/${fileId}/download`);
+      const data = (await res.json()) as { url?: string };
+      if (data.url) {
+        const a = document.createElement("a");
+        a.href = data.url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } finally {
+      setDataRoomDownloadingId(null);
+    }
+  };
 
   const handleSave = async (e: { preventDefault(): void }) => {
     e.preventDefault();
@@ -1045,7 +1122,6 @@ export default function ProjectDetailPage({
                                     "Target Raise Max",
                                     reportProfile?.target_raise_max,
                                   ],
-                                  ["Pitch Deck", reportProfile?.pitch_deck],
                                   [
                                     "Referral Source",
                                     reportProfile?.referral_source,
@@ -1215,6 +1291,116 @@ export default function ProjectDetailPage({
         {error && (
           <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {/* ── Data Room ── */}
+        {isOwner ? (
+          <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+              Data Room
+            </p>
+            <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
+              Your data room
+            </h2>
+            <p className="mt-1 text-sm text-(--color-body)">
+              Upload pitch decks, financials, and other documents. Investors
+              can request access from this page.
+            </p>
+            <div className="mt-4">
+              <Link href={`/data-room/${id}`} className="gn-btn-secondary text-sm">
+                Manage data room →
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+              Data Room
+            </p>
+            <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
+              Startup data room
+            </h2>
+            {dataRoomStatus === "loading" && (
+              <p className="mt-2 text-sm text-(--color-muted)">Loading…</p>
+            )}
+            {dataRoomStatus === "none" && (
+              <>
+                <p className="mt-1 text-sm text-(--color-body)">
+                  Request access to view this startup&apos;s pitch deck,
+                  financials, and other documents.
+                </p>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    disabled={dataRoomRequesting}
+                    onClick={() => void handleDataRoomRequest()}
+                    className="gn-btn-primary text-sm disabled:opacity-50"
+                  >
+                    {dataRoomRequesting ? "Sending…" : "Request access"}
+                  </button>
+                </div>
+              </>
+            )}
+            {dataRoomStatus === "pending" && (
+              <p className="mt-2 text-sm text-(--color-body)">
+                Your access request is pending. The startup will be notified
+                and can approve or deny it from their data room.
+              </p>
+            )}
+            {dataRoomStatus === "denied" && (
+              <p className="mt-2 text-sm text-(--color-muted)">
+                Your access request was not approved.
+              </p>
+            )}
+            {dataRoomStatus === "approved" && (
+              <>
+                <p className="mt-1 text-sm text-emerald-600 font-medium">
+                  Access granted
+                </p>
+                {dataRoomFiles.length === 0 ? (
+                  <p className="mt-2 text-sm text-(--color-muted)">
+                    No files have been uploaded yet.
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {dataRoomFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-(--color-ink)">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-(--color-muted)">
+                            {file.file_size
+                              ? file.file_size < 1024 * 1024
+                                ? `${(file.file_size / 1024).toFixed(1)} KB`
+                                : `${(file.file_size / (1024 * 1024)).toFixed(1)} MB`
+                              : "—"}{" "}
+                            ·{" "}
+                            {new Date(file.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={dataRoomDownloadingId === file.id}
+                          onClick={() =>
+                            void handleDataRoomDownload(file.id, file.name)
+                          }
+                          className="shrink-0 rounded-lg border border-(--color-hairline) px-3 py-1.5 text-xs font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors disabled:opacity-50"
+                        >
+                          {dataRoomDownloadingId === file.id
+                            ? "…"
+                            : "Download"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 

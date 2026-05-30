@@ -300,6 +300,7 @@ export default function ProjectDetailPage({
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [matchesGenerated, setMatchesGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState<"details" | "matches">("details");
   const [reportExpanded, setReportExpanded] = useState(false);
   const [reportTab, setReportTab] = useState<
     "summary" | "profile" | "conclusion" | "details"
@@ -662,65 +663,109 @@ export default function ProjectDetailPage({
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
-        <div className="mx-auto max-w-7xl flex items-start justify-between gap-4">
-          <div>
-            <Link
-              href="/projects"
-              className="text-sm text-(--color-primary) hover:underline"
-            >
-              ← Back to projects
-            </Link>
-            <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
-              {project.name}
-            </h1>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {project.stage && (
-                <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">
-                  {project.stage}
-                </span>
+      <section className="bg-(--color-surface-soft) px-[5%] pt-10">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Link
+                href="/projects"
+                className="text-sm text-(--color-primary) hover:underline"
+              >
+                ← Back to projects
+              </Link>
+              <div className="mt-3">
+                <h1 className="text-3xl font-semibold text-(--color-ink)">
+                  {project.name}
+                </h1>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {project.stage && (
+                  <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">
+                    {project.stage}
+                  </span>
+                )}
+                {project.sector && (
+                  <span className="rounded-full bg-(--color-surface-soft) border border-(--color-hairline) px-2 py-0.5 text-xs font-medium text-(--color-muted)">
+                    {project.sector}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Investor: score badge + button in header */}
+              {!isOwner && (
+                <div className="flex items-center gap-2">
+                  {myScore && <ScoreBadge score={myScore.fit_score} large />}
+                  <button
+                    type="button"
+                    disabled={scoring}
+                    onClick={handleScoreProject}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-4 py-2 text-sm font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                  >
+                    {scoring ? (
+                      <>
+                        <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        AI is scoring…
+                      </>
+                    ) : (
+                      <>
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                        </svg>
+                        {myScore ? "Rescore" : "Score project"}
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
-              {project.sector && (
-                <span className="rounded-full bg-(--color-surface-soft) border border-(--color-hairline) px-2 py-0.5 text-xs font-medium text-(--color-muted)">
-                  {project.sector}
-                </span>
+              {isOwner && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditing((e) => !e)}
+                    className="gn-btn-secondary text-sm"
+                  >
+                    {editing ? "Cancel" : "Edit"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    Archive
+                  </button>
+                </>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Investor: score badge + button in header */}
-            {!isOwner && (
-              <div className="flex items-center gap-2">
-                {myScore && <ScoreBadge score={myScore.fit_score} large />}
+
+          {/* Tabs — owner only, flush at the bottom of the header */}
+          {isOwner && (
+            <div className="mt-6 flex gap-0 border-b border-(--color-hairline)">
+              {(["details", "matches"] as const).map((tab) => (
                 <button
+                  key={tab}
                   type="button"
-                  disabled={scoring}
-                  onClick={handleScoreProject}
-                  className="gn-btn-secondary text-sm disabled:opacity-50"
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                    activeTab === tab
+                      ? "border-(--color-primary) text-(--color-primary)"
+                      : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
+                  }`}
                 >
-                  {scoring ? "Scoring…" : myScore ? "Rescore" : "Score project"}
+                  {tab === "details" ? "Project Details" : "Investor Matches"}
+                  {tab === "matches" && matchesGenerated && investorMatches.length > 0 && (
+                    <span className="rounded-full bg-(--color-primary) px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                      {investorMatches.length}
+                    </span>
+                  )}
                 </button>
-              </div>
-            )}
-            {isOwner && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setEditing((e) => !e)}
-                  className="gn-btn-secondary text-sm"
-                >
-                  {editing ? "Cancel" : "Edit"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  Archive
-                </button>
-              </>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1002,7 +1047,7 @@ export default function ProjectDetailPage({
                                 "—",
                             },
                             {
-                              label: "Capital",
+                              label: "Raising",
                               value:
                                 reportProfile?.target_raise_min &&
                                 reportProfile?.target_raise_max
@@ -1246,6 +1291,9 @@ export default function ProjectDetailPage({
         </section>
       )}
 
+      {/* ── Owner tabs ── */}
+      {/* ── Project Details tab (always visible for non-owners) ── */}
+      {(!isOwner || activeTab === "details") && (
       <div className="mx-auto max-w-2xl px-[5%] py-10">
         {isOwner && !report && (
           <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
@@ -1407,7 +1455,7 @@ export default function ProjectDetailPage({
         {/* ── Investor: my score detail ── */}
         {!isOwner && myScore && (
           <div
-            className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-[#A8DFC9] bg-[#E1F5EE]" : myScore.fit_score >= 65 ? "border-[#A8C8EF] bg-[#E6F1FB]" : myScore.fit_score >= 50 ? "border-[#E8C97A] bg-[#FAEEDA]" : "border-[#EFA8A8] bg-[#FCEBEB]"}`}
+            className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-emerald-500/30 bg-emerald-500/10" : myScore.fit_score >= 65 ? "border-blue-500/30 bg-blue-500/10" : myScore.fit_score >= 50 ? "border-amber-500/30 bg-amber-500/10" : "border-red-500/30 bg-red-500/10"}`}
           >
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-(--color-ink)">
@@ -1546,28 +1594,6 @@ export default function ProjectDetailPage({
                 No description added yet.
               </p>
             )}
-            <div className="rounded-xl border border-(--color-hairline) p-4 text-sm">
-              <dl className="space-y-2">
-                <div className="flex justify-between">
-                  <dt className="text-(--color-muted)">Stage</dt>
-                  <dd className="font-medium text-(--color-ink)">
-                    {project.stage || "—"}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-(--color-muted)">Sector</dt>
-                  <dd className="font-medium text-(--color-ink)">
-                    {project.sector || "—"}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-(--color-muted)">Created</dt>
-                  <dd className="font-medium text-(--color-ink)">
-                    {new Date(project.created_at).toLocaleDateString()}
-                  </dd>
-                </div>
-              </dl>
-            </div>
 
             {/* ── Team / Cofounders ── */}
             {isOwner && (
@@ -1615,131 +1641,109 @@ export default function ProjectDetailPage({
               </div>
             )}
 
-            {/* ── Investor matches panel (startup owner only) ── */}
-            {isOwner && (
-              <div
-                id="investor-matches"
-                className="rounded-xl border border-(--color-hairline) p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h2
-                    className={`text-sm font-semibold ${matchesGenerated && investorMatches.length > 0 ? "text-green-600" : "text-(--color-ink)"}`}
-                  >
-                    {matchesGenerated && investorMatches.length > 0
-                      ? "Investor matches"
-                      : "Investor matches"}
-                  </h2>
-                  <button
-                    type="button"
-                    disabled={generating}
-                    onClick={handleFindInvestors}
-                    className="rounded-xl border border-(--color-hairline) px-3 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) disabled:opacity-50 transition-colors"
-                  >
-                    {generating
-                      ? "Generating…"
-                      : matchesGenerated
-                        ? "Regenerate"
-                        : "Find investors"}
-                  </button>
-                </div>
-
-                {matchesLoading ? (
-                  <p className="mt-3 text-sm text-(--color-muted)">Loading…</p>
-                ) : !matchesGenerated ? (
-                  <p className="mt-3 text-sm text-(--color-muted)">
-                    Click &ldquo;Find investors&rdquo; to generate AI-powered
-                    investor match scores for this project.
-                  </p>
-                ) : investorMatches.length === 0 ? (
-                  <p className="mt-3 text-sm text-(--color-muted)">
-                    No investor matches found. Try again once more investors
-                    have joined the platform.
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-3">
-                    {investorMatches.map((m, idx) => {
-                      const locked = idx >= visibleMatchLimit;
-                      return (
-                        <div key={m.investor_profile_id} className="relative">
-                          <div
-                            className={`rounded-lg bg-(--color-surface-soft) p-3 ${locked ? "blur-sm pointer-events-none select-none" : ""}`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div>
-                                <p className="text-sm font-medium text-(--color-ink)">
-                                  {m.investor_name}
-                                </p>
-                                {(m.investor_sector || m.investor_city) && (
-                                  <p className="text-xs text-(--color-muted)">
-                                    {[m.investor_sector, m.investor_city]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                                  </p>
-                                )}
-                              </div>
-                              <ScoreBadge score={m.fit_score} />
-                            </div>
-                            {m.summary && (
-                              <p className="mt-1 text-xs font-medium text-green-600">
-                                {m.summary}
-                              </p>
-                            )}
-                          </div>
-                          {locked && (
-                            <div className="absolute inset-0 flex items-center justify-center rounded-lg">
-                              <div className="flex items-center gap-2 rounded-full border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 shadow-sm">
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
-                                  className="h-3.5 w-3.5 text-(--color-muted)"
-                                >
-                                  <rect
-                                    x="3"
-                                    y="11"
-                                    width="18"
-                                    height="11"
-                                    rx="2"
-                                    ry="2"
-                                  />
-                                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                </svg>
-                                <span className="text-xs font-semibold text-(--color-ink)">
-                                  {subscriptionPlan
-                                    ? "Premium — Upgrade to unlock"
-                                    : "Upgrade to unlock"}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {visibleMatchLimit < Infinity &&
-                      investorMatches.length > visibleMatchLimit && (
-                        <p className="pt-1 text-center text-xs text-(--color-muted)">
-                          {investorMatches.length - visibleMatchLimit} more
-                          match
-                          {investorMatches.length - visibleMatchLimit !== 1
-                            ? "es"
-                            : ""}{" "}
-                          hidden.{" "}
-                          <span className="font-semibold text-(--color-primary)">
-                            {subscriptionPlan
-                              ? "Upgrade to Premium"
-                              : "Upgrade your plan"}
-                          </span>{" "}
-                          to see all.
-                        </p>
-                      )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>
+      )}
+
+      {/* ── Investor Matches tab ── */}
+      {isOwner && activeTab === "matches" && (
+        <div className="mx-auto max-w-2xl px-[5%] py-10 space-y-5">
+          {/* Generate / regenerate header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-(--color-ink)">Investor matches</h2>
+              <p className="mt-0.5 text-sm text-(--color-muted)">AI-ranked investors matched to this project.</p>
+            </div>
+            <button
+              type="button"
+              disabled={generating}
+              onClick={handleFindInvestors}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-4 py-2 text-sm font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+            >
+              {generating ? (
+                <>
+                  <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  AI is matching…
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                  </svg>
+                  {matchesGenerated ? "Regenerate" : "Find investors"}
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Matches content */}
+          {matchesLoading ? (
+            <p className="text-sm text-(--color-muted)">Loading…</p>
+          ) : !matchesGenerated ? (
+            <div className="rounded-xl border border-(--color-hairline) border-dashed p-10 text-center">
+              <p className="text-sm text-(--color-muted)">
+                Click &ldquo;Find investors&rdquo; to generate AI-powered investor match scores for this project.
+              </p>
+            </div>
+          ) : investorMatches.length === 0 ? (
+            <p className="text-sm text-(--color-muted)">
+              No investor matches found. Try again once more investors have joined the platform.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {investorMatches.map((m, idx) => {
+                const locked = idx >= visibleMatchLimit;
+                return (
+                  <div key={m.investor_profile_id} className="relative">
+                    <div className={`rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-4 ${locked ? "blur-sm pointer-events-none select-none" : ""}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-(--color-ink)">{m.investor_name}</p>
+                          {(m.investor_sector || m.investor_city) && (
+                            <p className="mt-0.5 text-xs text-(--color-muted)">
+                              {[m.investor_sector, m.investor_city].filter(Boolean).join(" · ")}
+                            </p>
+                          )}
+                        </div>
+                        <ScoreBadge score={m.fit_score} />
+                      </div>
+                      {m.summary && (
+                        <p className="mt-2 text-xs font-medium text-green-600">{m.summary}</p>
+                      )}
+                    </div>
+                    {locked && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-xl">
+                        <div className="flex items-center gap-2 rounded-full border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 shadow-sm">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5 text-(--color-muted)">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                          <span className="text-xs font-semibold text-(--color-ink)">
+                            {subscriptionPlan ? "Premium — Upgrade to unlock" : "Upgrade to unlock"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {visibleMatchLimit < Infinity && investorMatches.length > visibleMatchLimit && (
+                <p className="pt-1 text-center text-xs text-(--color-muted)">
+                  {investorMatches.length - visibleMatchLimit} more match{investorMatches.length - visibleMatchLimit !== 1 ? "es" : ""} hidden.{" "}
+                  <span className="font-semibold text-(--color-primary)">
+                    {subscriptionPlan ? "Upgrade to Premium" : "Upgrade your plan"}
+                  </span>{" "}
+                  to see all.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

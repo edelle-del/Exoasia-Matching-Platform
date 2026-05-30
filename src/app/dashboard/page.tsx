@@ -17,7 +17,6 @@ import {
   ProfileStrength,
   PipelineSummaryCard,
   PartnerPortfolioCard,
-  BenchmarkingChart,
 } from "./_components/MemberWidgets";
 import {
   SystemPulseHeader,
@@ -303,11 +302,6 @@ export default function DashboardPage() {
   const { percent: profilePercent, nextStep: profileNextStep } =
     computeProfileStrength(summary.profile);
 
-  const benchmarkData = [
-    { name: "You", value: isLoading ? 0 : summary.activeDeals },
-    { name: "Sector avg", value: isLoading ? 0 : summary.sectorAvgDeals },
-  ];
-
   return (
     <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
       <div className="mx-auto w-full max-w-7xl space-y-8">
@@ -346,8 +340,8 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Row 1: 4 metric cards */}
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Row 1: 3 metric cards */}
+        <section className="grid gap-4 sm:grid-cols-3">
           <MetricCard
             label="Pending matches"
             value={isLoading ? "..." : String(summary.pendingMatches)}
@@ -363,7 +357,6 @@ export default function DashboardPage() {
             value={isLoading ? "..." : String(summary.credits)}
             valueColor="text-blue-600"
           />
-          <BenchmarkingChart data={benchmarkData} label="Active deals" />
         </section>
 
         {/* Row 2: Profile strength + Pipeline summary / Partner card */}

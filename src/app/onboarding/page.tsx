@@ -1308,7 +1308,7 @@ export default function OnboardingForm() {
 
     if (!isAdminView && form.member_role === "ecosystem_partner") {
       if (!form.support_types.length)
-        return fail("Please select at least one type of support you offer.");
+        return fail("Please select your organization type.");
       if (!form.target_industries.length)
         return fail("Please select at least one target industry.");
       if (!form.target_regions.length)
@@ -1338,7 +1338,7 @@ export default function OnboardingForm() {
           : form.member_role === "startup"
             ? ["Funding / Investment capital"]
             : form.member_role === "ecosystem_partner"
-              ? ["Startups to support / mentor"]
+              ? ["Deal flow / Investment pipeline"]
               : ["General networking"];
 
       const offer_categories =
@@ -1349,7 +1349,7 @@ export default function OnboardingForm() {
             : form.member_role === "ecosystem_partner"
               ? form.support_types.length
                 ? form.support_types
-                : ["Ecosystem support"]
+                : ["Capital / Incubation / Acceleration"]
               : ["Industry expertise"];
 
       // Startup extended fields are collected in the dedicated "startup" step
@@ -1608,9 +1608,9 @@ export default function OnboardingForm() {
     },
     ecosystem_partner: {
       label: "Ecosystem Partner",
-      description: "I support startups — not through capital, but expertise",
+      description: "I deploy capital or build startups — TBI, accelerator, VC, or angel",
       detail:
-        "You'll describe the type of support you offer (mentorship, legal, technical, etc.) and 3 references who can verify your role.",
+        "You'll set your organization type, investment mandate, target sectors and stages, and provide 3 references who can verify your role.",
     },
   };
 
@@ -1723,7 +1723,7 @@ export default function OnboardingForm() {
                   current={form.member_role}
                   onSelect={setPendingRole}
                   title="Ecosystem Partner"
-                  description="I support startups — not through capital, but expertise"
+                  description="I deploy capital or build startups — TBI, accelerator, VC, or angel"
                   icon={
                     <svg
                       viewBox="0 0 24 24"
@@ -2371,13 +2371,13 @@ export default function OnboardingForm() {
               {/* ─── Ecosystem Partner sections ────────────────────────── */}
               {form.member_role === "ecosystem_partner" && (
                 <div className="space-y-4">
-                  <SectionCard label="Section A — Support Profile">
-                    <Field label="Type of Support You Offer" req>
+                  <SectionCard label="Section A — Organization & Investment Mandate">
+                    <Field label="Organization Type" req>
                       <p className="mb-2 text-xs text-[var(--color-muted)]">
-                        Select all that apply.
+                        Select the category that best describes your organization.
                       </p>
                       <PillToggle
-                        options={SUPPORT_TYPES}
+                        options={INVESTOR_TYPES}
                         value={form.support_types}
                         onChange={(v) => setArr("support_types", v)}
                       />
@@ -2393,7 +2393,7 @@ export default function OnboardingForm() {
                         />
                       </Field>
 
-                      <Field label="Industries You Focus On" req>
+                      <Field label="Sector Focus" req>
                         <SearchableMultiSelect
                           options={INDUSTRIES}
                           value={form.target_industries}
@@ -2404,7 +2404,7 @@ export default function OnboardingForm() {
                       </Field>
                     </FieldRow>
 
-                    <Field label="Startup Stages You Can Best Help">
+                    <Field label="Stage Preference">
                       <div className="flex flex-wrap gap-2">
                         {STAGES.map((s) => (
                           <button
@@ -2433,7 +2433,7 @@ export default function OnboardingForm() {
 
                   <SectionCard
                     label="Section B — References"
-                    description="Provide 3 people who can verify your role as an ecosystem partner. All fields required."
+                    description="Provide 3 people who can verify your organization (e.g. colleagues, portfolio founders, co-investors). All fields required."
                   >
                     {([1, 2, 3] as const).map((n) => (
                       <div

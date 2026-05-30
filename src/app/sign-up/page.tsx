@@ -1,16 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getClientContext } from "@/lib/client-context";
 
 export default function SignUpPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+
+  // OTP step shown after signUp() succeeds but session is null (email not yet confirmed)
+  const [otpStep, setOtpStep] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,17 +26,25 @@ export default function SignUpPage() {
       setError("Passwords do not match");
       return;
     }
-
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
     }
 
     setIsSubmitting(true);
-    const supabase = createClient();
+    const [supabase, ctx] = await Promise.all([
+      Promise.resolve(createClient()),
+      getClientContext(),
+    ]);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: formData.email.trim().toLowerCase(),
       password: formData.password,
+      options: {
+        data: {
+          signin_location: ctx.location,
+          signin_browser: ctx.browser,
+        },
+      },
     });
     setIsSubmitting(false);
 
@@ -39,9 +53,59 @@ export default function SignUpPage() {
       return;
     }
 
-    // If email confirmation is required, the session will be null
     if (!data.session) {
-      setEmailSent(true);
+      // Email confirmation required — show OTP input.
+      // The Supabase "Confirm signup" email template must include {{ .Token }}
+      // so the 6-digit code reaches the user's inbox.
+      setOtpStep(true);
+      return;
+    }
+
+    router.replace("/onboarding");
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d?$/.test(value)) return;
+    const next = [...otp];
+    next[index] = value;
+    setOtp(next);
+    setError("");
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (text.length === 6) {
+      setOtp(text.split(""));
+      otpRefs.current[5]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = otp.join("");
+    if (code.length < 6) { setError("Enter the full 6-digit code."); return; }
+
+    setOtpSubmitting(true);
+    setError("");
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: formData.email.trim().toLowerCase(),
+      token: code,
+      type: "signup",
+    });
+    setOtpSubmitting(false);
+
+    if (verifyError) {
+      setError(verifyError.message);
+      setOtp(["", "", "", "", "", ""]);
+      otpRefs.current[0]?.focus();
       return;
     }
 
@@ -53,22 +117,65 @@ export default function SignUpPage() {
     if (error) setError("");
   };
 
-  if (emailSent) {
+  if (otpStep) {
     return (
       <div className="min-h-screen bg-[var(--color-canvas)]">
         <main className="px-[5%] py-20">
-          <div className="mx-auto max-w-[640px] space-y-6 text-center">
-            <h1 className="font-display text-4xl font-700 text-[var(--color-ink)]">
+          <div className="mx-auto max-w-[480px] space-y-6 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6 text-[var(--color-primary)]">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m2 7 10 7 10-7" />
+              </svg>
+            </div>
+            <h1 className="font-display text-3xl font-700 text-[var(--color-ink)]">
               Check your email
             </h1>
-            <p className="text-lg text-[var(--color-body)]">
-              We sent a confirmation link to{" "}
-              <strong>{formData.email}</strong>. Click it to activate your
-              account and complete onboarding.
+            <p className="text-[var(--color-body)]">
+              We sent a 6-digit code to <strong>{formData.email}</strong>. Enter it below to activate your account.
             </p>
-            <Link href="/sign-in" className="inline-block gn-btn-secondary">
-              Back to sign in
-            </Link>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              {error && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+              )}
+
+              <div className="flex justify-center gap-3" onPaste={handleOtpPaste}>
+                {otp.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { otpRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    aria-label={`Digit ${i + 1} of verification code`}
+                    onChange={(e) => handleOtpChange(i, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    className="h-14 w-12 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-center text-xl font-700 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
+                  />
+                ))}
+              </div>
+
+              <button
+                className="w-full gn-btn-primary"
+                type="submit"
+                disabled={otpSubmitting || otp.join("").length < 6}
+              >
+                {otpSubmitting ? "Verifying…" : "Verify & continue →"}
+              </button>
+            </form>
+
+            <p className="text-sm text-[var(--color-muted)]">
+              Wrong email?{" "}
+              <button
+                type="button"
+                onClick={() => { setOtpStep(false); setOtp(["", "", "", "", "", ""]); setError(""); }}
+                className="text-[var(--color-primary)] hover:underline"
+              >
+                Go back
+              </button>
+            </p>
           </div>
         </main>
       </div>

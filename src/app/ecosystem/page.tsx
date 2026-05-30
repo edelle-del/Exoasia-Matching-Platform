@@ -67,7 +67,7 @@ function DeepDive({ company, onBack }: { company: PortfolioCompany; onBack: () =
       <div className="rounded-2xl border border-[#2A2A3E] bg-[#12121A]">
         <div className="border-b border-[#2A2A3E] px-5 py-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Projects</p>
-          <p className="mt-0.5 text-sm font-semibold text-[#F4F4FF]">Active investment opportunities</p>
+          <p className="mt-0.5 text-sm font-semibold text-[#F4F4FF]">Mandate-matched opportunities</p>
         </div>
         {company.projects.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-[#8B8BA7]">No active projects</p>
@@ -241,7 +241,8 @@ export default function EcosystemPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Ecosystem Partner</p>
-            <h1 className="mt-1 text-2xl font-extrabold text-[#F4F4FF]">Portfolio Command Center</h1>
+            <h1 className="mt-1 text-2xl font-extrabold text-[#F4F4FF]">Deal Flow Command Center</h1>
+            <p className="mt-1 text-sm text-[#8B8BA7]">Portfolio pipeline · Demo Day nominations · Year-round deal flow</p>
           </div>
           <button
             type="button"
@@ -251,7 +252,7 @@ export default function EcosystemPage() {
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nominate Startup
+            Nominate for Demo Day
           </button>
         </div>
 

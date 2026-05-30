@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers";
+import { getClientContext } from "@/lib/client-context";
 
 type CofounderInvite = {
   id: string;
@@ -59,7 +60,7 @@ type V2Startup = {
 
 type V2EcosystemPartner = {
   _v: 2;
-  support_types?: string[];
+  support_types?: string[]; // stores organization_type selections
   target_industries?: string[];
   target_regions?: string[];
   target_stages?: string[];
@@ -203,12 +204,12 @@ function EcosystemPartnerMatchingProfile({
   return (
     <div className="space-y-5">
       {!!data.support_types?.length && (
-        <ProfileRow label="Support Offered">
+        <ProfileRow label="Organization Type">
           <TagList items={data.support_types} />
         </ProfileRow>
       )}
       {!!data.target_industries?.length && (
-        <ProfileRow label="Industries">
+        <ProfileRow label="Sector Focus">
           <TagList items={data.target_industries} />
         </ProfileRow>
       )}
@@ -218,7 +219,7 @@ function EcosystemPartnerMatchingProfile({
         </ProfileRow>
       )}
       {!!data.target_stages?.length && (
-        <ProfileRow label="Startup Stages">
+        <ProfileRow label="Stage Preference">
           <TagList items={data.target_stages} />
         </ProfileRow>
       )}
@@ -356,6 +357,7 @@ export default function ProfilePage() {
       return;
     }
     setInviteLoading(true);
+    const ctx = await getClientContext();
     const res = await fetch("/api/cofounders/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -363,6 +365,7 @@ export default function ProfilePage() {
         uid_type: inviteUidType,
         uid_value: inviteUidValue.trim(),
         project_id: inviteProjectId || null,
+        client_context: ctx,
       }),
     });
     setInviteLoading(false);

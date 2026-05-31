@@ -1,0 +1,6 @@
+H4sIAD1RGWoAA6tWykvMTVWyUgpJLS5R0lFKSS1OLsosKMnMz0MIFpckpoPUeKakJoJlgEKpySX5RUAxt8y8ktTkDKVaAG8rCiRKAAAA
+
+to decode
+call decompressProjectAssessmentData
+
+ProjectAssessmentData schema included in the library

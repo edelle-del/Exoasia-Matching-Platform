@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/app/providers";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { VentureReadinessReport } from "@/lib/venture-readiness/types";
+import {
+  buildProjectAssessmentRedirectUrl,
+  createProjectAssessmentData,
+} from "../../../lib/project-assessment-link";
 
 const projectStages = [
   "Ideation",
@@ -66,6 +72,38 @@ export default function NewProjectPage() {
       })
       .catch(() => setSlotChecked(true));
   }, [router]);
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [reportError, setReportError] = useState("");
+  const [reportStatus, setReportStatus] = useState<
+    "idle" | "parsing" | "ready"
+  >("idle");
+  const [ventureReport, setVentureReport] =
+    useState<VentureReadinessReport | null>(null);
+  const { user } = useAuth();
+
+  const parseReport = async (file: File) => {
+    setReportStatus("parsing");
+    setReportError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/venture-readiness/parse", {
+      method: "POST",
+      body: fd,
+    });
+    const json = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      data?: VentureReadinessReport;
+    };
+    if (!res.ok || !json.success || !json.data) {
+      throw new Error(
+        json.error ?? "Failed to parse Venture Confidence Assessment.",
+      );
+    }
+    setVentureReport(json.data);
+    setReportStatus("ready");
+    return json.data;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -73,8 +111,37 @@ export default function NewProjectPage() {
       setError("Project name is required.");
       return;
     }
+
+    const ownerId = user?.id ?? `anon-${Date.now()}`;
+
+    const assessmentData = createProjectAssessmentData({
+      owner_id: ownerId,
+      name: form.name,
+      description: form.description,
+      stage: form.stage,
+      sector: form.sector,
+    });
+
+    if (!reportFile) {
+      setLoading(true);
+      window.location.assign(buildProjectAssessmentRedirectUrl(assessmentData));
+      return;
+    }
+
     setLoading(true);
     setError("");
+    let reportPayload: VentureReadinessReport | undefined;
+    try {
+      reportPayload = ventureReport ?? (await parseReport(reportFile));
+    } catch (err) {
+      setLoading(false);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to parse Venture Confidence Assessment.",
+      );
+      return;
+    }
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -225,9 +292,13 @@ export default function NewProjectPage() {
             <button
               type="submit"
               disabled={loading}
-              className="gn-btn-primary disabled:opacity-50"
+              className="gn-btn-primary whitespace-nowrap disabled:opacity-50"
             >
-              {loading ? "Saving..." : "Create project"}
+              {loading
+                ? "Saving..."
+                : reportFile
+                  ? "Create project"
+                  : "Assess project"}
             </button>
             <Link
               href="/projects"

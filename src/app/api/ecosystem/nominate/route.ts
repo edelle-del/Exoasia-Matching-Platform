@@ -29,12 +29,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
     }
 
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const { data: nomination, error: insertError } = await admin
       .from("portfolio_nominations")
       .insert({
         partner_id:    user.id,
         invitee_email: email.toLowerCase().trim(),
         message:       message?.trim() ?? null,
+        otp,
       })
       .select()
       .single();
@@ -46,7 +49,10 @@ export async function POST(request: Request) {
       throw insertError;
     }
 
-    return NextResponse.json({ ok: true, token: nomination.token });
+    // TODO: send email to invitee_email containing otp and link to /accept-nomination
+    // Requires an email service (e.g. Resend) — not yet wired up.
+
+    return NextResponse.json({ ok: true, otp: nomination.otp });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

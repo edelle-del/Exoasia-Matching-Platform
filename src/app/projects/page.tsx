@@ -169,7 +169,14 @@ export default function ProjectsPage() {
             </p>
           </div>
           {!isInvestor && (
-            <Link href="/projects/new" className="gn-btn-primary">
+            <Link
+              href={
+                !loading && !hasActiveSub && projects.length >= 1
+                  ? "/payments"
+                  : "/projects/new"
+              }
+              className="gn-btn-primary"
+            >
               + New project
             </Link>
           )}
@@ -301,13 +308,24 @@ export default function ProjectsPage() {
                           type="button"
                           disabled={isScoringThis}
                           onClick={() => handleScoreProject(p.id)}
-                          className="rounded-xl border border-(--color-hairline) px-3 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) disabled:opacity-50 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-3 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
                         >
-                          {isScoringThis
-                            ? "Scoring…"
-                            : existingScore
-                              ? "Rescore"
-                              : "Score this project"}
+                          {isScoringThis ? (
+                            <>
+                              <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              AI is scoring…
+                            </>
+                          ) : (
+                            <>
+                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0" aria-hidden="true">
+                                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                              </svg>
+                              {existingScore ? "Rescore" : "Score this project"}
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
@@ -336,13 +354,24 @@ export default function ProjectsPage() {
                           type="button"
                           disabled={isGeneratingThis}
                           onClick={() => handleFindInvestors(p.id)}
-                          className="rounded-xl border border-(--color-hairline) px-3 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) disabled:opacity-50 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-3 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
                         >
-                          {isGeneratingThis
-                            ? "Generating…"
-                            : alreadyGenerated
-                              ? "Regenerate"
-                              : "Find investors"}
+                          {isGeneratingThis ? (
+                            <>
+                              <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              AI is matching…
+                            </>
+                          ) : (
+                            <>
+                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0" aria-hidden="true">
+                                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                              </svg>
+                              {alreadyGenerated ? "Regenerate" : "Find investors"}
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>

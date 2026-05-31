@@ -14,6 +14,7 @@ const ICONS = {
   matches: "ri-heart-3-line",
   dealBoard: "ri-briefcase-line",
   documents: "ri-file-text-line",
+  dataRoom: "ri-database-2-line",
   events: "ri-calendar-line",
   introductions: "ri-group-line",
   members: "ri-team-line",
@@ -169,6 +170,11 @@ export default function TopHeader() {
                 href="/projects"
                 label="Projects"
                 icon={ICONS.projects}
+              />
+              <NavLink
+                href="/data-room"
+                label="Data Room"
+                icon={ICONS.dataRoom}
               />
               <NavLink href="/events" label="Events" icon={ICONS.events} />
               <NavLink

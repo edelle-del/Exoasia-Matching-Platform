@@ -1,69 +1,103 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRef, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../providers";
 import { getHomePathForRole } from "@/lib/auth/access";
 
+// ── OTP box component ─────────────────────────────────────────────────────────
+
+function OtpBoxes({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleChange = (i: number, char: string) => {
+    if (!/^\d?$/.test(char)) return;
+    const next = [...value];
+    next[i] = char;
+    onChange(next);
+    if (char && i < 5) refs.current[i + 1]?.focus();
+  };
+
+  const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !value[i] && i > 0) refs.current[i - 1]?.focus();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (text.length === 6) {
+      onChange(text.split(""));
+      refs.current[5]?.focus();
+    }
+  };
+
+  return (
+    <div className="flex justify-center gap-3" onPaste={handlePaste}>
+      {value.map((digit, i) => (
+        <input
+          key={i}
+          ref={(el) => { refs.current[i] = el; }}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={digit}
+          aria-label={`Digit ${i + 1} of verification code`}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          className="h-14 w-12 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-center text-xl font-700 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type InviteInfo = {
   id: string;
-  uid_type: string;
-  uid_value: string;
   status: string;
   expires_at: string;
-  project: { id: string; name: string; stage: string | null } | null;
+  project_id: string | null;
   inviter: { full_name: string | null; business_name: string | null } | null;
+  project: { id: string; name: string; stage: string | null } | null;
 };
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AcceptInvitePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token");
-
-  const { user, signedIn, isInvitedAccount, signInWithPassword, completeInviteClaim, signOut, role } =
+  const { user, signedIn, isInvitedAccount, signInWithPassword, completeInviteClaim, role } =
     useAuth();
 
-  // Sign out any currently logged-in user when arriving with an invite token,
-  // so the invitee can set up their own account without interference.
-  useEffect(() => {
-    if (token && signedIn) signOut();
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Step 1: OTP entry ─────────────────────────────────────────────────────
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const [otpError, setOtpError] = useState("");
 
-  // ── Invite info from token ────────────────────────────────────────────────────
+  // ── Step 2: Invite context + account setup ────────────────────────────────
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
-  const [inviteLoadError, setInviteLoadError] = useState("");
-  const [inviteLoading, setInviteLoading] = useState(!!token);
-
-  useEffect(() => {
-    if (!token) return;
-    fetch(`/api/cofounders/invite/${token}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setInviteInfo(data.invite ?? null);
-        if (!data.invite) setInviteLoadError(data.error ?? "Invalid invite link.");
-        setInviteLoading(false);
-      })
-      .catch(() => { setInviteLoadError("Failed to load invite details."); setInviteLoading(false); });
-  }, [token]);
-
-  // ── Shared form state ─────────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
-    fullName: "",
+    fullName: user?.user_metadata?.full_name ?? "",
     password: "",
     confirmPassword: "",
     pdpaConsent: false,
     ndaLight: false,
     nonCircumvention: false,
   });
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [accepted, setAccepted] = useState(false);
 
-  // Pre-fill name from Supabase user metadata (magic-link path)
-  useEffect(() => {
-    if (!signedIn) return;
-    const metadataName = user?.user_metadata?.full_name;
-    if (typeof metadataName === "string" && metadataName.trim()) {
-      setFormData((prev) => prev.fullName.trim() ? prev : { ...prev, fullName: metadataName.trim() });
-    }
-  }, [signedIn, user?.user_metadata?.full_name]);
+  // ── Existing-account sign-in toggle ──────────────────────────────────────
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [authData, setAuthData] = useState({ email: "", password: "" });
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   const canSubmitSetup = useMemo(
     () =>
@@ -76,20 +110,35 @@ export default function AcceptInvitePage() {
     [formData],
   );
 
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [accepted, setAccepted] = useState(false);
-
-  // ── Toggle for existing-account sign-in path ──────────────────────────────────
-  const [showSignIn, setShowSignIn] = useState(false);
-  const [authData, setAuthData] = useState({ email: "", password: "" });
-  const [authSubmitting, setAuthSubmitting] = useState(false);
-
-  // ── Path A: unauthenticated + token → claim via API then sign in ──────────────
-  // Used when the user arrives from the copied invite link (no Supabase OTP hash).
-  const handleSetupAndClaim = async (e: { preventDefault(): void }) => {
+  // ── Step 1 submit: verify OTP ─────────────────────────────────────────────
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    const code = otp.join("");
+    if (code.length < 6) { setOtpError("Enter the full 6-digit code."); return; }
+    if (!email.trim()) { setOtpError("Enter your email address."); return; }
+
+    setOtpSubmitting(true);
+    setOtpError("");
+    const res = await fetch("/api/cofounders/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), otp: code }),
+    });
+    const data = await res.json();
+    setOtpSubmitting(false);
+
+    if (!res.ok) {
+      setOtpError(data?.error ?? "Invalid code. Please try again.");
+      setOtp(["", "", "", "", "", ""]);
+      return;
+    }
+
+    setInviteInfo(data.invite);
+  };
+
+  // ── Step 2 submit: claim account (new user) ───────────────────────────────
+  const handleSetupAndClaim = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (formData.password !== formData.confirmPassword) { setError("Passwords do not match."); return; }
     setSubmitting(true);
     setError("");
@@ -97,12 +146,16 @@ export default function AcceptInvitePage() {
     const res = await fetch("/api/cofounders/claim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, name: formData.fullName.trim(), password: formData.password }),
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        otp: otp.join(""),
+        name: formData.fullName.trim(),
+        password: formData.password,
+      }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data?.error ?? "Failed to set up account."); setSubmitting(false); return; }
 
-    // Sign in with the newly set password
     const { error: signInError } = await signInWithPassword(data.email, formData.password);
     if (signInError) { setError(signInError); setSubmitting(false); return; }
 
@@ -110,34 +163,8 @@ export default function AcceptInvitePage() {
     setTimeout(() => router.push("/projects"), 2000);
   };
 
-  // ── Path B: signed in via Supabase magic link (isInvitedAccount) + token ──────
-  const handleClaimAndAccept = async (e: { preventDefault(): void }) => {
-    e.preventDefault();
-    if (!signedIn) { setError("Please sign in first."); return; }
-    if (formData.password !== formData.confirmPassword) { setError("Passwords do not match."); return; }
-    setSubmitting(true);
-    setError("");
-
-    const { error: claimError } = await completeInviteClaim({
-      name: formData.fullName.trim(),
-      password: formData.password,
-    });
-    if (claimError) { setError(claimError); setSubmitting(false); return; }
-
-    if (token) {
-      await fetch("/api/cofounders/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-    }
-
-    setAccepted(true);
-    setTimeout(() => router.push("/projects"), 2000);
-  };
-
-  // ── Path C: legacy admin-provisioned account (no token) ──────────────────────
-  const handleAdminClaim = async (e: { preventDefault(): void }) => {
+  // ── Legacy path: admin-provisioned invited account ────────────────────────
+  const handleAdminClaim = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signedIn || !isInvitedAccount) { setError("No pending invite to claim."); return; }
     if (formData.password !== formData.confirmPassword) { setError("Passwords do not match."); return; }
@@ -152,41 +179,23 @@ export default function AcceptInvitePage() {
     router.push(getHomePathForRole(role));
   };
 
-  // ── Path D: existing active member with token → one-click accept ──────────────
-  const handleAccept = async () => {
-    if (!token) return;
-    setSubmitting(true);
-    setError("");
-    const res = await fetch("/api/cofounders/accept", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    const data = await res.json();
-    setSubmitting(false);
-    if (!res.ok) { setError(data?.error ?? "Failed to accept invite."); return; }
-    setAccepted(true);
-    setTimeout(() => router.push("/projects"), 2000);
-  };
-
-  // ── Sign in (for existing users who aren't signed in yet) ────────────────────
-  const handleSignIn = async (e: { preventDefault(): void }) => {
+  // ── Sign in (existing member accepting via sign-in) ───────────────────────
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const email = authData.email.trim().toLowerCase();
-    if (!email || !authData.password) { setError("Enter your email and password."); return; }
+    const emailVal = authData.email.trim().toLowerCase();
+    if (!emailVal || !authData.password) { setError("Enter your email and password."); return; }
     setAuthSubmitting(true);
     setError("");
-    const { error: signInError } = await signInWithPassword(email, authData.password);
+    const { error: signInError } = await signInWithPassword(emailVal, authData.password);
     setAuthSubmitting(false);
     if (signInError) setError(signInError);
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const inviterLabel = inviteInfo?.inviter?.full_name || inviteInfo?.inviter?.business_name || "A founder";
   const projectLabel = inviteInfo?.project?.name;
-  const isExpired = inviteInfo ? new Date(inviteInfo.expires_at) < new Date() : false;
 
-  function SetupForm({ onSubmit }: { onSubmit: (e: { preventDefault(): void }) => void }) {
+  function SetupForm({ onSubmit }: { onSubmit: (e: React.FormEvent) => void }) {
     return (
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div>
@@ -251,26 +260,7 @@ export default function AcceptInvitePage() {
     );
   }
 
-  // ── Early returns ─────────────────────────────────────────────────────────────
-  if (inviteLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-(--color-canvas)">
-        <p className="text-sm text-(--color-muted)">Loading invite…</p>
-      </div>
-    );
-  }
-
-  if (token && inviteLoadError) {
-    return (
-      <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
-        <div className="mx-auto max-w-[600px] rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-8 text-center">
-          <h1 className="text-2xl font-700 text-(--color-ink)">Invalid invite link</h1>
-          <p className="mt-2 text-sm text-(--color-body)">{inviteLoadError}</p>
-        </div>
-      </div>
-    );
-  }
-
+  // ── Success screen ────────────────────────────────────────────────────────
   if (accepted) {
     return (
       <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
@@ -292,134 +282,136 @@ export default function AcceptInvitePage() {
     );
   }
 
-  // ── Main render ───────────────────────────────────────────────────────────────
+  // ── Legacy: admin-provisioned signed-in invited account (no OTP) ──────────
+  if (signedIn && isInvitedAccount && !inviteInfo) {
+    return (
+      <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+        <div className="mx-auto max-w-[600px] rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-8">
+          <p className="text-xs font-600 uppercase tracking-[0.14em] text-(--color-muted)">Platform Invitation</p>
+          <h1 className="mt-3 text-2xl font-700 text-(--color-ink)">Set up your account</h1>
+          {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          {SetupForm({ onSubmit: handleAdminClaim })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main render ───────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_340px]">
 
-        {/* ── Left: account creation form ── */}
+        {/* ── Left panel ── */}
         <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-8">
           <p className="text-xs font-600 uppercase tracking-[0.14em] text-(--color-muted)">
             Platform Invitation — FOUNDERS ARENA
           </p>
-          <h1 className="mt-3 text-3xl font-700 text-(--color-ink)">
-            Create your account
-          </h1>
-          <p className="mt-1 text-sm text-(--color-body)">
-            You&apos;ve been invited to join FOUNDERS ARENA. Set up your account below to accept.
-          </p>
-          {user?.email && (
-            <p className="mt-1 text-sm text-(--color-muted)">Signed in as {user.email}</p>
-          )}
 
-          {error && (
-            <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-          )}
-
-          {/* ── Not signed in + token: show setup form (primary path for new users) ── */}
-          {!signedIn && token && !showSignIn && (
+          {/* ── Step 1: OTP entry ── */}
+          {!inviteInfo && (
             <>
-              {SetupForm({ onSubmit: handleSetupAndClaim })}
-              <p className="mt-4 text-center text-xs text-(--color-muted)">
-                Already have a FOUNDERS ARENA account?{" "}
-                <button type="button" onClick={() => setShowSignIn(true)} className="text-(--color-primary) hover:underline">
-                  Sign in to accept
-                </button>
+              <h1 className="mt-3 text-3xl font-700 text-(--color-ink)">Enter your verification code</h1>
+              <p className="mt-1 text-sm text-(--color-body)">
+                Check your email for the 6-digit code we sent and enter it below.
               </p>
-            </>
-          )}
 
-          {/* ── Not signed in + token + showSignIn: sign-in form ── */}
-          {!signedIn && token && showSignIn && (
-            <>
-              <form onSubmit={handleSignIn} className="mt-6 space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+              {otpError && (
+                <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{otpError}</div>
+              )}
+
+              <form onSubmit={handleVerifyOtp} className="mt-6 space-y-5">
+                <div>
+                  <label htmlFor="invite-email" className="block text-sm font-600 text-(--color-ink)">
+                    Your email address
+                  </label>
                   <input
-                    className="gn-input"
+                    id="invite-email"
                     type="email"
-                    value={authData.email}
-                    onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, email: e.target.value })); }}
-                    placeholder="Email address"
-                    required
-                  />
-                  <input
-                    className="gn-input"
-                    type="password"
-                    value={authData.password}
-                    onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, password: e.target.value })); }}
-                    placeholder="Password"
+                    value={email}
+                    onChange={(e) => { setOtpError(""); setEmail(e.target.value); }}
+                    className="mt-1 w-full rounded-lg border border-(--color-hairline) px-4 py-3"
+                    placeholder="you@example.com"
                     required
                   />
                 </div>
+
+                <div>
+                  <p className="mb-3 text-sm font-600 text-(--color-ink)">Verification code</p>
+                  <OtpBoxes value={otp} onChange={(v) => { setOtpError(""); setOtp(v); }} />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={authSubmitting}
+                  disabled={otpSubmitting || otp.join("").length < 6}
                   className="w-full rounded-lg bg-(--color-primary) py-3 font-600 text-white disabled:opacity-50"
                 >
-                  {authSubmitting ? "Signing in…" : "Sign in to continue"}
+                  {otpSubmitting ? "Verifying…" : "Verify code →"}
                 </button>
               </form>
+
               <p className="mt-4 text-center text-xs text-(--color-muted)">
-                New to FOUNDERS ARENA?{" "}
-                <button type="button" onClick={() => setShowSignIn(false)} className="text-(--color-primary) hover:underline">
-                  Set up your account
+                Already have a FOUNDERS ARENA account?{" "}
+                <button type="button" onClick={() => setShowSignIn((s) => !s)} className="text-(--color-primary) hover:underline">
+                  Sign in instead
                 </button>
               </p>
+
+              {showSignIn && (
+                <form onSubmit={handleSignIn} className="mt-4 space-y-4 border-t border-(--color-hairline) pt-4">
+                  {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="signin-email" className="block text-sm font-600 text-(--color-ink)">Email</label>
+                      <input
+                        id="signin-email"
+                        className="gn-input mt-1"
+                        type="email"
+                        value={authData.email}
+                        onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, email: e.target.value })); }}
+                        placeholder="Email address"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="signin-password" className="block text-sm font-600 text-(--color-ink)">Password</label>
+                      <input
+                        id="signin-password"
+                        className="gn-input mt-1"
+                        type="password"
+                        value={authData.password}
+                        onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, password: e.target.value })); }}
+                        placeholder="Password"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={authSubmitting}
+                    className="w-full rounded-lg bg-(--color-primary) py-3 font-600 text-white disabled:opacity-50"
+                  >
+                    {authSubmitting ? "Signing in…" : "Sign in to continue"}
+                  </button>
+                </form>
+              )}
             </>
           )}
 
-          {/* ── Not signed in, no token: old admin-provisioned sign-in flow ── */}
-          {!signedIn && !token && (
-            <form onSubmit={handleSignIn} className="mt-6 space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <input
-                  className="gn-input"
-                  type="email"
-                  value={authData.email}
-                  onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, email: e.target.value })); }}
-                  placeholder="Your email address"
-                  required
-                />
-                <input
-                  className="gn-input"
-                  type="password"
-                  value={authData.password}
-                  onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, password: e.target.value })); }}
-                  placeholder="Password"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={authSubmitting}
-                className="w-full rounded-lg bg-(--color-primary) py-3 font-600 text-white disabled:opacity-50"
-              >
-                {authSubmitting ? "Signing in…" : "Sign in to continue"}
-              </button>
-            </form>
-          )}
-
-          {/* ── Signed in via magic link (isInvitedAccount) ── */}
-          {signedIn && isInvitedAccount && (
-            SetupForm({ onSubmit: token ? handleClaimAndAccept : handleAdminClaim })
-          )}
-
-          {/* ── Signed in, existing active member ── */}
-          {signedIn && !isInvitedAccount && token && (
-            <button
-              type="button"
-              onClick={handleAccept}
-              disabled={submitting || !inviteInfo || inviteInfo.status !== "pending" || isExpired}
-              className="mt-6 w-full rounded-lg bg-(--color-primary) py-3 font-600 text-white disabled:opacity-50"
-            >
-              {submitting ? "Accepting…" : projectLabel ? `Accept invitation & join ${projectLabel}` : "Accept invitation"}
-            </button>
+          {/* ── Step 2: Account setup form (after OTP verified) ── */}
+          {inviteInfo && (
+            <>
+              <h1 className="mt-3 text-3xl font-700 text-(--color-ink)">Create your account</h1>
+              <p className="mt-1 text-sm text-(--color-body)">
+                {inviterLabel} invited you to FOUNDERS ARENA. Set up your account below.
+              </p>
+              {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+              {SetupForm({ onSubmit: handleSetupAndClaim })}
+            </>
           )}
         </div>
 
-        {/* ── Right: context side card ── */}
+        {/* ── Right: context card ── */}
         <div className="space-y-4">
-          {/* Invite details */}
           <div className="rounded-2xl border border-(--color-primary)/20 bg-(--color-primary)/5 p-6">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-primary)">
               Your invitation
@@ -434,20 +426,14 @@ export default function AcceptInvitePage() {
                     <p className="mt-0.5 text-sm font-semibold text-(--color-ink)">{projectLabel}</p>
                   </div>
                 )}
-                {isExpired && (
-                  <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
-                    This invite has expired. Ask {inviterLabel} to resend.
-                  </p>
-                )}
               </>
             ) : (
               <p className="mt-3 text-sm text-(--color-body)">
-                You&apos;ve been granted access to FOUNDERS ARENA by an advisor.
+                Enter the 6-digit code from your invite email to see your invitation details.
               </p>
             )}
           </div>
 
-          {/* Why you were invited */}
           <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
               Why am I receiving this?
@@ -455,14 +441,11 @@ export default function AcceptInvitePage() {
             <p className="mt-3 text-sm text-(--color-body)">
               You&apos;ve been invited to join <span className="font-semibold text-(--color-ink)">FOUNDERS ARENA</span> — an advisor-gated platform connecting verified Philippine startups, investors, and ecosystem partners.
             </p>
-            <p className="mt-3 text-sm text-(--color-body)">
-              You may have been added as a:
-            </p>
-            <ul className="mt-2 space-y-1.5">
+            <ul className="mt-3 space-y-1.5">
               {[
                 { role: "Co-founder", desc: "joining a startup team on the platform" },
                 { role: "Investor", desc: "being onboarded by a FOUNDERS ARENA advisor" },
-                { role: "Ecosystem Partner", desc: "supporting startups as a mentor, advisor, or partner" },
+                { role: "Ecosystem Partner", desc: "supporting startups as a TBI, accelerator, or angel" },
               ].map(({ role, desc }) => (
                 <li key={role} className="flex items-start gap-2 text-xs text-(--color-body)">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-(--color-primary)" />
@@ -470,9 +453,6 @@ export default function AcceptInvitePage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-xs text-(--color-muted)">
-              Either way, your account setup is the same. You&apos;ll complete your full profile after signing in.
-            </p>
           </div>
         </div>
 

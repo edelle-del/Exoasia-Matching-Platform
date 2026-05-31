@@ -26,8 +26,6 @@ export async function GET(
 
     if (error || !data)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (data.owner_id !== user.id)
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     return NextResponse.json({ project: data });
   } catch (err) {
     return NextResponse.json(

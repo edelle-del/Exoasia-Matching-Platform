@@ -2,15 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
 import { Star, Handshake, CheckCircle2, Bell, LucideIcon } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -304,10 +295,10 @@ export function PartnerPortfolioCard() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-            Portfolio
+            Deal Flow
           </p>
           <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
-            Your portfolio command center
+            Your deal flow command center
           </p>
         </div>
         <Link
@@ -338,9 +329,9 @@ export function PartnerPortfolioCard() {
               />
             </svg>
           </div>
-          <p className="text-xs font-bold text-[#F4F4FF]">Portfolio overview</p>
+          <p className="text-xs font-bold text-[#F4F4FF]">Deal flow overview</p>
           <p className="text-[10px] text-[#8B8BA7]">
-            Stats, company feed, deep-dive
+            Pipeline stats, companies, deep-dive
           </p>
         </Link>
 
@@ -375,7 +366,7 @@ export function PartnerPortfolioCard() {
         className="mt-auto flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 transition-colors hover:border-violet-500/50"
       >
         <p className="text-xs font-medium text-violet-300">
-          Nominate a startup or track your pipeline
+          Nominate for Demo Day · Track mandate-matched deal flow
         </p>
         <svg
           className="h-4 w-4 shrink-0 text-violet-400"
@@ -387,71 +378,6 @@ export function PartnerPortfolioCard() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </Link>
-    </div>
-  );
-}
-
-// ─── BenchmarkingChart ───────────────────────────────────────────────────────
-
-type BenchmarkDatum = { name: string; value: number };
-
-type BenchmarkingChartProps = {
-  data: BenchmarkDatum[];
-  label?: string;
-};
-
-export function BenchmarkingChart({
-  data,
-  label = "Active deals",
-}: BenchmarkingChartProps) {
-  return (
-    <div className="rounded-[16px] bg-[#12121A] border border-[#2A2A3E] px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
-        Peer benchmark
-      </p>
-      <p className="text-[11px] text-[#8B8BA7]">
-        Your {label.toLowerCase()} vs. sector avg
-      </p>
-      <div className="mt-2 h-14">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            layout="vertical"
-            margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
-            barSize={10}
-          >
-            <XAxis type="number" hide />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={80}
-              tick={{ fontSize: 12, fill: "#8B8BA7" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              cursor={{ fill: "rgba(255,255,255,0.03)" }}
-              contentStyle={{
-                background: "#1A1A26",
-                border: "1px solid #2A2A3E",
-                borderRadius: 12,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-                fontSize: 12,
-                color: "#F4F4FF",
-              }}
-              formatter={(v) => [typeof v === "number" ? v : 0, label]}
-            />
-            <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-              {data.map((entry) => (
-                <Cell
-                  key={entry.name}
-                  fill={entry.name === "You" ? "#6366F1" : "#2A2A3E"}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
     </div>
   );
 }

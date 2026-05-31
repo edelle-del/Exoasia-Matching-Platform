@@ -228,7 +228,7 @@ export default function AccountSettingsPage() {
           </p>
           <button
             type="button"
-            onClick={() => { setShowBugModal(true); setBugSubject(""); setBugDescription(""); setBugSteps(""); setBugError(""); setBugSuccess(false); }}
+            onClick={() => window.open("https://link.gamechangerfunnel.com/widget/form/cYXxZnz3Sa5PVOodN2yl", "_blank", "noopener,noreferrer")}
             className="mt-4 flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

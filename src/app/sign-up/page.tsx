@@ -14,7 +14,7 @@ export default function SignUpPage() {
 
   // OTP step shown after signUp() succeeds but session is null (email not yet confirmed)
   const [otpStep, setOtpStep] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", "", "", ""]);
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -56,7 +56,7 @@ export default function SignUpPage() {
     if (!data.session) {
       // Email confirmation required — show OTP input.
       // The Supabase "Confirm signup" email template must include {{ .Token }}
-      // so the 6-digit code reaches the user's inbox.
+      // so the 8-digit code reaches the user's inbox.
       setOtpStep(true);
       return;
     }
@@ -70,7 +70,7 @@ export default function SignUpPage() {
     next[index] = value;
     setOtp(next);
     setError("");
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (value && index < 7) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -80,17 +80,17 @@ export default function SignUpPage() {
   };
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (text.length === 6) {
+    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 8);
+    if (text.length === 8) {
       setOtp(text.split(""));
-      otpRefs.current[5]?.focus();
+      otpRefs.current[7]?.focus();
     }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
-    if (code.length < 6) { setError("Enter the full 6-digit code."); return; }
+    if (code.length < 8) { setError("Enter the full 8-digit code."); return; }
 
     setOtpSubmitting(true);
     setError("");
@@ -104,7 +104,7 @@ export default function SignUpPage() {
 
     if (verifyError) {
       setError(verifyError.message);
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(["", "", "", "", "", "", "", ""]);
       otpRefs.current[0]?.focus();
       return;
     }
@@ -132,7 +132,7 @@ export default function SignUpPage() {
               Check your email
             </h1>
             <p className="text-[var(--color-body)]">
-              We sent a 6-digit code to <strong>{formData.email}</strong>. Enter it below to activate your account.
+              We sent an 8-digit code to <strong>{formData.email}</strong>. Enter it below to activate your account.
             </p>
 
             <form onSubmit={handleVerifyOtp} className="space-y-5">
@@ -160,7 +160,7 @@ export default function SignUpPage() {
               <button
                 className="w-full gn-btn-primary"
                 type="submit"
-                disabled={otpSubmitting || otp.join("").length < 6}
+                disabled={otpSubmitting || otp.join("").length < 8}
               >
                 {otpSubmitting ? "Verifying…" : "Verify & continue →"}
               </button>
@@ -170,7 +170,7 @@ export default function SignUpPage() {
               Wrong email?{" "}
               <button
                 type="button"
-                onClick={() => { setOtpStep(false); setOtp(["", "", "", "", "", ""]); setError(""); }}
+                onClick={() => { setOtpStep(false); setOtp(["", "", "", "", "", "", "", ""]); setError(""); }}
                 className="text-[var(--color-primary)] hover:underline"
               >
                 Go back

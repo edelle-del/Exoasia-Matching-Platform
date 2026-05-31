@@ -1016,6 +1016,7 @@ export default function OnboardingForm() {
   const [pendingRole, setPendingRole] = useState<
     "investor" | "startup" | "ecosystem_partner" | null
   >(null);
+  const [roleAgreeChecked, setRoleAgreeChecked] = useState(false);
 
   // PDF upload state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -1237,6 +1238,7 @@ export default function OnboardingForm() {
     }));
     setError("");
     setPendingRole(null);
+    setRoleAgreeChecked(false);
     setStep("profile");
   };
 
@@ -1592,25 +1594,55 @@ export default function OnboardingForm() {
 
   const ROLE_META: Record<
     "investor" | "startup" | "ecosystem_partner",
-    { label: string; description: string; detail: string }
+    { label: string; description: string; detail: string; features: string[]; commitment: string }
   > = {
     investor: {
       label: "Investor",
       description: "I deploy capital and seek deal flow",
       detail:
         "You'll be asked to fill in your investment thesis, check sizes, target stages, and 3 references who can verify your role.",
+      features: [
+        "Browse and filter curated deal flow from vetted startups",
+        "Access startup pitch decks, data rooms, and project details",
+        "Get matched with founders based on your investment thesis, stage, and sector preferences",
+        "Participate as a Demo Day judge and evaluator",
+        "Connect and co-invest with other investors and ecosystem partners",
+        "Receive inbound introductions from accelerators and incubators",
+      ],
+      commitment:
+        "I confirm I am an active investor or deploying capital, and that the references I provide can verify my role.",
     },
     startup: {
       label: "Startup / Founder",
       description: "I'm building a company and raising capital",
       detail:
         "You'll complete a fundraising profile including your stage, raise target, and product details — then add your first project.",
+      features: [
+        "Create a public startup profile visible to investors and partners",
+        "List your fundraising round, raise target, and product stage",
+        "Get matched with investors aligned to your sector, stage, and region",
+        "Upload pitch decks and manage a secure data room",
+        "Collaborate with co-founders on a shared project record",
+        "Apply to accelerator programs, Demo Days, and platform events",
+      ],
+      commitment:
+        "I confirm I am actively building a startup or company and am seeking capital, partnerships, or ecosystem support.",
     },
     ecosystem_partner: {
       label: "Ecosystem Partner",
       description: "I deploy capital or build startups — TBI, accelerator, VC, or angel",
       detail:
         "You'll set your organization type, investment mandate, target sectors and stages, and provide 3 references who can verify your role.",
+      features: [
+        "Showcase your organization to a network of founders and investors",
+        "Source and filter deal flow from vetted, platform-verified startups",
+        "Offer mentorship, advisory, technical, or operational support to startups",
+        "Co-invest and syndicate deals with other ecosystem partners",
+        "Get matched with startups in your focus sectors, stages, and regions",
+        "Host or participate in accelerator cohorts, workshops, and Demo Days",
+      ],
+      commitment:
+        "I confirm my organization operates in the startup ecosystem — as a TBI, accelerator, VC, angel network, or equivalent — and that my references can verify this.",
     },
   };
 
@@ -1626,38 +1658,77 @@ export default function OnboardingForm() {
       <>
         {pendingRole && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-xl">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
-                Confirm your role
-              </p>
-              <h2 className="mt-3 text-xl font-700 text-[var(--color-ink)]">
-                {ROLE_META[pendingRole].label}
-              </h2>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                {ROLE_META[pendingRole].description}
-              </p>
-              <p className="mt-4 text-sm text-[var(--color-body)]">
-                {ROLE_META[pendingRole].detail}
-              </p>
-              <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
-                Your role cannot be changed after confirmation. Make sure this
-                is correct.
-              </p>
-              <div className="mt-6 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPendingRole(null)}
-                  className="flex-1 rounded-xl border border-[var(--color-hairline)] py-2.5 text-sm font-600 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] transition-colors"
-                >
-                  Go back
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmRoleSelect}
-                  className="flex-1 rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-600 text-white hover:opacity-90 transition-opacity"
-                >
-                  Confirm — I&apos;m a {ROLE_META[pendingRole].label}
-                </button>
+            <div className="w-full max-w-lg rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] shadow-xl flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="px-8 pt-8 pb-4 border-b border-[var(--color-hairline)]">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                  About this role
+                </p>
+                <h2 className="mt-2 text-xl font-700 text-[var(--color-ink)]">
+                  {ROLE_META[pendingRole].label}
+                </h2>
+                <p className="mt-1 text-sm text-[var(--color-muted)]">
+                  {ROLE_META[pendingRole].description}
+                </p>
+              </div>
+
+              {/* Scrollable body */}
+              <div className="overflow-y-auto px-8 py-5 flex-1">
+                <p className="text-sm text-[var(--color-body)]">
+                  {ROLE_META[pendingRole].detail}
+                </p>
+
+                <p className="mt-5 text-xs font-semibold uppercase tracking-widest text-[var(--color-muted)]">
+                  What you can do
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {ROLE_META[pendingRole].features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-[var(--color-body)]">
+                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                        <i className="ri-check-line text-[10px] leading-none" aria-hidden="true" />
+                      </span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <p className="mt-5 rounded-lg bg-amber-50 px-4 py-3 text-xs font-medium text-amber-700">
+                  Your role cannot be changed after confirmation. Make sure this
+                  is correct.
+                </p>
+              </div>
+
+              {/* Footer — agree + actions */}
+              <div className="px-8 py-5 border-t border-[var(--color-hairline)] space-y-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={roleAgreeChecked}
+                    onChange={(e) => setRoleAgreeChecked(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--color-hairline)] accent-[var(--color-primary)] cursor-pointer"
+                  />
+                  <span className="text-xs text-[var(--color-body)] leading-relaxed">
+                    {ROLE_META[pendingRole].commitment}
+                  </span>
+                </label>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setPendingRole(null); setRoleAgreeChecked(false); }}
+                    className="flex-1 rounded-xl border border-[var(--color-hairline)] py-2.5 text-sm font-600 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] transition-colors"
+                  >
+                    Go back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmRoleSelect}
+                    disabled={!roleAgreeChecked}
+                    className="flex-1 rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-600 text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                  >
+                    Confirm — I&apos;m a {ROLE_META[pendingRole].label}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -17,23 +17,7 @@ type MatchScore = {
   generated_at: string;
 };
 
-function ScoreBadge({ score }: { score: number }) {
-  const cls =
-    score >= 80
-      ? "fa-score-excellent"
-      : score >= 65
-        ? "fa-score-strong"
-        : score >= 50
-          ? "fa-score-moderate"
-          : "fa-score-low";
-  return (
-    <span
-      className={`${cls} inline-flex items-center rounded-lg px-2.5 py-0.5 text-xs font-bold`}
-    >
-      {score}/100
-    </span>
-  );
-}
+import PieScore from "@/components/PieScore";
 
 export default function ProjectsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -93,6 +77,38 @@ export default function ProjectsPage() {
         (data.scores ?? []).forEach((s) => map.set(s.project_id, s));
         setScoreMap(map);
       });
+  }, [memberRole, projects]);
+
+  // For project owners, check whether investor matches already exist
+  useEffect(() => {
+    if (memberRole === "investor" || projects.length === 0) return;
+
+    void (async () => {
+      try {
+        const results = await Promise.all(
+          projects.map(async (p) => {
+            try {
+              const res = await fetch(`/api/projects/${p.id}/investor-matches`);
+              if (!res.ok) return { id: p.id, has: false };
+              const json = await res.json();
+              const has =
+                Array.isArray(json.matches) && json.matches.length > 0;
+              return { id: p.id, has };
+            } catch {
+              return { id: p.id, has: false };
+            }
+          }),
+        );
+
+        const set = new Set<string>();
+        results.forEach((r) => {
+          if (r.has) set.add(r.id);
+        });
+        if (set.size > 0) setGeneratedProjects(set);
+      } catch {
+        // ignore
+      }
+    })();
   }, [memberRole, projects]);
 
   const handleScoreProject = useCallback(async (projectId: string) => {
@@ -264,9 +280,9 @@ export default function ProjectsPage() {
                           <div
                             className={`flex items-center gap-3 ${scoreLocked ? "blur-sm pointer-events-none select-none" : ""}`}
                           >
-                            <ScoreBadge score={existingScore.fit_score} />
+                            <PieScore score={existingScore.fit_score} />
                             {existingScore.summary && (
-                              <span className="text-xs font-medium text-green-600 hidden sm:inline line-clamp-1">
+                              <span className="text-xs font-medium text-(--color-primary) hidden sm:inline line-clamp-1">
                                 {existingScore.summary}
                               </span>
                             )}
@@ -312,15 +328,36 @@ export default function ProjectsPage() {
                         >
                           {isScoringThis ? (
                             <>
-                              <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              <svg
+                                className="animate-spin h-3 w-3 shrink-0"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="3"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                />
                               </svg>
                               AI is scoring…
                             </>
                           ) : (
                             <>
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0" aria-hidden="true">
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="h-3 w-3 shrink-0"
+                                aria-hidden="true"
+                              >
                                 <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                               </svg>
                               {existingScore ? "Rescore" : "Score this project"}
@@ -335,10 +372,10 @@ export default function ProjectsPage() {
                   {!isInvestor && (
                     <div className="mt-4 flex items-center justify-between border-t border-(--color-hairline) pt-3">
                       <span
-                        className={`text-xs font-medium ${alreadyGenerated ? "text-green-600" : "text-(--color-muted)"}`}
+                        className={`text-xs font-medium ${alreadyGenerated ? "text-(--color-primary)" : "text-(--color-muted)"}`}
                       >
                         {alreadyGenerated
-                          ? "Investor matches generated"
+                          ? "Investor found"
                           : "Find investors that match this project"}
                       </span>
                       <div className="flex items-center gap-2">
@@ -347,7 +384,7 @@ export default function ProjectsPage() {
                             href={`/projects/${p.id}#investor-matches`}
                             className="text-xs text-(--color-primary) hover:underline"
                           >
-                            View matches →
+                            View matches
                           </Link>
                         )}
                         <button
@@ -358,18 +395,41 @@ export default function ProjectsPage() {
                         >
                           {isGeneratingThis ? (
                             <>
-                              <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              <svg
+                                className="animate-spin h-3 w-3 shrink-0"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="3"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                />
                               </svg>
                               AI is matching…
                             </>
                           ) : (
                             <>
-                              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0" aria-hidden="true">
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="h-3 w-3 shrink-0"
+                                aria-hidden="true"
+                              >
                                 <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                               </svg>
-                              {alreadyGenerated ? "Regenerate" : "Find investors"}
+                              {alreadyGenerated
+                                ? "Regenerate"
+                                : "Find investors"}
                             </>
                           )}
                         </button>

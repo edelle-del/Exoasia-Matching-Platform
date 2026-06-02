@@ -12,7 +12,9 @@
     "test:e2e:ui": "playwright test --ui",
     "seed:invited": "node scripts/seed-invited-account.mjs",
     "create:account": "node scripts/create-account.mjs",
-    "seed:test-members": "node scripts/seed-test-member.mjs"
+    "create:project": "node scripts/create-project.mjs",
+    "seed:test-members": "node scripts/seed-test-member.mjs",
+    "create:ecosystem-partner": "node scripts/create-ecosystem-partner.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

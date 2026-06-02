@@ -6,6 +6,7 @@ import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserMatches, fetchUserProjects } from "@/lib/app-data";
 import type { MatchRecord, ProjectRecord } from "@/lib/app-data";
+import PieScore from "@/components/PieScore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,45 +27,85 @@ type ProjectScore = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function scoreColorClass(s: number) {
-  return s >= 80 ? "text-emerald-400" : s >= 65 ? "text-indigo-400" : "text-amber-400";
-}
-
-function scoreBarClass(s: number) {
-  return s >= 80 ? "bg-emerald-400" : s >= 65 ? "bg-indigo-400" : "bg-amber-400";
+  if (s >= 75) return "text-(--color-primary)";
+  if (s >= 50) return "text-amber-400";
+  return "text-(--color-muted)";
 }
 
 function statusStyle(status: string) {
   switch (status) {
-    case "introduced": return { pill: "bg-violet-500/20 text-violet-300 border-violet-500/30", label: "Introduced" };
-    case "accepted":   return { pill: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30", label: "Accepted" };
-    case "declined":   return { pill: "bg-[#2A2A3E] text-[#8B8BA7] border-[#2A2A3E]", label: "Declined" };
-    default:           return { pill: "bg-amber-500/20 text-amber-300 border-amber-500/30", label: "Pending" };
+    case "pending":
+      return {
+        label: "Pending",
+        pill: "rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400",
+      };
+    case "accepted":
+      return {
+        label: "Accepted",
+        pill: "rounded-full bg-(--color-primary)/20 px-2 py-0.5 text-[10px] font-bold text-(--color-primary)",
+      };
+    case "introduced":
+      return {
+        label: "Introduced",
+        pill: "rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-bold text-(--color-muted)",
+      };
+    case "declined":
+    default:
+      return {
+        label: status.charAt(0).toUpperCase() + status.slice(1),
+        pill: "rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-bold text-(--color-muted)",
+      };
   }
+}
+
+function scoreBarClass(s: number) {
+  if (s >= 75) return "bg-(--color-primary)";
+  if (s >= 50) return "bg-amber-400";
+  return "bg-(--color-hairline)";
 }
 
 function getProjectNextStep(project: ProjectRecord, scores: ProjectScore[]) {
   if (!project.description) {
-    return { label: "Add a project description to attract investors", href: `/projects/${project.id}`, cta: "Edit project" };
+    return {
+      label: "Add a project description to attract investors",
+      href: `/projects/${project.id}`,
+      cta: "Edit project",
+    };
   }
   if (scores.length === 0) {
-    return { label: "Awaiting investor matches — check back soon", href: `/projects/${project.id}`, cta: "View project" };
+    return {
+      label: "Awaiting investor matches — check back soon",
+      href: `/projects/${project.id}`,
+      cta: "View project",
+    };
   }
-  return { label: `${scores.length} investor${scores.length > 1 ? "s" : ""} matched — request an intro to connect`, href: `/projects/${project.id}`, cta: "View project" };
+  return {
+    label: `${scores.length} investor${scores.length > 1 ? "s" : ""} matched — request an intro to connect`,
+    href: `/projects/${project.id}`,
+    cta: "View project",
+  };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
-  const supabase      = useMemo(() => createClient(), []);
-  const { user }      = useAuth();
-  const [isLoading,     setIsLoading]     = useState(true);
-  const [memberRole,    setMemberRole]    = useState<string | null>(null);
-  const [matches,       setMatches]       = useState<MatchRow[]>([]);
-  const [projects,      setProjects]      = useState<(ProjectRecord & { owner_name?: string })[]>([]);
+  const supabase = useMemo(() => createClient(), []);
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [memberRole, setMemberRole] = useState<string | null>(null);
+  const [hasActiveSub, setHasActiveSub] = useState(false);
+  const [matches, setMatches] = useState<MatchRow[]>([]);
+  const [projects, setProjects] = useState<
+    (ProjectRecord & { owner_name?: string })[]
+  >([]);
   const [projectScores, setProjectScores] = useState<ProjectScore[]>([]);
-  const [reloadKey,        setReloadKey]        = useState(0);
-  const [introRequests,    setIntroRequests]    = useState<Map<string, "requesting" | "done">>(new Map());
-  const [respondingMatchId, setRespondingMatchId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [introRequests, setIntroRequests] = useState<
+    Map<string, "requesting" | "done">
+  >(new Map());
+  const [respondingMatchId, setRespondingMatchId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!user?.id) return;
@@ -73,25 +114,44 @@ export default function MatchesPage() {
     const load = async () => {
       const [rawMatches, { data: profile }] = await Promise.all([
         fetchUserMatches(supabase, user.id),
-        supabase.from("profiles").select("member_role").eq("id", user.id).single(),
+        supabase
+          .from("profiles")
+          .select("member_role, subscription_plan, subscription_ends_at")
+          .eq("id", user.id)
+          .single(),
       ]);
 
       const role = profile?.member_role ?? null;
       setMemberRole(role);
+      setHasActiveSub(
+        !!profile?.subscription_plan &&
+          (!profile.subscription_ends_at ||
+            new Date(profile.subscription_ends_at) > new Date()),
+      );
 
       // Enrich matches with counterpart sector
-      const cpIds = [...new Set(rawMatches.map((m) =>
-        m.member_a_id === user.id ? m.member_b_id : m.member_a_id,
-      ))];
+      const cpIds = [
+        ...new Set(
+          rawMatches.map((m) =>
+            m.member_a_id === user.id ? m.member_b_id : m.member_a_id,
+          ),
+        ),
+      ];
       let sectorMap = new Map<string, string | null>();
       if (cpIds.length > 0) {
-        const { data } = await supabase.from("profiles").select("id, sector").in("id", cpIds);
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, sector")
+          .in("id", cpIds);
         sectorMap = new Map((data ?? []).map((p) => [p.id, p.sector ?? null]));
       }
-      setMatches(rawMatches.map((m) => {
-        const cpId = m.member_a_id === user.id ? m.member_b_id : m.member_a_id;
-        return { ...m, counterpart_sector: sectorMap.get(cpId) ?? null };
-      }));
+      setMatches(
+        rawMatches.map((m) => {
+          const cpId =
+            m.member_a_id === user.id ? m.member_b_id : m.member_a_id;
+          return { ...m, counterpart_sector: sectorMap.get(cpId) ?? null };
+        }),
+      );
 
       // Startup: projects + project match scores
       if (role === "startup") {
@@ -101,11 +161,18 @@ export default function MatchesPage() {
         if (userProjects.length > 0) {
           const { data: scores } = await supabase
             .from("project_match_scores")
-            .select("id, project_id, investor_profile_id, fit_score, generated_at")
-            .in("project_id", userProjects.map((p) => p.id))
+            .select(
+              "id, project_id, investor_profile_id, fit_score, generated_at",
+            )
+            .in(
+              "project_id",
+              userProjects.map((p) => p.id),
+            )
             .order("fit_score", { ascending: false });
 
-          const investorIds = [...new Set((scores ?? []).map((s) => s.investor_profile_id))];
+          const investorIds = [
+            ...new Set((scores ?? []).map((s) => s.investor_profile_id)),
+          ];
           let nameMap = new Map<string, string>();
           if (investorIds.length > 0) {
             const { data: investors } = await supabase
@@ -113,13 +180,19 @@ export default function MatchesPage() {
               .select("id, full_name, business_name")
               .in("id", investorIds);
             nameMap = new Map(
-              (investors ?? []).map((p) => [p.id, p.business_name || p.full_name || "Verified investor"]),
+              (investors ?? []).map((p) => [
+                p.id,
+                p.business_name || p.full_name || "Verified investor",
+              ]),
             );
           }
-          setProjectScores((scores ?? []).map((s) => ({
-            ...s,
-            investor_name: nameMap.get(s.investor_profile_id) ?? "Verified investor",
-          })));
+          setProjectScores(
+            (scores ?? []).map((s) => ({
+              ...s,
+              investor_name:
+                nameMap.get(s.investor_profile_id) ?? "Verified investor",
+            })),
+          );
         }
       }
 
@@ -127,7 +200,9 @@ export default function MatchesPage() {
       if (role === "investor") {
         const { data: scores } = await supabase
           .from("project_match_scores")
-          .select("id, project_id, investor_profile_id, fit_score, generated_at")
+          .select(
+            "id, project_id, investor_profile_id, fit_score, generated_at",
+          )
           .eq("investor_profile_id", user.id)
           .order("fit_score", { ascending: false });
 
@@ -135,7 +210,9 @@ export default function MatchesPage() {
           const projectIds = [...new Set(scores.map((s) => s.project_id))];
           const { data: projs } = await supabase
             .from("projects")
-            .select("id, owner_id, name, description, stage, sector, is_active, created_at, updated_at")
+            .select(
+              "id, owner_id, name, description, stage, sector, is_active, created_at, updated_at",
+            )
             .in("id", projectIds);
 
           const ownerIds = [...new Set((projs ?? []).map((p) => p.owner_id))];
@@ -146,10 +223,18 @@ export default function MatchesPage() {
               .select("id, full_name, business_name")
               .in("id", ownerIds);
             ownerNameMap = new Map(
-              (owners ?? []).map((p) => [p.id, p.business_name || p.full_name || "Verified startup"]),
+              (owners ?? []).map((p) => [
+                p.id,
+                p.business_name || p.full_name || "Verified startup",
+              ]),
             );
           }
-          setProjects((projs ?? []).map((p) => ({ ...p, owner_name: ownerNameMap.get(p.owner_id) })));
+          setProjects(
+            (projs ?? []).map((p) => ({
+              ...p,
+              owner_name: ownerNameMap.get(p.owner_id),
+            })),
+          );
           setProjectScores(scores.map((s) => ({ ...s, investor_name: "" })));
         }
       }
@@ -160,15 +245,23 @@ export default function MatchesPage() {
     load().catch(() => setIsLoading(false));
   }, [supabase, user?.id, reloadKey]);
 
-  const isStartup  = memberRole === "startup";
+  const isStartup = memberRole === "startup";
   const isInvestor = memberRole === "investor";
 
   const existingMatchPartnerIds = useMemo(
-    () => new Set(matches.map((m) => m.member_a_id === user?.id ? m.member_b_id : m.member_a_id)),
+    () =>
+      new Set(
+        matches.map((m) =>
+          m.member_a_id === user?.id ? m.member_b_id : m.member_a_id,
+        ),
+      ),
     [matches, user?.id],
   );
 
-  const handleRespond = async (match: MatchRow, decision: "accepted" | "declined") => {
+  const handleRespond = async (
+    match: MatchRow,
+    decision: "accepted" | "declined",
+  ) => {
     if (!user?.id) return;
     setRespondingMatchId(match.id);
     try {
@@ -185,28 +278,43 @@ export default function MatchesPage() {
     }
   };
 
-  const handleRequestIntro = async (projectId: string, investorProfileId: string) => {
+  const handleRequestIntro = async (
+    projectId: string,
+    investorProfileId: string,
+  ) => {
     const key = `${projectId}:${investorProfileId}`;
     setIntroRequests((prev) => new Map(prev).set(key, "requesting"));
     try {
       const res = await fetch("/api/matches/request-intro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: projectId, investor_profile_id: investorProfileId }),
+        body: JSON.stringify({
+          project_id: projectId,
+          investor_profile_id: investorProfileId,
+        }),
       });
       if (res.ok) {
         setIntroRequests((prev) => new Map(prev).set(key, "done"));
         setReloadKey((k) => k + 1);
       } else {
-        setIntroRequests((prev) => { const next = new Map(prev); next.delete(key); return next; });
+        setIntroRequests((prev) => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
       }
     } catch {
-      setIntroRequests((prev) => { const next = new Map(prev); next.delete(key); return next; });
+      setIntroRequests((prev) => {
+        const next = new Map(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
   const pendingMatches = matches.filter((m) => {
-    const myStatus = m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
+    const myStatus =
+      m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
     return myStatus === "pending" && ["pending", "approved"].includes(m.status);
   });
 
@@ -217,40 +325,56 @@ export default function MatchesPage() {
   const pendingCount = pendingMatches.length;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-[#F4F4FF]">
-
+    <div className="min-h-screen bg-(--color-canvas) text-(--color-ink)">
       {/* Header */}
-      <section className="border-b border-[#2A2A3E] bg-[#12121A] px-[5%] py-8">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-8">
         <div className="mx-auto max-w-4xl">
-          <Link href="/dashboard" className="text-sm text-indigo-400 hover:underline">
+          <Link
+            href="/dashboard"
+            className="text-sm text-(--color-primary) hover:underline"
+          >
             ← Back to dashboard
           </Link>
-          <h1 className="mt-3 text-3xl font-bold text-[#F4F4FF]">Your Pipeline</h1>
-          <p className="mt-1 text-sm text-[#8B8BA7]">
-            {isLoading ? "Loading…" : (
-              pendingCount > 0
+          <h1 className="mt-3 text-3xl font-bold text-(--color-ink)">
+            Your Pipeline
+          </h1>
+          <p className="mt-1 text-sm text-(--color-muted)">
+            {isLoading
+              ? "Loading…"
+              : pendingCount > 0
                 ? `${pendingCount} pending response${pendingCount > 1 ? "s" : ""} · ${matches.length} total intro${matches.length !== 1 ? "s" : ""}`
-                : `${matches.length} intro${matches.length !== 1 ? "s" : ""} · all reviewed`
-            )}
+                : `${matches.length} intro${matches.length !== 1 ? "s" : ""} · all reviewed`}
           </p>
         </div>
       </section>
 
       <div className="mx-auto max-w-4xl space-y-10 px-[5%] py-10">
-
         {/* Urgent banner */}
         {!isLoading && pendingCount > 0 && (
           <div className="flex items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
-              <svg className="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="h-5 w-5 text-amber-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-amber-300">
-                {pendingCount} intro{pendingCount > 1 ? "s" : ""} awaiting your response
+                {pendingCount} intro{pendingCount > 1 ? "s" : ""} awaiting your
+                response
               </p>
-              <p className="mt-0.5 text-xs text-[#8B8BA7]">Respond to keep your pipeline moving</p>
+              <p className="mt-0.5 text-xs text-(--color-muted)">
+                Respond to keep your pipeline moving
+              </p>
             </div>
           </div>
         )}
@@ -260,8 +384,13 @@ export default function MatchesPage() {
           <>
             <section>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Your Projects</h2>
-                <Link href="/projects" className="text-xs font-semibold text-indigo-400 hover:underline">
+                <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                  Your Projects
+                </h2>
+                <Link
+                  href="/projects"
+                  className="text-xs font-semibold text-(--color-primary) hover:underline"
+                >
                   Manage projects →
                 </Link>
               </div>
@@ -269,50 +398,94 @@ export default function MatchesPage() {
               {isLoading ? (
                 <div className="space-y-4">
                   {[...Array(2)].map((_, i) => (
-                    <div key={i} className="h-44 animate-pulse rounded-2xl bg-[#12121A]" />
+                    <div
+                      key={i}
+                      className="h-44 animate-pulse rounded-2xl bg-(--color-surface-soft)"
+                    />
                   ))}
                 </div>
               ) : projects.length === 0 ? (
-                <div className="rounded-2xl border border-[#2A2A3E] bg-[#12121A] py-12 text-center">
-                  <p className="text-sm font-semibold text-[#F4F4FF]">No active projects</p>
-                  <p className="mt-1 text-xs text-[#8B8BA7]">Create a project to start getting matched with investors.</p>
-                  <Link href="/projects" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+                <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
+                  <p className="text-sm font-semibold text-(--color-ink)">
+                    No active projects
+                  </p>
+                  <p className="mt-1 text-xs text-(--color-muted)">
+                    Create a project to start getting matched with investors.
+                  </p>
+                  <Link
+                    href="/projects"
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-95"
+                  >
                     Create a project
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {projects.map((project) => {
-                    const scores   = projectScores.filter((s) => s.project_id === project.id);
-                    const bestScore = scores.length > 0 ? scores[0].fit_score : null;
-                    const nextStep  = getProjectNextStep(project, scores);
+                    const scores = projectScores.filter(
+                      (s) => s.project_id === project.id,
+                    );
+                    const bestScore =
+                      scores.length > 0 ? scores[0].fit_score : null;
+                    const nextStep = getProjectNextStep(project, scores);
 
                     return (
-                      <div key={project.id} className="rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6">
+                      <div
+                        key={project.id}
+                        className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6"
+                      >
                         {/* Project header */}
                         <div className="mb-5 flex items-start justify-between gap-4">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-bold text-[#F4F4FF]">{project.name}</h3>
-                              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">Active</span>
+                              <h3 className="text-base font-bold text-(--color-ink)">
+                                {project.name}
+                              </h3>
+                              <span className="rounded-full bg-(--color-primary)/20 px-2 py-0.5 text-[10px] font-bold text-(--color-primary)">
+                                Active
+                              </span>
                               {project.stage && (
-                                <span className="rounded-full bg-[#2A2A3E] px-2 py-0.5 text-[10px] font-bold text-[#8B8BA7]">{project.stage}</span>
+                                <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-bold text-(--color-muted)">
+                                  {project.stage}
+                                </span>
                               )}
                             </div>
                             {project.sector && (
-                              <p className="mt-1 text-xs text-[#8B8BA7]">{project.sector}</p>
+                              <p className="mt-1 text-xs text-(--color-muted)">
+                                {project.sector}
+                              </p>
                             )}
                           </div>
-                          <Link href={`/projects/${project.id}`} className="shrink-0 text-xs font-semibold text-indigo-400 hover:underline">
+                          <Link
+                            href={`/projects/${project.id}`}
+                            className="shrink-0 text-xs font-semibold text-(--color-primary) hover:underline"
+                          >
                             View →
                           </Link>
                         </div>
 
                         {/* Stats */}
                         <div className="mb-5 grid grid-cols-3 gap-3">
-                          <Stat label="Investor matches" value={String(scores.length)} />
-                          <Stat label="Pending intros"   value={String(pendingCount)} accent={pendingCount > 0 ? "text-amber-400" : undefined} />
-                          <Stat label="Best fit"         value={bestScore !== null ? `${bestScore}%` : "—"} accent={bestScore !== null ? scoreColorClass(bestScore) : "text-[#4A4A6A]"} />
+                          <Stat
+                            label="Investor matches"
+                            value={String(scores.length)}
+                          />
+                          <Stat
+                            label="Pending intros"
+                            value={String(pendingCount)}
+                            accent={
+                              pendingCount > 0 ? "text-amber-400" : undefined
+                            }
+                          />
+                          <Stat
+                            label="Best fit"
+                            value={bestScore !== null ? `${bestScore}%` : "—"}
+                            accent={
+                              bestScore !== null
+                                ? scoreColorClass(bestScore)
+                                : "text-(--color-muted)"
+                            }
+                          />
                         </div>
 
                         {/* Investor score rows */}
@@ -320,32 +493,50 @@ export default function MatchesPage() {
                           <div className="mb-4 space-y-2">
                             {scores.map((score) => {
                               const requestKey = `${project.id}:${score.investor_profile_id}`;
-                              const reqState   = introRequests.get(requestKey);
-                              const isDone     = existingMatchPartnerIds.has(score.investor_profile_id) || reqState === "done";
+                              const reqState = introRequests.get(requestKey);
+                              const isDone =
+                                existingMatchPartnerIds.has(
+                                  score.investor_profile_id,
+                                ) || reqState === "done";
 
                               return (
-                                <div key={score.id} className="flex items-center gap-3 rounded-xl bg-[#1A1A26] px-4 py-2.5">
-                                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#2A2A3E] text-[10px] font-bold text-[#F4F4FF]">
+                                <div
+                                  key={score.id}
+                                  className="flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-2.5"
+                                >
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-(--color-surface-soft) text-[10px] font-bold text-(--color-ink)">
                                     {score.investor_name.charAt(0)}
                                   </div>
-                                  <p className="flex-1 truncate text-sm text-[#F4F4FF]">{score.investor_name}</p>
+                                  <p className="flex-1 truncate text-sm text-(--color-ink)">
+                                    {score.investor_name}
+                                  </p>
                                   <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[#2A2A3E]">
-                                        <ScoreBar score={score.fit_score} barClass={scoreBarClass(score.fit_score)} />
-                                      </div>
-                                      <span className={`w-8 text-right text-xs font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</span>
+                                    <div className="h-10 w-10 flex items-center justify-center">
+                                      <PieScore
+                                        score={score.fit_score}
+                                        size={44}
+                                        large
+                                      />
                                     </div>
                                     {isDone ? (
-                                      <span className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[10px] font-bold text-emerald-400">Requested</span>
+                                      <span className="rounded-lg bg-(--color-primary)/20 px-2.5 py-1 text-[10px] font-bold text-(--color-primary)">
+                                        Requested
+                                      </span>
                                     ) : (
                                       <button
                                         type="button"
-                                        onClick={() => void handleRequestIntro(project.id, score.investor_profile_id)}
+                                        onClick={() =>
+                                          void handleRequestIntro(
+                                            project.id,
+                                            score.investor_profile_id,
+                                          )
+                                        }
                                         disabled={reqState === "requesting"}
-                                        className="rounded-lg bg-indigo-600/30 px-2.5 py-1 text-[10px] font-bold text-indigo-300 transition hover:bg-indigo-600/50 disabled:opacity-50"
+                                        className="rounded-lg bg-(--color-primary)/30 px-2.5 py-1 text-[10px] font-bold text-(--color-primary) transition hover:bg-(--color-primary)/50 disabled:opacity-50"
                                       >
-                                        {reqState === "requesting" ? "Sending…" : "Request Intro"}
+                                        {reqState === "requesting"
+                                          ? "Sending…"
+                                          : "Request Intro"}
                                       </button>
                                     )}
                                   </div>
@@ -356,11 +547,17 @@ export default function MatchesPage() {
                         )}
 
                         {/* Next step */}
-                        <div className="flex items-center justify-between rounded-xl border border-[#2A2A3E] bg-[#1A1A26] px-4 py-3">
-                          <p className="text-xs text-[#8B8BA7]">
-                            <span className="font-bold text-[#C4C4D4]">Next: </span>{nextStep.label}
+                        <div className="flex items-center justify-between rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-3">
+                          <p className="text-xs text-(--color-muted)">
+                            <span className="font-bold text-(--color-ink)">
+                              Next:{" "}
+                            </span>
+                            {nextStep.label}
                           </p>
-                          <Link href={nextStep.href} className="shrink-0 text-xs font-semibold text-indigo-400 hover:underline">
+                          <Link
+                            href={nextStep.href}
+                            className="shrink-0 text-xs font-semibold text-(--color-primary) hover:underline"
+                          >
                             {nextStep.cta} →
                           </Link>
                         </div>
@@ -373,20 +570,29 @@ export default function MatchesPage() {
 
             {!isLoading && pendingCount > 0 && (
               <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Pending Responses</h2>
+                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                  Pending Responses
+                </h2>
                 <MatchList
                   matches={pendingMatches}
                   userId={user?.id ?? ""}
                   onRespond={handleRespond}
                   respondingId={respondingMatchId}
+                  subscriptionActive={hasActiveSub}
                 />
               </section>
             )}
 
             {!isLoading && activeMatches.length > 0 && (
               <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Active Intros</h2>
-                <MatchList matches={activeMatches} userId={user?.id ?? ""} />
+                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                  Active Intros
+                </h2>
+                <MatchList
+                  matches={activeMatches}
+                  userId={user?.id ?? ""}
+                  subscriptionActive={hasActiveSub}
+                />
               </section>
             )}
           </>
@@ -396,83 +602,140 @@ export default function MatchesPage() {
         {isInvestor && (
           <>
             <section>
-              <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Matched Projects</h2>
+              <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                Matched Projects
+              </h2>
 
               {isLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-24 animate-pulse rounded-2xl bg-[#12121A]" />
+                    <div
+                      key={i}
+                      className="h-24 animate-pulse rounded-2xl bg-(--color-surface-soft)"
+                    />
                   ))}
                 </div>
               ) : projectScores.length === 0 ? (
-                <div className="rounded-2xl border border-[#2A2A3E] bg-[#12121A] py-12 text-center">
-                  <p className="text-sm font-semibold text-[#F4F4FF]">No matched projects yet</p>
-                  <p className="mt-1 text-xs text-[#8B8BA7]">When you're matched with a startup project, it'll appear here.</p>
+                <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
+                  <p className="text-sm font-semibold text-(--color-ink)">
+                    No matched projects yet
+                  </p>
+                  <p className="mt-1 text-xs text-(--color-muted)">
+                    When you're matched with a startup project, it'll appear
+                    here.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {projectScores.map((score) => {
-                    const project = projects.find((p) => p.id === score.project_id);
-                    const correspondingMatch = matches.find((m) =>
-                      (m.member_a_id === user?.id || m.member_b_id === user?.id) &&
-                      project &&
-                      (m.member_a_id === project.owner_id || m.member_b_id === project.owner_id),
+                    const project = projects.find(
+                      (p) => p.id === score.project_id,
+                    );
+                    const correspondingMatch = matches.find(
+                      (m) =>
+                        (m.member_a_id === user?.id ||
+                          m.member_b_id === user?.id) &&
+                        project &&
+                        (m.member_a_id === project.owner_id ||
+                          m.member_b_id === project.owner_id),
                     );
                     const myMatchStatus = correspondingMatch
-                      ? (correspondingMatch.member_a_id === user?.id
+                      ? correspondingMatch.member_a_id === user?.id
                         ? correspondingMatch.member_a_status
-                        : correspondingMatch.member_b_status)
+                        : correspondingMatch.member_b_status
                       : null;
 
                     const requestKey = `${score.project_id}:${user?.id ?? ""}`;
-                    const reqState   = introRequests.get(requestKey);
-                    const isDone     = !!correspondingMatch || reqState === "done";
+                    const reqState = introRequests.get(requestKey);
+                    const isDone = !!correspondingMatch || reqState === "done";
 
                     return (
-                      <div key={score.id} className="flex items-center gap-4 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-4 transition-all hover:border-indigo-500/40">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2A2A3E] text-sm font-bold text-[#F4F4FF]">
+                      <div
+                        key={score.id}
+                        className="flex items-center gap-4 rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-4 transition-all hover:border-(--color-primary)/40"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--color-hairline) text-sm font-bold text-(--color-ink)">
                           {(project?.name ?? "P").charAt(0)}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-[#F4F4FF]">{project?.name ?? "Project"}</p>
-                          <p className="text-xs text-[#8B8BA7]">
-                            {[project?.owner_name, project?.sector, project?.stage].filter(Boolean).join(" · ") || "Startup project"}
+                          <p className="truncate text-sm font-semibold text-(--color-ink)">
+                            {project?.name ?? "Project"}
+                          </p>
+                          <p className="text-xs text-(--color-muted)">
+                            {[
+                              project?.owner_name,
+                              project?.sector,
+                              project?.stage,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ") || "Startup project"}
                           </p>
                           {myMatchStatus && (
-                            <p className="mt-0.5 text-[10px] text-[#8B8BA7]">
+                            <p className="mt-0.5 text-[10px] text-(--color-muted)">
                               Your status:{" "}
-                              <span className={
-                                myMatchStatus === "accepted" ? "text-emerald-400"
-                                  : myMatchStatus === "pending" ? "text-amber-400"
-                                    : "text-[#8B8BA7]"
-                              }>{myMatchStatus}</span>
+                              <span
+                                className={
+                                  myMatchStatus === "accepted"
+                                    ? "text-(--color-primary)"
+                                    : myMatchStatus === "pending"
+                                      ? "text-amber-400"
+                                      : "text-(--color-muted)"
+                                }
+                              >
+                                {myMatchStatus}
+                              </span>
                             </p>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <p className={`text-lg font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</p>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-[#8B8BA7]">Fit score</p>
+                            <p
+                              className={`text-lg font-bold ${scoreColorClass(score.fit_score)}`}
+                            >
+                              {score.fit_score}%
+                            </p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">
+                              Fit score
+                            </p>
                           </div>
                           {correspondingMatch ? (
                             <Link
                               href={`/matches/${correspondingMatch.id}`}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 transition hover:bg-indigo-500/30"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-(--color-primary)/20 text-(--color-primary) transition hover:bg-(--color-primary)/30"
                             >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M9 5l7 7-7 7"
+                                />
                               </svg>
                             </Link>
                           ) : isDone ? (
-                            <span className="rounded-lg bg-emerald-500/20 px-2.5 py-1.5 text-[10px] font-bold text-emerald-400">Sent</span>
+                            <span className="rounded-lg bg-(--color-primary)/20 px-2.5 py-1.5 text-[10px] font-bold text-(--color-primary)">
+                              Sent
+                            </span>
                           ) : (
                             <button
                               type="button"
-                              onClick={() => void handleRequestIntro(score.project_id, user?.id ?? "")}
+                              onClick={() =>
+                                void handleRequestIntro(
+                                  score.project_id,
+                                  user?.id ?? "",
+                                )
+                              }
                               disabled={reqState === "requesting"}
-                              className="rounded-lg bg-indigo-600/30 px-2.5 py-1.5 text-[10px] font-bold text-indigo-300 transition hover:bg-indigo-600/50 disabled:opacity-50"
+                              className="rounded-lg bg-(--color-primary)/30 px-2.5 py-1.5 text-[10px] font-bold text-(--color-primary)/80 transition hover:bg-(--color-primary)/50 disabled:opacity-50"
                             >
-                              {reqState === "requesting" ? "Sending…" : "Express Interest"}
+                              {reqState === "requesting"
+                                ? "Sending…"
+                                : "Express Interest"}
                             </button>
                           )}
                         </div>
@@ -485,7 +748,9 @@ export default function MatchesPage() {
 
             {!isLoading && pendingCount > 0 && (
               <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Pending Responses</h2>
+                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                  Pending Responses
+                </h2>
                 <MatchList
                   matches={pendingMatches}
                   userId={user?.id ?? ""}
@@ -497,7 +762,9 @@ export default function MatchesPage() {
 
             {!isLoading && activeMatches.length > 0 && (
               <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Active Intros</h2>
+                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                  Active Intros
+                </h2>
                 <MatchList matches={activeMatches} userId={user?.id ?? ""} />
               </section>
             )}
@@ -507,17 +774,26 @@ export default function MatchesPage() {
         {/* ── FALLBACK (ecosystem partner / unknown role) ────────────────────── */}
         {!isStartup && !isInvestor && (
           <section>
-            <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-[#8B8BA7]">Your Intros</h2>
+            <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+              Your Intros
+            </h2>
             {isLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-20 animate-pulse rounded-2xl bg-[#12121A]" />
+                  <div
+                    key={i}
+                    className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)"
+                  />
                 ))}
               </div>
             ) : matches.length === 0 ? (
-              <div className="rounded-2xl border border-[#2A2A3E] bg-[#12121A] py-12 text-center">
-                <p className="text-sm font-semibold text-[#F4F4FF]">No intros yet</p>
-                <p className="mt-1 text-xs text-[#8B8BA7]">When you get matched with a counterpart, they'll appear here.</p>
+              <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
+                <p className="text-sm font-semibold text-(--color-ink)">
+                  No intros yet
+                </p>
+                <p className="mt-1 text-xs text-(--color-muted)">
+                  When you get matched with a counterpart, they'll appear here.
+                </p>
               </div>
             ) : (
               <MatchList
@@ -529,7 +805,6 @@ export default function MatchesPage() {
             )}
           </section>
         )}
-
       </div>
     </div>
   );
@@ -542,14 +817,31 @@ function ScoreBar({ score, barClass }: { score: number; barClass: string }) {
   useEffect(() => {
     if (ref.current) ref.current.style.width = `${score}%`;
   }, [score]);
-  return <div ref={ref} className={`h-full w-0 rounded-full transition-all duration-500 ${barClass}`} />;
+  return (
+    <div
+      ref={ref}
+      className={`h-full w-0 rounded-full transition-all duration-500 ${barClass}`}
+    />
+  );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+}) {
   return (
-    <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
-      <p className={`text-2xl font-bold ${accent ?? "text-[#F4F4FF]"}`}>{value}</p>
-      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">{label}</p>
+    <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3 text-center">
+      <p className={`text-2xl font-bold ${accent ?? "text-(--color-ink)"}`}>
+        {value}
+      </p>
+      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
+        {label}
+      </p>
     </div>
   );
 }
@@ -559,51 +851,74 @@ function MatchList({
   userId,
   onRespond,
   respondingId,
+  subscriptionActive = true,
 }: {
   matches: MatchRow[];
   userId: string;
-  onRespond?: (match: MatchRow, decision: "accepted" | "declined") => Promise<void>;
+  onRespond?: (
+    match: MatchRow,
+    decision: "accepted" | "declined",
+  ) => Promise<void>;
   respondingId?: string | null;
+  subscriptionActive?: boolean;
 }) {
   return (
     <div className="space-y-2.5">
       {matches.map((m) => {
-        const sc         = statusStyle(m.status);
-        const score      = m.fit_score ?? 0;
-        const name       = m.counterpart_name ?? "Verified member";
-        const myStatus   = m.member_a_id === userId ? m.member_a_status : m.member_b_status;
+        const sc = statusStyle(m.status);
+        const score = m.fit_score ?? 0;
+        const name = m.counterpart_name ?? "Verified member";
+        const myStatus =
+          m.member_a_id === userId ? m.member_a_status : m.member_b_status;
         const canRespond = myStatus === "pending" && !!onRespond;
         const isResponding = respondingId === m.id;
 
         return (
           <div
             key={m.id}
-            className="flex items-center gap-4 rounded-xl border border-[#2A2A3E] bg-[#12121A] p-4"
+            className="flex items-center gap-4 rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2A2A3E] text-xs font-bold text-[#F4F4FF]">
-              {name.charAt(0)}
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-(--color-hairline) text-xs font-bold text-(--color-ink)">
+              {!subscriptionActive ? "U" : name.charAt(0)}
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-[#F4F4FF]">{name}</p>
+                <p className="text-sm font-semibold text-(--color-ink)">
+                  {subscriptionActive ? name : "Upgrade to unlock"}
+                </p>
                 {!canRespond && (
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${sc.pill}`}>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${sc.pill}`}
+                  >
                     {sc.label}
                   </span>
                 )}
               </div>
-              {m.counterpart_sector && (
-                <p className="mb-1.5 text-[11px] text-[#8B8BA7]">{m.counterpart_sector}</p>
+              {subscriptionActive && m.counterpart_sector && (
+                <p className="mb-1.5 text-[11px] text-(--color-muted)">
+                  {m.counterpart_sector}
+                </p>
               )}
-              {score > 0 && (
+              {subscriptionActive && score > 0 ? (
                 <div className="flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#2A2A3E]">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--color-hairline)">
                     <ScoreBar score={score} barClass={scoreBarClass(score)} />
                   </div>
-                  <span className={`w-9 text-right text-xs font-bold ${scoreColorClass(score)}`}>{score}%</span>
+                  <span
+                    className={`w-9 text-right text-xs font-bold ${scoreColorClass(score)}`}
+                  >
+                    {score}%
+                  </span>
                 </div>
-              )}
+              ) : !subscriptionActive ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--color-hairline)" />
+                  <span className="w-9 text-right text-xs font-bold text-(--color-muted)">
+                    Match limit reached
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
@@ -613,7 +928,7 @@ function MatchList({
                     type="button"
                     disabled={isResponding}
                     onClick={() => void onRespond(m, "accepted")}
-                    className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/30 disabled:opacity-50"
+                    className="rounded-lg bg-(--color-primary)/20 px-3 py-1.5 text-xs font-bold text-(--color-primary) transition hover:bg-(--color-primary)/30 disabled:opacity-50"
                   >
                     {isResponding ? "…" : "Accept"}
                   </button>
@@ -621,7 +936,7 @@ function MatchList({
                     type="button"
                     disabled={isResponding}
                     onClick={() => void onRespond(m, "declined")}
-                    className="rounded-lg bg-[#1A1A26] px-3 py-1.5 text-xs font-bold text-[#8B8BA7] transition hover:bg-[#2A2A3E] disabled:opacity-50"
+                    className="rounded-lg bg-(--color-surface-soft) px-3 py-1.5 text-xs font-bold text-(--color-muted) transition hover:bg-(--color-hairline) disabled:opacity-50"
                   >
                     Decline
                   </button>
@@ -629,11 +944,21 @@ function MatchList({
               )}
               <Link
                 href={`/matches/${m.id}`}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1A1A26] text-[#8B8BA7] transition hover:bg-[#2A2A3E] hover:text-indigo-400"
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) transition hover:bg-(--color-hairline) hover:text-(--color-primary)"
                 aria-label="View compatibility details"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </Link>
             </div>

@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/app/providers";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { VentureReadinessReport } from "@/lib/venture-readiness/types";
-import {
-  buildProjectAssessmentRedirectUrl,
-  createProjectAssessmentData,
-} from "../../../lib/project-assessment-link";
 
 const projectStages = [
   "Ideation",
@@ -79,7 +74,6 @@ export default function NewProjectPage() {
   >("idle");
   const [ventureReport, setVentureReport] =
     useState<VentureReadinessReport | null>(null);
-  const { user } = useAuth();
 
   const parseReport = async (file: File) => {
     setReportStatus("parsing");
@@ -112,36 +106,23 @@ export default function NewProjectPage() {
       return;
     }
 
-    const ownerId = user?.id ?? `anon-${Date.now()}`;
-
-    const assessmentData = createProjectAssessmentData({
-      owner_id: ownerId,
-      name: form.name,
-      description: form.description,
-      stage: form.stage,
-      sector: form.sector,
-    });
-
-    if (!reportFile) {
-      setLoading(true);
-      window.location.assign(buildProjectAssessmentRedirectUrl(assessmentData));
-      return;
-    }
-
     setLoading(true);
     setError("");
     let reportPayload: VentureReadinessReport | undefined;
-    try {
-      reportPayload = ventureReport ?? (await parseReport(reportFile));
-    } catch (err) {
-      setLoading(false);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to parse Venture Confidence Assessment.",
-      );
-      return;
+    if (reportFile) {
+      try {
+        reportPayload = ventureReport ?? (await parseReport(reportFile));
+      } catch (err) {
+        setLoading(false);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to parse Venture Confidence Assessment.",
+        );
+        return;
+      }
     }
+
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,8 +131,10 @@ export default function NewProjectPage() {
         description: form.description.trim() || undefined,
         stage: form.stage || undefined,
         sector: form.sector || undefined,
+        venture_readiness_report: reportPayload,
       }),
     });
+
     setLoading(false);
     const data = await res.json();
     if (!res.ok) {
@@ -165,15 +148,15 @@ export default function NewProjectPage() {
       return;
     }
     router.push(`/projects/${data.project.id}`);
-  };
 
-  if (!slotChecked) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-(--color-canvas)">
-        <p className="text-sm text-(--color-muted)">Loading…</p>
-      </div>
-    );
-  }
+    if (!slotChecked) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-(--color-canvas)">
+          <p className="text-sm text-(--color-muted)">Loading…</p>
+        </div>
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
@@ -294,11 +277,7 @@ export default function NewProjectPage() {
               disabled={loading}
               className="gn-btn-primary whitespace-nowrap disabled:opacity-50"
             >
-              {loading
-                ? "Saving..."
-                : reportFile
-                  ? "Create project"
-                  : "Assess project"}
+              {loading ? "Saving..." : "Create project"}
             </button>
             <Link
               href="/projects"

@@ -855,7 +855,7 @@ function PdfUploadCard({
 export default function OnboardingForm() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const { role, user } = useAuth();
+  const { role, user, signOut } = useAuth();
   const isAdminView = ["advisor", "admin"].includes(role ?? "");
   const [step, setStep] = useState<"role" | "profile" | "startup">("role");
   const [loading, setLoading] = useState(false);
@@ -1594,7 +1594,13 @@ export default function OnboardingForm() {
 
   const ROLE_META: Record<
     "investor" | "startup" | "ecosystem_partner",
-    { label: string; description: string; detail: string; features: string[]; commitment: string }
+    {
+      label: string;
+      description: string;
+      detail: string;
+      features: string[];
+      commitment: string;
+    }
   > = {
     investor: {
       label: "Investor",
@@ -1630,7 +1636,8 @@ export default function OnboardingForm() {
     },
     ecosystem_partner: {
       label: "Ecosystem Partner",
-      description: "I deploy capital or build startups — TBI, accelerator, VC, or angel",
+      description:
+        "I deploy capital or build startups — TBI, accelerator, VC, or angel",
       detail:
         "You'll set your organization type, investment mandate, target sectors and stages, and provide 3 references who can verify your role.",
       features: [
@@ -1683,9 +1690,15 @@ export default function OnboardingForm() {
                 </p>
                 <ul className="mt-3 space-y-2">
                   {ROLE_META[pendingRole].features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm text-[var(--color-body)]">
+                    <li
+                      key={f}
+                      className="flex items-start gap-2.5 text-sm text-[var(--color-body)]"
+                    >
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                        <i className="ri-check-line text-[10px] leading-none" aria-hidden="true" />
+                        <i
+                          className="ri-check-line text-[10px] leading-none"
+                          aria-hidden="true"
+                        />
                       </span>
                       {f}
                     </li>
@@ -1715,7 +1728,10 @@ export default function OnboardingForm() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => { setPendingRole(null); setRoleAgreeChecked(false); }}
+                    onClick={() => {
+                      setPendingRole(null);
+                      setRoleAgreeChecked(false);
+                    }}
                     className="flex-1 rounded-xl border border-[var(--color-hairline)] py-2.5 text-sm font-600 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] transition-colors"
                   >
                     Go back
@@ -1816,6 +1832,27 @@ export default function OnboardingForm() {
             </div>
           </div>
         </div>
+        {user && (
+          <div className="fixed z-50 bottom-4 left-0 right-0 px-4 text-center text-sm text-[var(--color-muted)] pointer-events-none">
+            <div className="mx-auto max-w-[520px] pointer-events-auto">
+              <div className="inline-flex items-center justify-center gap-3 rounded-xl bg-[var(--color-surface-soft)]/95 border border-[var(--color-hairline)] px-4 py-2 shadow-lg">
+                <p className="text-sm text-[var(--color-muted)] m-0">
+                  Not you?
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut?.();
+                    router.push("/sign-in");
+                  }}
+                  className="ml-1 font-medium text-[var(--color-primary)] hover:underline"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -1850,6 +1887,27 @@ export default function OnboardingForm() {
             </div>
           </div>
         </div>
+        {user && (
+          <div className="fixed z-50 bottom-4 left-0 right-0 px-4 text-center text-sm text-[var(--color-muted)] pointer-events-none">
+            <div className="mx-auto max-w-[900px] pointer-events-auto">
+              <div className="inline-flex items-center justify-center gap-3 rounded-xl bg-[var(--color-surface-soft)]/95 border border-[var(--color-hairline)] px-4 py-2 shadow-lg">
+                <p className="text-sm text-[var(--color-muted)] m-0">
+                  Not you?
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut?.();
+                    router.push("/sign-in");
+                  }}
+                  className="ml-1 font-medium text-[var(--color-primary)] hover:underline"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1877,19 +1935,28 @@ export default function OnboardingForm() {
           for you.
         </p>
 
-        {error && (
-          <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {error}
+        {user && (
+          <div className="fixed z-50 bottom-4 left-0 right-0 px-4 text-center pointer-events-none">
+            <div className="mx-auto max-w-[900px] pointer-events-auto">
+              <div className="inline-flex items-center justify-center gap-3 rounded-xl bg-[var(--color-surface-soft)]/95 border border-[var(--color-hairline)] px-4 py-2 shadow-lg">
+                <p className="text-sm text-[var(--color-muted)] m-0">
+                  Not you?
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut?.();
+                    router.push("/sign-in");
+                  }}
+                  className="ml-1 font-medium text-[var(--color-primary)] hover:underline"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
           </div>
         )}
-        {success && (
-          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-            {success}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          {/* Basic profile fields */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label
@@ -2445,7 +2512,8 @@ export default function OnboardingForm() {
                   <SectionCard label="Section A — Organization & Investment Mandate">
                     <Field label="Organization Type" req>
                       <p className="mb-2 text-xs text-[var(--color-muted)]">
-                        Select the category that best describes your organization.
+                        Select the category that best describes your
+                        organization.
                       </p>
                       <PillToggle
                         options={INVESTOR_TYPES}

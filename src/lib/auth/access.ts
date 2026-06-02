@@ -8,6 +8,7 @@ export const PUBLIC_PATHS = [
   "/accept-invite",
   "/get-invited",
   "/not-authorized",
+  "/reset-password",
 ] as const;
 
 export const MEMBER_PATH_PREFIXES = [

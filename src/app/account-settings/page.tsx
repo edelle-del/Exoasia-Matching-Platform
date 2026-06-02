@@ -15,9 +15,7 @@ export default function AccountSettingsPage() {
   const [phoneError, setPhoneError] = useState("");
   const [phoneSuccess, setPhoneSuccess] = useState("");
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordEmail, setPasswordEmail] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
@@ -37,6 +35,7 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     if (!user?.id) return;
+    if (user.email) setPasswordEmail(user.email);
     supabase
       .from("profiles")
       .select("phone_whatsapp")
@@ -45,7 +44,7 @@ export default function AccountSettingsPage() {
       .then(({ data }) => {
         if (data?.phone_whatsapp) setPhone(data.phone_whatsapp);
       });
-  }, [supabase, user?.id]);
+  }, [supabase, user?.id, user?.email]);
 
   const handleUpdatePhone = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,38 +69,25 @@ export default function AccountSettingsPage() {
     setPhoneSuccess("Phone number updated.");
   };
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  const handleSendResetLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
     setPasswordSuccess("");
-    if (!currentPassword) {
-      setPasswordError("Please enter your current password.");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords do not match.");
+    if (!passwordEmail.trim()) {
+      setPasswordError("Please enter your email address.");
       return;
     }
     setPasswordLoading(true);
-    const res = await fetch("/api/account/update-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ current_password: currentPassword, password: newPassword }),
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      passwordEmail.trim().toLowerCase(),
+      { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` },
+    );
     setPasswordLoading(false);
-    const data = await res.json();
-    if (!res.ok) {
-      setPasswordError(data?.error ?? "Failed to update password.");
+    if (error) {
+      setPasswordError(error.message);
       return;
     }
-    setPasswordSuccess("Password updated successfully.");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    setPasswordSuccess("Reset link sent! Check your email.");
   };
 
   const handleBugReport = async (e: React.FormEvent) => {
@@ -186,34 +172,24 @@ export default function AccountSettingsPage() {
         {/* Password */}
         <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
           <h2 className="text-base font-semibold text-(--color-ink)">Change password</h2>
-          <form onSubmit={handleUpdatePassword} className="mt-4 space-y-3">
+          <p className="mt-1 text-sm text-(--color-body)">
+            Confirm your email address and we&apos;ll send you a reset link.
+          </p>
+          <form onSubmit={handleSendResetLink} className="mt-4 space-y-3">
             <input
-              type="password"
+              type="email"
               className="gn-input"
-              placeholder="Current password"
-              value={currentPassword}
-              onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(""); setPasswordSuccess(""); }}
-            />
-            <input
-              type="password"
-              className="gn-input"
-              placeholder="New password (min. 8 characters)"
-              value={newPassword}
-              onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); setPasswordSuccess(""); }}
-            />
-            <input
-              type="password"
-              className="gn-input"
-              placeholder="Confirm new password"
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); setPasswordSuccess(""); }}
+              placeholder="Your email address"
+              value={passwordEmail}
+              onChange={(e) => { setPasswordEmail(e.target.value); setPasswordError(""); setPasswordSuccess(""); }}
+              required
             />
             <button
               type="submit"
               disabled={passwordLoading}
               className="gn-btn-primary disabled:opacity-50"
             >
-              {passwordLoading ? "Updating..." : "Update password"}
+              {passwordLoading ? "Sending…" : "Send reset link"}
             </button>
           </form>
           {passwordError && <p className="mt-2 text-xs text-red-600">{passwordError}</p>}

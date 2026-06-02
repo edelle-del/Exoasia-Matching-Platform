@@ -17,7 +17,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/sign-in?error=oauth_failed`);
   }
 
-  // Determine where to send the user
+  // If a specific destination was requested (e.g. password reset), go there directly.
+  if (next !== "/dashboard") {
+    return NextResponse.redirect(`${origin}${next}`);
+  }
+
+  // Default: check if the user still needs onboarding.
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -22,6 +22,40 @@ export default function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    if (!forgotEmail.trim()) {
+      setForgotError("Please enter your email address.");
+      return;
+    }
+    setForgotLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      forgotEmail.trim().toLowerCase(),
+      { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` },
+    );
+    setForgotLoading(false);
+    if (error) {
+      setForgotError(error.message);
+      return;
+    }
+    setForgotSuccess(true);
+  };
+
+  const openForgotPassword = () => {
+    setForgotEmail(loginData.email);
+    setForgotError("");
+    setForgotSuccess(false);
+    setShowForgotPassword(true);
+  };
+
   // Handles the case where the user is already signed in when they land on this page
   useEffect(() => {
     if (!signedIn || isRedirecting) return;
@@ -199,16 +233,27 @@ export default function SignInPage() {
                 }
                 required
               />
-              <input
-                className="gn-input"
-                type="password"
-                placeholder="Password"
-                value={loginData.password}
-                onChange={(e) =>
-                  handleLoginInputChange("password", e.target.value)
-                }
-                required
-              />
+              <div>
+                <input
+                  className="gn-input"
+                  type="password"
+                  placeholder="Password"
+                  value={loginData.password}
+                  onChange={(e) =>
+                    handleLoginInputChange("password", e.target.value)
+                  }
+                  required
+                />
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={openForgotPassword}
+                    className="text-sm text-[var(--color-primary)] hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              </div>
             </div>
 
             <button
@@ -233,6 +278,68 @@ export default function SignInPage() {
           </div>
         </div>
       </main>
+
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-xl">
+            {forgotSuccess ? (
+              <div className="text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                  <svg className="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">Check your email</h2>
+                <p className="mt-2 text-sm text-[var(--color-body)]">
+                  We&apos;ve sent a password reset link to <span className="font-medium">{forgotEmail}</span>. Follow the link to set a new password.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(false)}
+                  className="mt-6 w-full rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold text-[var(--color-ink)]">Forgot your password?</h2>
+                <p className="mt-2 text-sm text-[var(--color-body)]">
+                  Enter your email and we&apos;ll send you a link to reset your password.
+                </p>
+                <form onSubmit={handleForgotPassword} className="mt-5 space-y-4">
+                  <input
+                    type="email"
+                    className="gn-input"
+                    placeholder="Email address"
+                    value={forgotEmail}
+                    onChange={(e) => { setForgotEmail(e.target.value); setForgotError(""); }}
+                    required
+                    autoFocus
+                  />
+                  {forgotError && <p className="text-xs text-red-600">{forgotError}</p>}
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(false)}
+                      className="flex-1 rounded-xl border border-[var(--color-hairline)] py-2.5 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="flex-1 rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {forgotLoading ? "Sending…" : "Send reset link"}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,68 +1,18 @@
 "use client";
 
-import { useRef, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../providers";
 import { getHomePathForRole } from "@/lib/auth/access";
-
-// ── OTP box component ─────────────────────────────────────────────────────────
-
-function OtpBoxes({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (v: string[]) => void;
-}) {
-  const refs = useRef<(HTMLInputElement | null)[]>([]);
-
-  const handleChange = (i: number, char: string) => {
-    if (!/^\d?$/.test(char)) return;
-    const next = [...value];
-    next[i] = char;
-    onChange(next);
-    if (char && i < 5) refs.current[i + 1]?.focus();
-  };
-
-  const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !value[i] && i > 0) refs.current[i - 1]?.focus();
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (text.length === 6) {
-      onChange(text.split(""));
-      refs.current[5]?.focus();
-    }
-  };
-
-  return (
-    <div className="flex justify-center gap-3" onPaste={handlePaste}>
-      {value.map((digit, i) => (
-        <input
-          key={i}
-          ref={(el) => { refs.current[i] = el; }}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={digit}
-          aria-label={`Digit ${i + 1} of verification code`}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          className="h-14 w-12 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-center text-xl font-700 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
-        />
-      ))}
-    </div>
-  );
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type InviteInfo = {
   id: string;
+  uid_type: string;
+  uid_value: string;
   status: string;
   expires_at: string;
-  project_id: string | null;
   inviter: { full_name: string | null; business_name: string | null } | null;
   project: { id: string; name: string; stage: string | null } | null;
 };
@@ -71,17 +21,21 @@ type InviteInfo = {
 
 export default function AcceptInvitePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, signedIn, isInvitedAccount, signInWithPassword, completeInviteClaim, role } =
     useAuth();
 
-  // ── Step 1: OTP entry ─────────────────────────────────────────────────────
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [otpSubmitting, setOtpSubmitting] = useState(false);
-  const [otpError, setOtpError] = useState("");
+  const token = searchParams.get("token") ?? "";
 
-  // ── Step 2: Invite context + account setup ────────────────────────────────
+  // Invite context loaded from token
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(!!token);
+  const [inviteError, setInviteError] = useState("");
+
+  // Email derived from invite (or signed-in user)
+  const [email, setEmail] = useState(user?.email ?? "");
+
+  // Account setup form
   const [formData, setFormData] = useState({
     fullName: user?.user_metadata?.full_name ?? "",
     password: "",
@@ -94,10 +48,31 @@ export default function AcceptInvitePage() {
   const [submitting, setSubmitting] = useState(false);
   const [accepted, setAccepted] = useState(false);
 
-  // ── Existing-account sign-in toggle ──────────────────────────────────────
+  // Existing-account sign-in toggle
   const [showSignIn, setShowSignIn] = useState(false);
   const [authData, setAuthData] = useState({ email: "", password: "" });
   const [authSubmitting, setAuthSubmitting] = useState(false);
+
+  // Auto-load invite by token on mount
+  useEffect(() => {
+    if (!token) {
+      setInviteLoading(false);
+      return;
+    }
+    setInviteLoading(true);
+    fetch(`/api/cofounders/invite/${token}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.invite) {
+          setInviteInfo(data.invite);
+          if (data.invite.uid_value) setEmail(data.invite.uid_value);
+        } else {
+          setInviteError(data?.error ?? "Invalid or expired invite link.");
+        }
+      })
+      .catch(() => setInviteError("Failed to load invite. Please try again."))
+      .finally(() => setInviteLoading(false));
+  }, [token]);
 
   const canSubmitSetup = useMemo(
     () =>
@@ -110,33 +85,7 @@ export default function AcceptInvitePage() {
     [formData],
   );
 
-  // ── Step 1 submit: verify OTP ─────────────────────────────────────────────
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = otp.join("");
-    if (code.length < 6) { setOtpError("Enter the full 6-digit code."); return; }
-    if (!email.trim()) { setOtpError("Enter your email address."); return; }
-
-    setOtpSubmitting(true);
-    setOtpError("");
-    const res = await fetch("/api/cofounders/verify-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim().toLowerCase(), otp: code }),
-    });
-    const data = await res.json();
-    setOtpSubmitting(false);
-
-    if (!res.ok) {
-      setOtpError(data?.error ?? "Invalid code. Please try again.");
-      setOtp(["", "", "", "", "", ""]);
-      return;
-    }
-
-    setInviteInfo(data.invite);
-  };
-
-  // ── Step 2 submit: claim account (new user) ───────────────────────────────
+  // Claim account via invite link token (new user)
   const handleSetupAndClaim = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) { setError("Passwords do not match."); return; }
@@ -147,8 +96,7 @@ export default function AcceptInvitePage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: email.trim().toLowerCase(),
-        otp: otp.join(""),
+        token,
         name: formData.fullName.trim(),
         password: formData.password,
       }),
@@ -163,7 +111,7 @@ export default function AcceptInvitePage() {
     setTimeout(() => router.push("/projects"), 2000);
   };
 
-  // ── Legacy path: admin-provisioned invited account ────────────────────────
+  // Legacy path: admin-provisioned invited account
   const handleAdminClaim = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signedIn || !isInvitedAccount) { setError("No pending invite to claim."); return; }
@@ -179,7 +127,7 @@ export default function AcceptInvitePage() {
     router.push(getHomePathForRole(role));
   };
 
-  // ── Sign in (existing member accepting via sign-in) ───────────────────────
+  // Sign in (existing member accepting via sign-in)
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailVal = authData.email.trim().toLowerCase();
@@ -191,7 +139,6 @@ export default function AcceptInvitePage() {
     if (signInError) setError(signInError);
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
   const inviterLabel = inviteInfo?.inviter?.full_name || inviteInfo?.inviter?.business_name || "A founder";
   const projectLabel = inviteInfo?.project?.name;
 
@@ -282,7 +229,7 @@ export default function AcceptInvitePage() {
     );
   }
 
-  // ── Legacy: admin-provisioned signed-in invited account (no OTP) ──────────
+  // ── Legacy: admin-provisioned signed-in invited account (no token) ─────────
   if (signedIn && isInvitedAccount && !inviteInfo) {
     return (
       <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
@@ -307,47 +254,82 @@ export default function AcceptInvitePage() {
             Platform Invitation — FOUNDERS ARENA
           </p>
 
-          {/* ── Step 1: OTP entry ── */}
-          {!inviteInfo && (
+          {/* Loading */}
+          {inviteLoading && (
+            <div className="mt-8 flex items-center gap-3 text-(--color-muted)">
+              <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm">Loading your invitation…</span>
+            </div>
+          )}
+
+          {/* Invalid / missing token */}
+          {!inviteLoading && (inviteError || !token) && (
             <>
-              <h1 className="mt-3 text-3xl font-700 text-(--color-ink)">Enter your verification code</h1>
-              <p className="mt-1 text-sm text-(--color-body)">
-                Check your email for the 6-digit code we sent and enter it below.
+              <h1 className="mt-3 text-2xl font-700 text-(--color-ink)">
+                {inviteError ? "Invite link issue" : "No invite link found"}
+              </h1>
+              <p className="mt-2 text-sm text-(--color-body)">
+                {inviteError || "Please use the invite link from your email."}
               </p>
-
-              {otpError && (
-                <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{otpError}</div>
-              )}
-
-              <form onSubmit={handleVerifyOtp} className="mt-6 space-y-5">
-                <div>
-                  <label htmlFor="invite-email" className="block text-sm font-600 text-(--color-ink)">
-                    Your email address
-                  </label>
-                  <input
-                    id="invite-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setOtpError(""); setEmail(e.target.value); }}
-                    className="mt-1 w-full rounded-lg border border-(--color-hairline) px-4 py-3"
-                    placeholder="you@example.com"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <p className="mb-3 text-sm font-600 text-(--color-ink)">Verification code</p>
-                  <OtpBoxes value={otp} onChange={(v) => { setOtpError(""); setOtp(v); }} />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={otpSubmitting || otp.join("").length < 6}
-                  className="w-full rounded-lg bg-(--color-primary) py-3 font-600 text-white disabled:opacity-50"
-                >
-                  {otpSubmitting ? "Verifying…" : "Verify code →"}
+              <p className="mt-4 text-sm text-(--color-muted)">
+                Already have a FOUNDERS ARENA account?{" "}
+                <button type="button" onClick={() => setShowSignIn((s) => !s)} className="text-(--color-primary) hover:underline">
+                  Sign in instead
                 </button>
-              </form>
+              </p>
+              {showSignIn && (
+                <form onSubmit={handleSignIn} className="mt-4 space-y-4 border-t border-(--color-hairline) pt-4">
+                  {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="signin-email" className="block text-sm font-600 text-(--color-ink)">Email</label>
+                      <input
+                        id="signin-email"
+                        className="gn-input mt-1"
+                        type="email"
+                        value={authData.email}
+                        onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, email: e.target.value })); }}
+                        placeholder="Email address"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="signin-password" className="block text-sm font-600 text-(--color-ink)">Password</label>
+                      <input
+                        id="signin-password"
+                        className="gn-input mt-1"
+                        type="password"
+                        value={authData.password}
+                        onChange={(e) => { setError(""); setAuthData((p) => ({ ...p, password: e.target.value })); }}
+                        placeholder="Password"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={authSubmitting}
+                    className="w-full rounded-lg bg-(--color-primary) py-3 font-600 text-white disabled:opacity-50"
+                  >
+                    {authSubmitting ? "Signing in…" : "Sign in to continue"}
+                  </button>
+                </form>
+              )}
+            </>
+          )}
+
+          {/* Invite loaded — show setup form */}
+          {!inviteLoading && !inviteError && inviteInfo && (
+            <>
+              <h1 className="mt-3 text-3xl font-700 text-(--color-ink)">Create your account</h1>
+              <p className="mt-1 text-sm text-(--color-body)">
+                {inviterLabel} invited you to FOUNDERS ARENA. Set up your account below.
+              </p>
+              {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+              {SetupForm({ onSubmit: handleSetupAndClaim })}
 
               <p className="mt-4 text-center text-xs text-(--color-muted)">
                 Already have a FOUNDERS ARENA account?{" "}
@@ -396,18 +378,6 @@ export default function AcceptInvitePage() {
               )}
             </>
           )}
-
-          {/* ── Step 2: Account setup form (after OTP verified) ── */}
-          {inviteInfo && (
-            <>
-              <h1 className="mt-3 text-3xl font-700 text-(--color-ink)">Create your account</h1>
-              <p className="mt-1 text-sm text-(--color-body)">
-                {inviterLabel} invited you to FOUNDERS ARENA. Set up your account below.
-              </p>
-              {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-              {SetupForm({ onSubmit: handleSetupAndClaim })}
-            </>
-          )}
         </div>
 
         {/* ── Right: context card ── */}
@@ -429,7 +399,7 @@ export default function AcceptInvitePage() {
               </>
             ) : (
               <p className="mt-3 text-sm text-(--color-body)">
-                Enter the 6-digit code from your invite email to see your invitation details.
+                {inviteLoading ? "Loading invitation details…" : "Use your invite link to see your invitation details."}
               </p>
             )}
           </div>

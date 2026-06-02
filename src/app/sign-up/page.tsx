@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -12,13 +12,10 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // OTP step shown after signUp() succeeds but session is null (email not yet confirmed)
-  const [otpStep, setOtpStep] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", "", "", "", "", ""]);
-  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  // Check-email step shown after signUp() succeeds but session is null (email not yet confirmed)
+  const [checkEmailStep, setCheckEmailStep] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle");
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -48,6 +45,7 @@ export default function SignUpPage() {
       email: formData.email.trim().toLowerCase(),
       password: formData.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           signin_location: ctx.location,
           signin_browser: ctx.browser,
@@ -72,66 +70,8 @@ export default function SignUpPage() {
     }
 
     if (!data.session) {
-      // Email confirmation required — show OTP input.
-      // The Supabase "Confirm signup" email template must include {{ .Token }}
-      // so the 8-digit code reaches the user's inbox.
-      setOtpStep(true);
-      return;
-    }
-
-    router.replace("/onboarding");
-  };
-
-  const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
-    const next = [...otp];
-    next[index] = value;
-    setOtp(next);
-    setError("");
-    if (value && index < 7) otpRefs.current[index + 1]?.focus();
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 8);
-    if (text.length === 8) {
-      setOtp(text.split(""));
-      otpRefs.current[7]?.focus();
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = otp.join("");
-    if (code.length < 8) { setError("Enter the full 8-digit code."); return; }
-
-    setOtpSubmitting(true);
-    setError("");
-    const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: formData.email.trim().toLowerCase(),
-      token: code,
-      type: "signup",
-    });
-    setOtpSubmitting(false);
-
-    if (verifyError) {
-      if (
-        verifyError.message.toLowerCase().includes("rate limit") ||
-        verifyError.message.toLowerCase().includes("too many") ||
-        verifyError.status === 429
-      ) {
-        setError("Too many attempts. Please wait a few minutes before trying again.");
-      } else {
-        setError(verifyError.message);
-      }
-      setOtp(["", "", "", "", "", "", "", ""]);
-      otpRefs.current[0]?.focus();
+      // Email confirmation required — show check-email screen.
+      setCheckEmailStep(true);
       return;
     }
 
@@ -184,7 +124,7 @@ export default function SignUpPage() {
     if (error) setError("");
   };
 
-  if (otpStep) {
+  if (checkEmailStep) {
     return (
       <div className="min-h-screen bg-[var(--color-canvas)]">
         <main className="px-[5%] py-20">
@@ -199,42 +139,15 @@ export default function SignUpPage() {
               Check your email
             </h1>
             <p className="text-[var(--color-body)]">
-              We sent an 8-digit code to <strong>{formData.email}</strong>. Enter it below to activate your account.
+              We sent a confirmation link to <strong>{formData.email}</strong>. Click the link to activate your account.
             </p>
 
-            <form onSubmit={handleVerifyOtp} className="space-y-5">
-              {error && (
-                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-              )}
-
-              <div className="flex justify-center gap-3" onPaste={handleOtpPaste}>
-                {otp.map((digit, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => { otpRefs.current[i] = el; }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    aria-label={`Digit ${i + 1} of verification code`}
-                    onChange={(e) => handleOtpChange(i, e.target.value)}
-                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                    className="h-14 w-12 rounded-xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-center text-xl font-700 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
-                  />
-                ))}
-              </div>
-
-              <button
-                className="w-full gn-btn-primary"
-                type="submit"
-                disabled={otpSubmitting || otp.join("").length < 8}
-              >
-                {otpSubmitting ? "Verifying…" : "Verify & continue →"}
-              </button>
-            </form>
+            {error && (
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            )}
 
             <p className="text-sm text-[var(--color-muted)]">
-              Didn&apos;t receive a code?{" "}
+              Didn&apos;t receive an email?{" "}
               <button
                 type="button"
                 onClick={handleResend}
@@ -247,14 +160,14 @@ export default function SignUpPage() {
                   ? "Sent!"
                   : resendCooldown > 0
                   ? `Resend in ${resendCooldown}s`
-                  : "Resend code"}
+                  : "Resend link"}
               </button>
             </p>
             <p className="text-sm text-[var(--color-muted)]">
               Wrong email?{" "}
               <button
                 type="button"
-                onClick={() => { setOtpStep(false); setOtp(["", "", "", "", "", "", "", ""]); setError(""); }}
+                onClick={() => { setCheckEmailStep(false); setError(""); }}
                 className="text-[var(--color-primary)] hover:underline"
               >
                 Go back

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     // inside the Supabase "Invite User" email template.
     if (uid_type === "email" && data?.token) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-      const acceptUrl = `${siteUrl}/accept-invite`;
+      const acceptUrl = `${siteUrl}/accept-invite?token=${data.token}`;
 
       try {
         const admin = createAdminClient();

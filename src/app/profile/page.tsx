@@ -758,7 +758,7 @@ export default function ProfilePage() {
             href="/onboarding"
             className="whitespace-nowrap text-sm text-(--color-primary) hover:underline"
           >
-            Update your profile →
+            Update your profile
           </Link>
           <Link
             href="/payments"

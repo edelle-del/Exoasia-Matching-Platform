@@ -127,23 +127,7 @@ function matchSector(sector: string | null, industry: string | null): string {
   return "";
 }
 
-function ScoreBadge({ score, large }: { score: number; large?: boolean }) {
-  const cls =
-    score >= 80
-      ? "fa-score-excellent"
-      : score >= 65
-        ? "fa-score-strong"
-        : score >= 50
-          ? "fa-score-moderate"
-          : "fa-score-low";
-  return (
-    <span
-      className={`${cls} inline-flex items-center rounded-lg font-bold ${large ? "px-3 py-1.5 text-base" : "px-2.5 py-1 text-sm"}`}
-    >
-      {score}/100
-    </span>
-  );
-}
+import PieScore from "@/components/PieScore";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -724,7 +708,7 @@ export default function ProjectDetailPage({
               {/* Investor: score badge + button in header */}
               {!isOwner && (
                 <div className="flex items-center gap-2">
-                  {myScore && <ScoreBadge score={myScore.fit_score} large />}
+                  {myScore && <PieScore score={myScore.fit_score} large />}
                   <button
                     type="button"
                     disabled={scoring}
@@ -792,32 +776,7 @@ export default function ProjectDetailPage({
             </div>
           </div>
 
-          {/* Tabs — owner only, flush at the bottom of the header */}
-          {isOwner && (
-            <div className="mt-6 flex gap-0 border-b border-(--color-hairline)">
-              {(["details", "matches"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                    activeTab === tab
-                      ? "border-(--color-primary) text-(--color-primary)"
-                      : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
-                  }`}
-                >
-                  {tab === "details" ? "Project Details" : "Investor Matches"}
-                  {tab === "matches" &&
-                    matchesGenerated &&
-                    investorMatches.length > 0 && (
-                      <span className="rounded-full bg-(--color-primary) px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
-                        {investorMatches.length}
-                      </span>
-                    )}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* tabs moved below the VCA report for full-width layout */}
         </div>
       </section>
 
@@ -1346,10 +1305,38 @@ export default function ProjectDetailPage({
         </section>
       )}
 
-      {/* ── Owner tabs ── */}
+      {/* ── Owner tabs (placed under VCA report) ── */}
+      {isOwner && (
+        <div className="mx-auto max-w-7xl px-[5%] mt-6">
+          <div className="flex gap-0 border-b border-(--color-hairline)">
+            {(["details", "matches"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                  activeTab === tab
+                    ? "border-(--color-primary) text-(--color-primary)"
+                    : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
+                }`}
+              >
+                {tab === "details" ? "Project Details" : "Investor Matches"}
+                {tab === "matches" &&
+                  matchesGenerated &&
+                  investorMatches.length > 0 && (
+                    <span className="rounded-full bg-(--color-primary) px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                      {investorMatches.length}
+                    </span>
+                  )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Project Details tab (always visible for non-owners) ── */}
       {(!isOwner || activeTab === "details") && (
-        <div className="mx-auto max-w-2xl px-[5%] py-10">
+        <div className="mx-auto max-w-7xl px-[5%] py-10">
           {isOwner && !report && (
             <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
@@ -1464,7 +1451,7 @@ export default function ProjectDetailPage({
               )}
               {dataRoomStatus === "approved" && (
                 <>
-                  <p className="mt-1 text-sm text-emerald-600 font-medium">
+                  <p className="mt-1 text-sm text-(--color-primary) font-medium">
                     Access granted
                   </p>
                   {dataRoomFiles.length === 0 ? (
@@ -1515,13 +1502,13 @@ export default function ProjectDetailPage({
           {/* ── Investor: my score detail ── */}
           {!isOwner && myScore && (
             <div
-              className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-emerald-500/30 bg-emerald-500/10" : myScore.fit_score >= 65 ? "border-blue-500/30 bg-blue-500/10" : myScore.fit_score >= 50 ? "border-amber-500/30 bg-amber-500/10" : "border-red-500/30 bg-red-500/10"}`}
+              className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-(--color-primary)/30 bg-(--color-primary)/10" : myScore.fit_score >= 65 ? "border-blue-500/30 bg-blue-500/10" : myScore.fit_score >= 50 ? "border-amber-500/30 bg-amber-500/10" : "border-red-500/30 bg-red-500/10"}`}
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-(--color-ink)">
                   Your match score
                 </h2>
-                <ScoreBadge score={myScore.fit_score} large />
+                <PieScore score={myScore.fit_score} large />
               </div>
               {myScore.summary && (
                 <p className="mt-2 text-sm text-(--color-body)">
@@ -1692,7 +1679,7 @@ export default function ProjectDetailPage({
                               </p>
                             )}
                           </div>
-                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">
                             Cofounder
                           </span>
                         </li>
@@ -1708,7 +1695,7 @@ export default function ProjectDetailPage({
 
       {/* ── Investor Matches tab ── */}
       {isOwner && activeTab === "matches" && (
-        <div className="mx-auto max-w-2xl px-[5%] py-10 space-y-5">
+        <div className="mx-auto max-w-7xl px-[5%] py-10 space-y-5">
           {/* Generate / regenerate header */}
           <div className="flex items-center justify-between">
             <div>
@@ -1792,23 +1779,29 @@ export default function ProjectDetailPage({
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <p className="font-medium text-(--color-ink)">
-                            {m.investor_name}
+                            {locked ? "Upgrade to unlock" : m.investor_name}
                           </p>
-                          {(m.investor_sector || m.investor_city) && (
-                            <p className="mt-0.5 text-xs text-(--color-muted)">
-                              {[m.investor_sector, m.investor_city]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                          )}
+                          {!locked &&
+                            (m.investor_sector || m.investor_city) && (
+                              <p className="mt-0.5 text-xs text-(--color-muted)">
+                                {[m.investor_sector, m.investor_city]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            )}
                         </div>
-                        <ScoreBadge score={m.fit_score} />
+                        {locked ? (
+                          <div
+                            className="w-7 h-7 rounded-full bg-(--color-hairline)"
+                            aria-hidden
+                          />
+                        ) : (
+                          <PieScore score={m.fit_score} />
+                        )}
                       </div>
-                      {m.summary && (
-                        <p className="mt-2 text-xs font-medium text-green-600">
-                          {m.summary}
-                        </p>
-                      )}
+                      <p className="mt-2 text-xs font-medium text-(--color-primary)">
+                        {locked ? "Match limit reached" : m.summary}
+                      </p>
                     </div>
                     {locked && (
                       <div className="absolute inset-0 flex items-center justify-center rounded-xl">

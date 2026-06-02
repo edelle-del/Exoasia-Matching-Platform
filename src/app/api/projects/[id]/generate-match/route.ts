@@ -20,37 +20,106 @@ function extractJson(text: string): string {
   throw new Error("Gemini output did not contain JSON.");
 }
 
-async function callGemini(systemInstruction: string, payload: unknown) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable.");
+async function callOpenRouter(systemInstruction: string, payload: unknown) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey)
+    throw new Error("Missing OPENROUTER_API_KEY environment variable.");
 
-  const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+  const endpoint = "https://openrouter.ai/api/v1/chat/completions";
+
+  const res = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
-      contents: [{ role: "user", parts: [{ text: JSON.stringify(payload) }] }],
+      model: "~openai/gpt-latest",
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: JSON.stringify(payload) },
+      ],
+      temperature: 0.2,
+      max_tokens: 1200,
     }),
   });
 
   if (!res.ok) {
     const msg = await res.text();
-    throw new Error(`Gemini request failed: ${res.status} ${msg}`);
+    throw new Error(`OpenRouter request failed: ${res.status} ${msg}`);
   }
 
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text =
-    data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("\n") ?? "";
-  return extractJson(text);
+  const raw = await res.text();
+
+  let data: any = null;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    data = null;
+  }
+
+  const content =
+    data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.message ?? raw;
+  const text = typeof content === "string" ? content : JSON.stringify(content);
+
+  try {
+    return extractJson(text);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`OpenRouter parse error: ${msg}. Raw response: ${raw}`);
+  }
 }
 
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Debug helper: call this endpoint with ?debug=true to bypass auth and
+  // invoke OpenRouter with a small synthetic payload. Useful for reproducing
+  // parsing / 500 errors when developing locally. Remove before production.
+  try {
+    const debugHeader = _req.headers.get("x-debug");
+    if (debugHeader === "true") {
+      const { id: projectId } = await params;
+      const payload = {
+        project: {
+          id: projectId,
+          owner_id: "debug-owner",
+          name: "Debug Project",
+          stage: "Seed",
+          sector: "Tech",
+        },
+        investors: [
+          {
+            id: "inv-1",
+            full_name: "Investor One",
+            business_name: "InvCo",
+            sector: "Tech",
+            stage: "Seed",
+            member_role: "investor",
+          },
+        ],
+      };
+
+      try {
+        const json = await callOpenRouter(
+          GEMINI_STARTUP_FINDS_INVESTORS_INSTRUCTIONS,
+          payload,
+        );
+        return NextResponse.json({ debug: true, raw: json });
+      } catch (err) {
+        return NextResponse.json(
+          {
+            debug: true,
+            error: err instanceof Error ? err.message : String(err),
+          },
+          { status: 500 },
+        );
+      }
+    }
+  } catch (err) {
+    // fall through to regular handling
+  }
   try {
     const { id: projectId } = await params;
     const supabase = await createClient();
@@ -90,7 +159,9 @@ export async function POST(
     if (callerProfile.member_role === "investor") {
       const { data: ownerProfile } = await admin
         .from("profiles")
-        .select("id, full_name, business_name, sector, stage, asks_summary, offers_summary")
+        .select(
+          "id, full_name, business_name, sector, stage, asks_summary, offers_summary",
+        )
         .eq("id", project.owner_id)
         .single();
 
@@ -99,7 +170,10 @@ export async function POST(
         project: { ...project, owner: ownerProfile },
       };
 
-      const json = await callGemini(GEMINI_INVESTOR_SCORES_PROJECT_INSTRUCTIONS, payload);
+      const json = await callOpenRouter(
+        GEMINI_INVESTOR_SCORES_PROJECT_INSTRUCTIONS,
+        payload,
+      );
       type InvestorScoreResult = {
         project_id: string;
         fit_score: number;
@@ -108,7 +182,10 @@ export async function POST(
       };
       const result = JSON.parse(json) as InvestorScoreResult;
 
-      const fitScore = Math.max(0, Math.min(100, Math.round(Number(result.fit_score) || 0)));
+      const fitScore = Math.max(
+        0,
+        Math.min(100, Math.round(Number(result.fit_score) || 0)),
+      );
 
       const { error: upsertError } = await admin
         .from("project_match_scores")
@@ -125,12 +202,20 @@ export async function POST(
         );
 
       if (upsertError) {
-        return NextResponse.json({ error: upsertError.message }, { status: 500 });
+        return NextResponse.json(
+          { error: upsertError.message },
+          { status: 500 },
+        );
       }
 
       return NextResponse.json({
         mode: "investor_scores_project",
-        score: { project_id: projectId, fit_score: fitScore, summary: result.summary, rationale: result.rationale },
+        score: {
+          project_id: projectId,
+          fit_score: fitScore,
+          summary: result.summary,
+          rationale: result.rationale,
+        },
       });
     }
 
@@ -153,7 +238,9 @@ export async function POST(
 
     const { data: ownerProfile } = await supabase
       .from("profiles")
-      .select("id, full_name, business_name, sector, stage, asks_summary, offers_summary")
+      .select(
+        "id, full_name, business_name, sector, stage, asks_summary, offers_summary",
+      )
       .eq("id", user.id)
       .single();
 
@@ -162,7 +249,10 @@ export async function POST(
       investors,
     };
 
-    const json = await callGemini(GEMINI_STARTUP_FINDS_INVESTORS_INSTRUCTIONS, payload);
+    const json = await callOpenRouter(
+      GEMINI_STARTUP_FINDS_INVESTORS_INSTRUCTIONS,
+      payload,
+    );
     type InvestorRec = {
       investor_id: string;
       fit_score: number;
@@ -173,7 +263,10 @@ export async function POST(
     const result = JSON.parse(json) as InvestorRecsResult;
 
     if (!Array.isArray(result.recommendations)) {
-      return NextResponse.json({ error: "Invalid Gemini response" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Invalid Gemini response" },
+        { status: 500 },
+      );
     }
 
     const validInvestorIds = new Set(investors.map((i) => i.id));
@@ -183,7 +276,10 @@ export async function POST(
       .map((r) => ({
         project_id: projectId,
         investor_profile_id: r.investor_id,
-        fit_score: Math.max(0, Math.min(100, Math.round(Number(r.fit_score) || 0))),
+        fit_score: Math.max(
+          0,
+          Math.min(100, Math.round(Number(r.fit_score) || 0)),
+        ),
         summary: String(r.summary || ""),
         rationale: r.rationale ?? {},
         generated_at: new Date().toISOString(),
@@ -195,7 +291,10 @@ export async function POST(
         .upsert(rows, { onConflict: "project_id,investor_profile_id" });
 
       if (upsertError) {
-        return NextResponse.json({ error: upsertError.message }, { status: 500 });
+        return NextResponse.json(
+          { error: upsertError.message },
+          { status: 500 },
+        );
       }
     }
 

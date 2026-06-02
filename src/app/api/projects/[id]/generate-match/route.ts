@@ -34,7 +34,7 @@ async function callOpenRouter(systemInstruction: string, payload: unknown) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "~openai/gpt-latest",
+      model: "openrouter/owl-alpha",
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: JSON.stringify(payload) },

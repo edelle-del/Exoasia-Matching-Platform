@@ -7,12 +7,12 @@ import { fetchDealCards, touchDealCard } from "@/lib/app-data";
 import { useAuth } from "../providers";
 
 const BOARD_COLUMNS = [
-  "Discover / Qualified",
+  "Qualified",
   "Intro & Scoping",
-  "Proposal / Pilot",
-  "Negotiation / Legal",
-  "Closed-Won / Pilot Go",
-  "Closed-Lost / On Hold",
+  "Proposal",
+  "Negotiation",
+  "Closed Won",
+  "On Hold",
 ] as const;
 
 type DealCard = {
@@ -104,7 +104,7 @@ export default function DealBoardPage() {
                   );
                   const isStale = ageDays >= 7;
                   const isNegotiationEscalation =
-                    column.stage === "Negotiation / Legal" && ageDays >= 14;
+                    column.stage === "Negotiation" && ageDays >= 14;
 
                   return (
                     <article
@@ -144,7 +144,7 @@ export default function DealBoardPage() {
                           {isStale && (
                             <p className="mt-1 text-xs font-semibold text-orange-700">
                               {isNegotiationEscalation
-                                ? "Escalation: 14+ days in Negotiation / Legal"
+                                ? "Escalation: 14+ days in Negotiation"
                                 : "Stale: 7+ days without update"}
                             </p>
                           )}

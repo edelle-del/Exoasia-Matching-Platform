@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   fetchCommunityMembers,
   type CommunityMemberRecord,
 } from "@/lib/app-data";
-import { STAGE_CONFIG } from "@/types/constants";
+const PROJECT_STAGES = [
+  "Pre-revenue Startups",
+  "Cash-flow Businesses",
+  "Dividend-paying Companies",
+  "Pre-seed",
+  "Seed",
+  "Series A",
+  "Series B",
+  "Series C",
+  "Pre-IPO / Late-Stage",
+  "Public Companies",
+];
 
 export default function CommunityPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -18,6 +29,7 @@ export default function CommunityPage() {
   const [filterRole, setFilterRole] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
   const [filterVerification, setFilterVerification] = useState("all");
+  const [selectedMember, setSelectedMember] = useState<CommunityMemberRecord | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -55,7 +67,7 @@ export default function CommunityPage() {
       if (filterSector !== "all" && m.sector !== filterSector) return false;
       if (filterCity !== "all" && m.city !== filterCity) return false;
       if (filterRole !== "all" && m.member_role !== filterRole) return false;
-      if (filterStage !== "all" && m.stage !== filterStage) return false;
+      if (filterStage !== "all" && m.fundraising_stage !== filterStage) return false;
       if (
         filterVerification !== "all" &&
         m.verification_status !== filterVerification
@@ -124,19 +136,16 @@ export default function CommunityPage() {
             options={[
               { value: "all", label: "All roles" },
               { value: "investor", label: "Investor" },
-              { value: "startup", label: "Startup" },
+              { value: "startup", label: "Founder" },
             ]}
           />
           <FilterSelect
             value={filterStage}
             onChange={setFilterStage}
-            label="Stage"
+            label="Project stage"
             options={[
-              { value: "all", label: "All stages" },
-              ...Object.entries(STAGE_CONFIG).map(([k, v]) => ({
-                value: k,
-                label: `Stage ${k} – ${v.label}`,
-              })),
+              { value: "all", label: "All project stages" },
+              ...PROJECT_STAGES.map((s) => ({ value: s, label: s })),
             ]}
           />
           <FilterSelect
@@ -174,11 +183,18 @@ export default function CommunityPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((m) => (
-              <MemberCard key={m.id} member={m} />
+              <MemberCard key={m.id} member={m} onSelect={setSelectedMember} />
             ))}
           </div>
         )}
       </div>
+
+      {selectedMember && (
+        <MemberDetailModal
+          member={selectedMember}
+          onClose={() => setSelectedMember(null)}
+        />
+      )}
     </div>
   );
 }
@@ -210,16 +226,20 @@ function FilterSelect({
   );
 }
 
-function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
+function MemberCard({
+  member: m,
+  onSelect,
+}: {
+  member: CommunityMemberRecord;
+  onSelect: (m: CommunityMemberRecord) => void;
+}) {
   const initials = (m.full_name ?? "?")
     .split(" ")
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  const stageLabel =
-    STAGE_CONFIG[m.stage as keyof typeof STAGE_CONFIG]?.label ??
-    `Stage ${m.stage}`;
+  const stageBadgeText = m.fundraising_stage ?? `Stage ${m.stage}`;
 
   const roleBadge =
     m.member_role === "investor"
@@ -229,7 +249,7 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
         }
       : m.member_role === "startup"
         ? {
-            label: "Startup",
+            label: "Founder",
             cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-primary)",
           }
         : null;
@@ -251,7 +271,13 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
           };
 
   return (
-    <article className="flex flex-col gap-3 rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-5">
+    <article
+      className="flex flex-col gap-3 rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-5 cursor-pointer transition-shadow hover:shadow-md hover:border-(--color-primary)/30"
+      onClick={() => onSelect(m)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && onSelect(m)}
+    >
       {/* Avatar + name */}
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-(--color-primary)/10 text-sm font-semibold text-(--color-primary)">
@@ -284,7 +310,7 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
           </span>
         )}
         <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-muted)">
-          Stage {m.stage} · {stageLabel}
+          {stageBadgeText}
         </span>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-medium ${verificationBadge.cls}`}
@@ -347,6 +373,298 @@ function MemberCard({ member: m }: { member: CommunityMemberRecord }) {
           </div>
         </div>
       )}
+
+      <p className="mt-auto pt-1 text-right text-xs font-semibold text-(--color-primary)">
+        View profile →
+      </p>
     </article>
+  );
+}
+
+// ─── Member detail modal ──────────────────────────────────────────────────────
+
+type FullProfile = {
+  linkedin_url: string | null;
+  role_title: string | null;
+  years_in_operation: string | null;
+  employee_band: string | null;
+  annual_revenue_estimate: string | null;
+  asks_summary: string | null;
+};
+
+function MemberDetailModal({
+  member: m,
+  onClose,
+}: {
+  member: CommunityMemberRecord;
+  onClose: () => void;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const [full, setFull] = useState<FullProfile | null>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  const initials = (m.full_name ?? "?")
+    .split(" ")
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+
+  // Fetch extra fields lazily
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select(
+          "linkedin_url, role_title, years_in_operation, employee_band, annual_revenue_estimate, asks_summary",
+        )
+        .eq("id", m.id)
+        .single();
+      if (data) setFull(data as FullProfile);
+    })();
+  }, [supabase, m.id]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const handleBackdrop = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === backdropRef.current) onClose();
+    },
+    [onClose],
+  );
+
+  // Parse v2 structured data
+  let v2: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(full?.asks_summary ?? "");
+    if (parsed?._v === 2) v2 = parsed;
+  } catch { /* */ }
+
+  const investorType = v2?.investor_type as string | null ?? null;
+  const entityClass = (v2?.entity_class as string[] | null) ?? [];
+  const targetStages = (v2?.target_stages as string[] | null) ?? [];
+  const targetRegions = (v2?.target_regions as string[] | null) ?? [];
+  const targetIndustries = (v2?.target_industries as string[] | null) ?? [];
+  const fundraisingStage = (v2?.fundraising_stage as string | null) ?? m.fundraising_stage;
+  const productStage = v2?.product_stage as string | null ?? null;
+  const targetRaiseMin = v2?.target_raise_min as string | null ?? null;
+  const targetRaiseMax = v2?.target_raise_max as string | null ?? null;
+
+  const roleBadgeLabel =
+    m.member_role === "investor"
+      ? "Investor"
+      : m.member_role === "startup"
+        ? "Founder"
+        : m.member_role === "ecosystem_partner"
+          ? "Ecosystem Partner"
+          : null;
+
+  return (
+    <div
+      ref={backdropRef}
+      onClick={handleBackdrop}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8 backdrop-blur-sm"
+    >
+      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-(--color-hairline) bg-(--color-canvas) shadow-2xl">
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-(--color-hairline) bg-(--color-surface-soft) text-(--color-muted) hover:bg-(--color-hairline) transition-colors"
+          aria-label="Close"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="p-6 space-y-5">
+          {/* Header */}
+          <div className="flex items-start gap-4 pr-8">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-(--color-primary)/10 text-lg font-bold text-(--color-primary)">
+              {initials || "?"}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-(--color-ink)">{m.full_name || "—"}</h2>
+              {m.business_name && (
+                <p className="text-sm text-(--color-body)">{m.business_name}</p>
+              )}
+              {full?.role_title && (
+                <p className="text-xs text-(--color-muted)">{full.role_title}</p>
+              )}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {roleBadgeLabel && (
+                  <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-primary)">
+                    {roleBadgeLabel}
+                  </span>
+                )}
+                {m.verification_status === "verified" && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                    ✓ Verified
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick facts grid */}
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+            {m.city && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Location</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{m.city}</p>
+              </div>
+            )}
+            {m.sector && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{m.sector}</p>
+              </div>
+            )}
+            {full?.years_in_operation && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Years operating</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{full.years_in_operation}</p>
+              </div>
+            )}
+            {full?.employee_band && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Team size</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{full.employee_band}</p>
+              </div>
+            )}
+            {full?.annual_revenue_estimate && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Revenue</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{full.annual_revenue_estimate}</p>
+              </div>
+            )}
+            {fundraisingStage && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{fundraisingStage}</p>
+              </div>
+            )}
+            {productStage && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Product stage</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{productStage}</p>
+              </div>
+            )}
+            {investorType && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Investor type</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{investorType}</p>
+              </div>
+            )}
+            {(targetRaiseMin || targetRaiseMax) && (
+              <div className="col-span-2 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Target raise</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">
+                  {targetRaiseMin && targetRaiseMax
+                    ? `$${Number(targetRaiseMin).toLocaleString()} – $${Number(targetRaiseMax).toLocaleString()}`
+                    : targetRaiseMin
+                      ? `From $${Number(targetRaiseMin).toLocaleString()}`
+                      : `Up to $${Number(targetRaiseMax).toLocaleString()}`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Bio */}
+          {m.short_bio && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">About</p>
+              <p className="text-sm text-(--color-body) leading-relaxed">{m.short_bio}</p>
+            </div>
+          )}
+
+          {/* Entity class / target stages / regions / industries */}
+          {entityClass.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Entity class</p>
+              <div className="flex flex-wrap gap-1.5">
+                {entityClass.map((ec) => (
+                  <span key={ec} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{ec}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {targetStages.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target stages</p>
+              <div className="flex flex-wrap gap-1.5">
+                {targetStages.map((s) => (
+                  <span key={s} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {targetRegions.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target regions</p>
+              <div className="flex flex-wrap gap-1.5">
+                {targetRegions.map((r) => (
+                  <span key={r} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{r}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {targetIndustries.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target industries</p>
+              <div className="flex flex-wrap gap-1.5">
+                {targetIndustries.map((i) => (
+                  <span key={i} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{i}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Asks / Offers */}
+          {m.ask_categories?.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Asking for</p>
+              <div className="flex flex-wrap gap-1.5">
+                {m.ask_categories.map((tag) => (
+                  <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-primary)">{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {m.offer_categories?.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Offering</p>
+              <div className="flex flex-wrap gap-1.5">
+                {m.offer_categories.map((tag) => (
+                  <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-accent-gold)">{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* LinkedIn */}
+          {full?.linkedin_url && (
+            <a
+              href={full.linkedin_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-(--color-primary) hover:underline"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+              </svg>
+              LinkedIn profile
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

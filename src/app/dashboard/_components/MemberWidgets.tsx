@@ -382,6 +382,280 @@ export function PartnerPortfolioCard() {
   );
 }
 
+// ─── DealBoardSnapshotCard ───────────────────────────────────────────────────
+
+const DEAL_STAGES: { label: string; shortLabel: string; fill: string }[] = [
+  { label: "Qualified",      shortLabel: "Qualified",  fill: "#818CF8" },
+  { label: "Intro & Scoping",shortLabel: "Intro",      fill: "#60A5FA" },
+  { label: "Proposal",       shortLabel: "Proposal",   fill: "#A78BFA" },
+  { label: "Negotiation",    shortLabel: "Negotiation",fill: "#FBBF24" },
+  { label: "Closed Won",     shortLabel: "Closed Won", fill: "#34D399" },
+  { label: "On Hold",        shortLabel: "On Hold",    fill: "#94A3B8" },
+];
+
+// Chart geometry constants
+const VW = 600;
+const CHART_H = 130;
+const TOP_PAD = 26;   // space above bars for count labels
+const BOT_PAD = 34;   // space below baseline for stage labels
+const VH = TOP_PAD + CHART_H + BOT_PAD; // 190
+const SLOT_W = VW / DEAL_STAGES.length; // 100
+const BAR_W = 52;
+const BAR_R = 4;
+
+type DealBoardSnapshotCardProps = {
+  stageCounts: Record<string, number>;
+  isLoading?: boolean;
+};
+
+export function DealBoardSnapshotCard({
+  stageCounts,
+  isLoading,
+}: DealBoardSnapshotCardProps) {
+  const maxCount = Math.max(
+    ...DEAL_STAGES.map((s) => stageCounts[s.label] ?? 0),
+    1,
+  );
+
+  const baselineY = TOP_PAD + CHART_H;
+
+  return (
+    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            Deal board
+          </p>
+          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
+            Projects by stage
+          </p>
+        </div>
+        <Link
+          href="/deal-board"
+          className="text-xs font-semibold text-indigo-400 hover:underline"
+        >
+          Open →
+        </Link>
+      </div>
+
+      <svg
+        viewBox={`0 0 ${VW} ${VH}`}
+        className="w-full flex-1"
+        aria-label="Deal stage distribution bar chart"
+      >
+        {/* Horizontal grid lines at 25 / 50 / 75 / 100 % */}
+        {[0.25, 0.5, 0.75, 1].map((frac) => {
+          const y = TOP_PAD + CHART_H * (1 - frac);
+          return (
+            <line
+              key={frac}
+              x1={0}
+              y1={y}
+              x2={VW}
+              y2={y}
+              stroke="#2A2A3E"
+              strokeWidth={1}
+            />
+          );
+        })}
+
+        {/* Baseline */}
+        <line
+          x1={0}
+          y1={baselineY}
+          x2={VW}
+          y2={baselineY}
+          stroke="#3A3A52"
+          strokeWidth={1.5}
+        />
+
+        {/* Bars + labels */}
+        {DEAL_STAGES.map((s, i) => {
+          const count = stageCounts[s.label] ?? 0;
+          const barH = isLoading ? 0 : (count / maxCount) * CHART_H;
+          const barX = i * SLOT_W + (SLOT_W - BAR_W) / 2;
+          const barY = baselineY - barH;
+          const cx = i * SLOT_W + SLOT_W / 2;
+
+          return (
+            <g key={s.label}>
+              {/* Bar */}
+              {barH > 0 && (
+                <rect
+                  x={barX}
+                  y={barY}
+                  width={BAR_W}
+                  height={barH}
+                  rx={BAR_R}
+                  fill={s.fill}
+                  opacity={0.88}
+                >
+                  <title>
+                    {s.label}: {count} project{count !== 1 ? "s" : ""}
+                  </title>
+                </rect>
+              )}
+
+              {/* Count above bar (or at baseline if zero) */}
+              <text
+                x={cx}
+                y={barH > 0 ? barY - 6 : baselineY - 6}
+                textAnchor="middle"
+                fontSize={11}
+                fontWeight={700}
+                fill={barH > 0 ? "#F4F4FF" : "#3A3A52"}
+              >
+                {isLoading ? "" : count}
+              </text>
+
+              {/* Stage label below baseline */}
+              <text
+                x={cx}
+                y={baselineY + 18}
+                textAnchor="middle"
+                fontSize={9}
+                fontWeight={600}
+                fill="#8B8BA7"
+              >
+                {s.shortLabel}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      <Link
+        href="/deal-board"
+        className="mt-4 flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 transition-colors hover:border-indigo-500/50"
+      >
+        <p className="text-xs font-medium text-indigo-300">
+          View your full deal board
+        </p>
+        <svg
+          className="h-4 w-4 shrink-0 text-indigo-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
+// ─── NotificationsCard ───────────────────────────────────────────────────────
+
+export type NotificationItem = {
+  id: string;
+  kind: string;
+  type: "match" | "accepted" | "intro" | "declined";
+  title: string;
+  body: string;
+  href: string;
+  date: string;
+};
+
+const NOTIF_DOT: Record<NotificationItem["type"], string> = {
+  match:    "bg-indigo-500",
+  accepted: "bg-emerald-500",
+  intro:    "bg-violet-500",
+  declined: "bg-rose-500",
+};
+
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1)  return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+type NotificationsCardProps = {
+  notifications: NotificationItem[];
+  isLoading?: boolean;
+};
+
+export function NotificationsCard({ notifications, isLoading }: NotificationsCardProps) {
+  const shown = notifications.slice(0, 5);
+
+  return (
+    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            Notifications
+          </p>
+          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
+            Recent activity
+          </p>
+        </div>
+        <Link
+          href="/notifications"
+          className="text-xs font-semibold text-indigo-400 hover:underline"
+        >
+          View all →
+        </Link>
+      </div>
+
+      {isLoading ? (
+        <p className="flex-1 text-sm text-[#8B8BA7]">Loading…</p>
+      ) : shown.length === 0 ? (
+        <p className="flex-1 text-sm text-[#8B8BA7]">No notifications yet.</p>
+      ) : (
+        <ul className="flex-1 space-y-0">
+          {shown.map((n, i) => {
+            const dot = NOTIF_DOT[n.type] ?? "bg-indigo-500";
+            const isLast = i === shown.length - 1;
+            return (
+              <li key={n.id} className="relative flex gap-3">
+                {!isLast && (
+                  <span className="absolute left-[8px] top-5 h-full w-px bg-[#2A2A3E]" />
+                )}
+                <span
+                  className={`mt-1 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full ${dot}`}
+                />
+                <div className="min-w-0 pb-4">
+                  <p className="text-sm font-medium leading-snug text-[#F4F4FF]">
+                    {n.title}
+                  </p>
+                  <p className="truncate text-xs text-[#8B8BA7]">{n.body}</p>
+                  <p className="mt-0.5 text-[11px] text-[#4A4A6A]">
+                    {relativeTime(n.date)}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <Link
+        href="/notifications"
+        className="mt-4 flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 transition-colors hover:border-indigo-500/50"
+      >
+        <p className="text-xs font-medium text-indigo-300">
+          View all notifications
+        </p>
+        <svg
+          className="h-4 w-4 shrink-0 text-indigo-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
 // ─── ActivityFeed ─────────────────────────────────────────────────────────────
 
 type ActivityEvent = {

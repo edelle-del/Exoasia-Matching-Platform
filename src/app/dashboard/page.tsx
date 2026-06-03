@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   fetchDashboardSummary,
   fetchProjectPipelineStats,
+  fetchDealCards,
   type AdvisorCompanyRecord,
   type AdvisorMatchRecord,
   type DashboardMatch,
@@ -14,9 +15,10 @@ import {
   type ProjectPipelineStats,
 } from "@/lib/app-data";
 import {
-  ProfileStrength,
-  PipelineSummaryCard,
   PartnerPortfolioCard,
+  DealBoardSnapshotCard,
+  NotificationsCard,
+  type NotificationItem,
 } from "./_components/MemberWidgets";
 import {
   SystemPulseHeader,
@@ -92,6 +94,10 @@ export default function DashboardPage() {
     investorMatches: 0,
     bestFit: 0,
   });
+  const [dealStageCounts, setDealStageCounts] = useState<
+    Record<string, number>
+  >({});
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -110,13 +116,21 @@ export default function DashboardPage() {
         const next = await fetchDashboardSummary(supabase, user.id);
         if (!active) return;
         setSummary(next);
-        const stats = await fetchProjectPipelineStats(
-          supabase,
-          user.id,
-          next.profile?.member_role ?? null,
-        );
+        const [stats, dealCards] = await Promise.all([
+          fetchProjectPipelineStats(
+            supabase,
+            user.id,
+            next.profile?.member_role ?? null,
+          ),
+          fetchDealCards(supabase, user.id),
+        ]);
         if (!active) return;
         setPipelineStats(stats);
+        const counts: Record<string, number> = {};
+        for (const card of dealCards as { stage: string }[]) {
+          counts[card.stage] = (counts[card.stage] ?? 0) + 1;
+        }
+        setDealStageCounts(counts);
       }
       setIsLoading(false);
     };
@@ -132,7 +146,10 @@ export default function DashboardPage() {
     if (!user?.id) return;
     fetch("/api/notifications")
       .then((r) => r.json())
-      .then((data) => setUnreadCount(data.unreadCount ?? 0))
+      .then((data) => {
+        setUnreadCount(data.unreadCount ?? 0);
+        setNotifications(data.notifications ?? []);
+      })
       .catch(() => {});
   }, [user?.id]);
 
@@ -294,7 +311,7 @@ export default function DashboardPage() {
     summary.profile?.member_role === "investor"
       ? "Investor Profile"
       : summary.profile?.member_role === "startup"
-        ? "Startup Profile"
+        ? "Founder Profile"
         : summary.profile?.member_role === "ecosystem_partner"
           ? "Partner Profile"
           : "Member Portal";
@@ -302,83 +319,146 @@ export default function DashboardPage() {
   const { percent: profilePercent, nextStep: profileNextStep } =
     computeProfileStrength(summary.profile);
 
+  const currentRole = memberRole ?? summary.profile?.member_role;
+  const isInvestor = currentRole === "investor";
+  const isEcosystemPartner = currentRole === "ecosystem_partner";
+
   return (
     <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
       <div className="mx-auto w-full max-w-7xl space-y-8">
-        {/* Greeting */}
+        {/* Row 0: Greeting (profile strength inline next to name) */}
         <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
-                {isLoading ? "Member Portal" : portalLabel}
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
+              {isLoading ? "Member Portal" : portalLabel}
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              <h1 className="text-3xl font-semibold text-(--color-ink)">
                 Hello,{" "}
                 <span className="text-(--color-primary)">{firstName}</span>
               </h1>
-              <p className="mt-2 text-sm text-(--color-body)">
-                You're a member at Stage {summary.profile?.stage || "0"} ·
-                Verification{" "}
-                {summary.profile?.verification_status || "unverified"}
-              </p>
+              <ProfileStrengthRing percent={isLoading ? 0 : profilePercent} />
             </div>
-            <Link
-              href="/notifications"
-              className="relative mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-(--color-hairline) bg-(--color-canvas) text-(--color-ink) transition-colors hover:bg-(--color-surface-soft)"
-              aria-label="Notifications"
-            >
-              <i
-                className="ri-notification-3-line text-lg"
-                aria-hidden="true"
-              />
-              {unreadCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
+            <p className="mt-2 text-sm text-(--color-body)">
+              You're a member at Stage {summary.profile?.stage || "0"} ·
+              Verification{" "}
+              {summary.profile?.verification_status || "unverified"}
+            </p>
+            {profileNextStep && (
+              <p className="mt-1 text-xs text-(--color-muted)">
+                <span className="font-semibold text-(--color-body)">Next:</span>{" "}
+                {profileNextStep}
+              </p>
+            )}
           </div>
         </section>
 
-        {/* Row 1: 3 metric cards */}
-        <section className="grid gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="Pending matches"
-            value={isLoading ? "..." : String(summary.pendingMatches)}
-            valueColor="text-amber-500"
-          />
-          <MetricCard
-            label="Active deals"
-            value={isLoading ? "..." : String(summary.activeDeals)}
-            valueColor="text-emerald-600"
-          />
+        {/* Row 1: Credits + Pipeline stats */}
+        <section className="space-y-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <MetricCard
             label="Credits"
             value={isLoading ? "..." : String(summary.credits)}
             valueColor="text-blue-600"
           />
+          <MetricCard
+            label={isInvestor ? "Opportunities" : "Projects"}
+            value={
+              isLoading
+                ? "..."
+                : pipelineStats.activeProjects > 0
+                  ? String(pipelineStats.activeProjects)
+                  : "—"
+            }
+            valueColor="text-indigo-500"
+          />
+          <MetricCard
+            label={isInvestor ? "Score cards" : "Inv. matches"}
+            value={
+              isLoading
+                ? "..."
+                : pipelineStats.investorMatches > 0
+                  ? String(pipelineStats.investorMatches)
+                  : "—"
+            }
+            valueColor="text-violet-500"
+          />
+          <MetricCard
+            label="Best fit"
+            value={
+              isLoading
+                ? "..."
+                : pipelineStats.bestFit > 0
+                  ? `${pipelineStats.bestFit}%`
+                  : "—"
+            }
+            valueColor={
+              pipelineStats.bestFit >= 80
+                ? "text-emerald-500"
+                : pipelineStats.bestFit >= 65
+                  ? "text-indigo-500"
+                  : "text-amber-500"
+            }
+          />
+        </div>
+        {!isInvestor && (
+          <div className="flex justify-end">
+            <Link
+              href="/matches"
+              className="text-xs font-semibold text-indigo-400 hover:underline"
+            >
+              View project pipeline →
+            </Link>
+          </div>
+        )}
         </section>
 
-        {/* Row 2: Profile strength + Pipeline summary / Partner card */}
+        {/* Row 2: Deal board graph + Notifications */}
         <section className="grid gap-6 lg:grid-cols-2">
-          <ProfileStrength
-            percent={isLoading ? 0 : profilePercent}
-            nextStep={profileNextStep}
+          <DealBoardSnapshotCard
+            stageCounts={dealStageCounts}
+            isLoading={isLoading}
           />
-          {(memberRole ?? summary.profile?.member_role) ===
-          "ecosystem_partner" ? (
-            <PartnerPortfolioCard />
-          ) : (
-            <PipelineSummaryCard
-              activeProjects={isLoading ? 0 : pipelineStats.activeProjects}
-              investorMatches={isLoading ? 0 : pipelineStats.investorMatches}
-              bestFit={isLoading ? 0 : pipelineStats.bestFit}
-              memberRole={summary.profile?.member_role ?? null}
-              isLoading={isLoading}
-            />
-          )}
+          <NotificationsCard
+            notifications={notifications}
+            isLoading={isLoading}
+          />
         </section>
+
+        {/* Partner portfolio (ecosystem partners only) */}
+        {isEcosystemPartner && <PartnerPortfolioCard />}
       </div>
+    </div>
+  );
+}
+
+function ProfileStrengthRing({ percent }: { percent: number }) {
+  const r = 18;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (percent / 100) * circ;
+  return (
+    <div className="relative flex shrink-0 items-center justify-center" title={`Profile ${percent}% complete`}>
+      <svg width={48} height={48} className="-rotate-90">
+        <defs>
+          <linearGradient id="miniRingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#FB7185" />
+            <stop offset="100%" stopColor="#FB923C" />
+          </linearGradient>
+        </defs>
+        <circle cx={24} cy={24} r={r} fill="none" stroke="var(--color-hairline)" strokeWidth={4} />
+        <circle
+          cx={24}
+          cy={24}
+          r={r}
+          fill="none"
+          stroke="url(#miniRingGrad)"
+          strokeWidth={4}
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="absolute text-[10px] font-bold text-(--color-ink)">{percent}%</span>
     </div>
   );
 }

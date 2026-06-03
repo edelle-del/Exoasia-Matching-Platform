@@ -518,6 +518,15 @@ export default function MatchesPage() {
                                         large
                                       />
                                     </div>
+                                    <Link
+                                      href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}`}
+                                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) transition hover:bg-(--color-hairline) hover:text-(--color-primary)"
+                                      aria-label="View compatibility breakdown"
+                                    >
+                                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                      </svg>
+                                    </Link>
                                     {isDone ? (
                                       <span className="rounded-lg bg-(--color-primary)/20 px-2.5 py-1 text-[10px] font-bold text-(--color-primary)">
                                         Requested
@@ -602,148 +611,32 @@ export default function MatchesPage() {
         {isInvestor && (
           <>
             <section>
-              <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                Matched Projects
-              </h2>
-
-              {isLoading ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-24 animate-pulse rounded-2xl bg-(--color-surface-soft)"
-                    />
-                  ))}
-                </div>
-              ) : projectScores.length === 0 ? (
-                <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
-                  <p className="text-sm font-semibold text-(--color-ink)">
-                    No matched projects yet
-                  </p>
-                  <p className="mt-1 text-xs text-(--color-muted)">
-                    When you're matched with a startup project, it'll appear
-                    here.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {projectScores.map((score) => {
-                    const project = projects.find(
-                      (p) => p.id === score.project_id,
-                    );
-                    const correspondingMatch = matches.find(
-                      (m) =>
-                        (m.member_a_id === user?.id ||
-                          m.member_b_id === user?.id) &&
-                        project &&
-                        (m.member_a_id === project.owner_id ||
-                          m.member_b_id === project.owner_id),
-                    );
-                    const myMatchStatus = correspondingMatch
-                      ? correspondingMatch.member_a_id === user?.id
-                        ? correspondingMatch.member_a_status
-                        : correspondingMatch.member_b_status
-                      : null;
-
-                    const requestKey = `${score.project_id}:${user?.id ?? ""}`;
-                    const reqState = introRequests.get(requestKey);
-                    const isDone = !!correspondingMatch || reqState === "done";
-
-                    return (
-                      <div
-                        key={score.id}
-                        className="flex items-center gap-4 rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-4 transition-all hover:border-(--color-primary)/40"
-                      >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--color-hairline) text-sm font-bold text-(--color-ink)">
-                          {(project?.name ?? "P").charAt(0)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-(--color-ink)">
-                            {project?.name ?? "Project"}
-                          </p>
-                          <p className="text-xs text-(--color-muted)">
-                            {[
-                              project?.owner_name,
-                              project?.sector,
-                              project?.stage,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ") || "Startup project"}
-                          </p>
-                          {myMatchStatus && (
-                            <p className="mt-0.5 text-[10px] text-(--color-muted)">
-                              Your status:{" "}
-                              <span
-                                className={
-                                  myMatchStatus === "accepted"
-                                    ? "text-(--color-primary)"
-                                    : myMatchStatus === "pending"
-                                      ? "text-amber-400"
-                                      : "text-(--color-muted)"
-                                }
-                              >
-                                {myMatchStatus}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p
-                              className={`text-lg font-bold ${scoreColorClass(score.fit_score)}`}
-                            >
-                              {score.fit_score}%
-                            </p>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">
-                              Fit score
-                            </p>
-                          </div>
-                          {correspondingMatch ? (
-                            <Link
-                              href={`/matches/${correspondingMatch.id}`}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-(--color-primary)/20 text-(--color-primary) transition hover:bg-(--color-primary)/30"
-                            >
-                              <svg
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M9 5l7 7-7 7"
-                                />
-                              </svg>
-                            </Link>
-                          ) : isDone ? (
-                            <span className="rounded-lg bg-(--color-primary)/20 px-2.5 py-1.5 text-[10px] font-bold text-(--color-primary)">
-                              Sent
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void handleRequestIntro(
-                                  score.project_id,
-                                  user?.id ?? "",
-                                )
-                              }
-                              disabled={reqState === "requesting"}
-                              className="rounded-lg bg-(--color-primary)/30 px-2.5 py-1.5 text-[10px] font-bold text-(--color-primary)/80 transition hover:bg-(--color-primary)/50 disabled:opacity-50"
-                            >
-                              {reqState === "requesting"
-                                ? "Sending…"
-                                : "Express Interest"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
+                <p className="text-[10px] font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                  Deal flow
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
+                  Browse &amp; score founder projects
+                </h2>
+                <p className="mt-1 text-sm text-(--color-body)">
+                  Score individual projects or run AI matching to get your
+                  personalised top 5 ranked by fit.
+                </p>
+                <Link
+                  href="/projects"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="h-4 w-4 shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                  </svg>
+                  Get top 5 matches
+                </Link>
+              </div>
             </section>
 
             {!isLoading && pendingCount > 0 && (

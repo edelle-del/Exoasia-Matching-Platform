@@ -1619,12 +1619,12 @@ export default function OnboardingForm() {
         "I confirm I am an active investor or deploying capital, and that the references I provide can verify my role.",
     },
     startup: {
-      label: "Startup / Founder",
+      label: "Founder",
       description: "I'm building a company and raising capital",
       detail:
         "You'll complete a fundraising profile including your stage, raise target, and product details — then add your first project.",
       features: [
-        "Create a public startup profile visible to investors and partners",
+        "Create a public founder profile visible to investors and partners",
         "List your fundraising round, raise target, and product stage",
         "Get matched with investors aligned to your sector, stage, and region",
         "Upload pitch decks and manage a secure data room",
@@ -1768,7 +1768,7 @@ export default function OnboardingForm() {
                   value="startup"
                   current={form.member_role}
                   onSelect={setPendingRole}
-                  title="Startup / Founder"
+                  title="Founder"
                   description="I'm building a company and raising capital"
                   icon={
                     <svg
@@ -1918,6 +1918,12 @@ export default function OnboardingForm() {
   const showAnpBadge =
     form.investor_type === "Angel Networks" ||
     form.entity_class.includes("Angel");
+
+  useEffect(() => {
+    if (showAnpBadge) {
+      setForm((prev) => ({ ...prev, anp_affiliated: true }));
+    }
+  }, [showAnpBadge]);
 
   return (
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
@@ -2121,31 +2127,55 @@ export default function OnboardingForm() {
 
           <div>
             <p className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
-              Sector <Req />
+              Sector{" "}
+              {form.member_role === "investor" && (
+                <span className="text-xs font-400 text-[var(--color-muted)]">
+                  (select all that apply)
+                </span>
+              )}{" "}
+              <Req />
             </p>
             {form.sector && (
               <p className="mt-1 text-xs text-[var(--color-muted)]">
                 Selected:{" "}
                 <span className="font-600 text-[var(--color-primary)]">
-                  {form.sector}
+                  {form.sector.split(",").join(", ")}
                 </span>
               </p>
             )}
             <div className="mt-2 flex flex-wrap gap-2">
-              {sectorOptions.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => set("sector", form.sector === s ? "" : s)}
-                  className={`rounded-full border px-3 py-1 text-xs font-500 transition-colors ${
-                    form.sector === s
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
-                      : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
+              {sectorOptions.map((s) => {
+                const selected =
+                  form.member_role === "investor"
+                    ? form.sector.split(",").filter(Boolean).includes(s)
+                    : form.sector === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      if (form.member_role === "investor") {
+                        const current = form.sector
+                          .split(",")
+                          .filter(Boolean);
+                        const updated = current.includes(s)
+                          ? current.filter((x) => x !== s)
+                          : [...current, s];
+                        set("sector", updated.join(","));
+                      } else {
+                        set("sector", form.sector === s ? "" : s);
+                      }
+                    }}
+                    className={`rounded-full border px-3 py-1 text-xs font-500 transition-colors ${
+                      selected
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                        : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -2245,7 +2275,7 @@ export default function OnboardingForm() {
                       {form.member_role === "investor"
                         ? "Investor"
                         : form.member_role === "startup"
-                          ? "Startup / Founder"
+                          ? "Founder"
                           : "Ecosystem Partner"}
                     </span>
                     <span className="rounded-full bg-[var(--color-primary)]/10 px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">
@@ -2279,7 +2309,7 @@ export default function OnboardingForm() {
                       value="startup"
                       current={form.member_role}
                       onSelect={setPendingRole}
-                      title="Startup / Founder"
+                      title="Founder"
                       description="I'm building a company and raising capital"
                       icon={
                         <svg
@@ -2353,32 +2383,23 @@ export default function OnboardingForm() {
                       </Field>
                     </FieldRow>
 
-                    {/* ANP affiliation — shown for Angel Networks type or Angel entity class */}
+                    {/* ANP affiliation — automatic for Angel Networks type or Angel entity class */}
                     {showAnpBadge && (
-                      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={form.anp_affiliated}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              anp_affiliated: e.target.checked,
-                            }))
-                          }
-                          className="mt-0.5 h-4 w-4 accent-violet-600"
-                        />
+                      <div className="flex items-start gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                        <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-violet-600">
+                          <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 12 12">
+                            <path d="M10 3L5 8.5 2 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                          </svg>
+                        </div>
                         <div>
                           <p className="text-sm font-semibold text-violet-800">
-                            Associate profile with ANP – Bit Angels (Manila
-                            Chapter)
+                            Automatic reciprocal membership — ANP · Bit Angels Philippines
                           </p>
                           <p className="mt-0.5 text-xs text-violet-600">
-                            Link your profile to the Angel Network Philippines
-                            Bit Angels chapter for shared deal flow and
-                            co-investment visibility.
+                            As an angel investor, you will automatically be enrolled as a member of Angel Network Philippines – Bit Angels Philippines for shared deal flow and co-investment visibility.
                           </p>
                         </div>
-                      </label>
+                      </div>
                     )}
 
                     <Field label="Interested in participating as a Demo Day Pitch Judge">

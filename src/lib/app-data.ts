@@ -709,6 +709,7 @@ export type CommunityMemberRecord = {
   member_role: string | null;
   ask_categories: string[];
   offer_categories: string[];
+  fundraising_stage: string | null;
 };
 
 export async function fetchCommunityMembers(
@@ -717,12 +718,21 @@ export async function fetchCommunityMembers(
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, full_name, business_name, sector, city, short_bio, stage, verification_status, account_status, member_role, ask_categories, offer_categories",
+      "id, full_name, business_name, sector, city, short_bio, stage, verification_status, account_status, member_role, ask_categories, offer_categories, asks_summary",
     )
     .order("full_name", { ascending: true });
 
   if (error) return [];
-  return (data ?? []) as CommunityMemberRecord[];
+  return (data ?? []).map((row) => {
+    let fundraising_stage: string | null = null;
+    try {
+      const parsed = JSON.parse((row as { asks_summary?: string }).asks_summary ?? "");
+      if (parsed?._v === 2) fundraising_stage = parsed.fundraising_stage ?? null;
+    } catch { /* legacy or empty */ }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { asks_summary: _, ...rest } = row as typeof row & { asks_summary?: string };
+    return { ...rest, fundraising_stage } as CommunityMemberRecord;
+  });
 }
 
 export async function fetchAdvisorMemberList(

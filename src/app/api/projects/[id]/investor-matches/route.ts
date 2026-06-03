@@ -52,7 +52,9 @@ export async function GET(
     const investorIds = scores.map((s) => s.investor_profile_id);
     const { data: profiles } = await admin
       .from("profiles")
-      .select("id, full_name, business_name, sector, city")
+      .select(
+        "id, full_name, business_name, sector, city, short_bio, linkedin_url, role_title, years_in_operation, employee_band, verification_status, asks_summary",
+      )
       .in("id", investorIds);
 
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
@@ -68,6 +70,13 @@ export async function GET(
         investor_name: profile?.business_name || profile?.full_name || "Investor",
         investor_sector: profile?.sector ?? null,
         investor_city: profile?.city ?? null,
+        investor_bio: profile?.short_bio ?? null,
+        investor_linkedin: profile?.linkedin_url ?? null,
+        investor_role_title: profile?.role_title ?? null,
+        investor_years: profile?.years_in_operation ?? null,
+        investor_employee_band: profile?.employee_band ?? null,
+        investor_verification: profile?.verification_status ?? null,
+        investor_asks_summary: profile?.asks_summary ?? null,
       };
     });
 

@@ -465,8 +465,10 @@ export default function ProfilePage() {
             {profile?.short_bio || "No bio yet"}
           </p>
           <p className="mt-2 text-sm text-(--color-body)">
-            {profile?.sector || "Sector pending"} ·{" "}
-            {profile?.city || "City pending"}
+            {profile?.sector
+              ? profile.sector.split(",").filter(Boolean).join(", ")
+              : "Sector pending"}{" "}
+            · {profile?.city || "City pending"}
           </p>
         </section>
 
@@ -476,7 +478,7 @@ export default function ProfilePage() {
             profile?.member_role === "investor"
               ? "Investor"
               : profile?.member_role === "startup"
-                ? "Startup"
+                ? "Founder"
                 : profile?.member_role === "ecosystem_partner"
                   ? "Ecosystem Partner"
                   : "Member";

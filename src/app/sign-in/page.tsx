@@ -170,20 +170,81 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)]">
-      <main className="px-[5%] py-20">
-        <div className="mx-auto max-w-[640px] space-y-8 text-center">
+    <div className="h-screen overflow-hidden flex bg-[var(--color-canvas)]">
+
+      {/* ── Right panel: marketing ─────────────────────────────────────────── */}
+      <div className="fa-panel hidden lg:flex lg:w-[52%] xl:w-[56%] relative overflow-hidden flex-col justify-between">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="fa-panel-blob-1 absolute top-0 left-0 w-[60%] h-[60%] rounded-full opacity-40" />
+          <div className="fa-panel-blob-2 absolute bottom-0 right-0 w-[55%] h-[55%] rounded-full opacity-30" />
+          <div className="fa-panel-blob-3 absolute bottom-[20%] left-[10%] w-[40%] h-[40%] rounded-full opacity-25" />
+        </div>
+
+        <div className="relative z-10 flex flex-col justify-center flex-1 px-12 xl:px-16 py-10">
+          <div className="fa-panel-badge mb-6 inline-flex items-center gap-2 self-start rounded-full px-4 py-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B1F] animate-pulse" />
+            <span className="font-mono text-[10px] font-medium tracking-widest uppercase text-[#FF6B1F]">
+              Live · Philippine Blockchain Week · June 2026
+            </span>
+          </div>
+
+          <h2 className="fa-panel-headline text-4xl xl:text-5xl font-black leading-[1.08] tracking-tight text-white mb-4">
+            Stop Pitching<br />Blind.
+          </h2>
+          <p className="fa-panel-headline text-2xl xl:text-3xl font-black leading-tight text-white mb-4">
+            Your Next Investor Is<br />
+            <span className="fa-panel-accent">Already Looking for You.</span>
+          </p>
+
+          <div className="mb-5">
+            <span className="fa-panel-tagline inline-block text-xs tracking-[0.18em] uppercase pb-1">
+              Not by chance. By design.
+            </span>
+          </div>
+
+          <p className="fa-panel-body text-[15px] leading-relaxed mb-7 max-w-md">
+            The right capital partner exists — AI finds them. Founders Arena connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 max-w-sm">
+            {[
+              { icon: "🧠", stat: "AI-Powered", label: "Matching Engine" },
+              { icon: "✅", stat: "500+", label: "Verified Investors" },
+              { icon: "🌏", stat: "15+", label: "Countries" },
+              { icon: "📂", stat: "27", label: "Sectors Covered" },
+            ].map(({ icon, stat, label }) => (
+              <div key={stat} className="fa-panel-stat flex items-center gap-3 rounded-xl px-4 py-3">
+                <span className="text-base">{icon}</span>
+                <div>
+                  <p className="text-sm font-bold text-white leading-none">{stat}</p>
+                  <p className="fa-panel-stat-label text-[10px] mt-0.5">{label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="fa-panel-footer relative z-10 px-12 xl:px-16 py-5">
+          <p className="text-[10px] tracking-widest uppercase">
+            Powered by <span className="fa-panel-accent">Exoasia Innovation Hub</span> · 21F 8 Rockwell, Makati City
+          </p>
+        </div>
+      </div>
+
+      {/* ── Left panel: sign-in form ───────────────────────────────────────── */}
+      <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-y-auto bg-[var(--color-canvas)]">
+        <div className="w-full max-w-[450px] space-y-6">
           <div>
-            <h1 className="font-display text-4xl font-700 text-[var(--color-ink)]">
+            <h1 className="font-display text-3xl font-bold text-[var(--color-ink)]">
               Welcome back
             </h1>
-            <p className="mt-4 text-lg text-[var(--color-body)]">
+            <p className="mt-2 text-base text-[var(--color-body)]">
               Sign in to access your dashboard and matches
             </p>
           </div>
 
           {/* OAuth buttons */}
-          <div className="space-y-3">
+          <div>
             <button
               type="button"
               onClick={() => handleOAuth("google")}
@@ -205,36 +266,32 @@ export default function SignInPage() {
             <div className="h-px flex-1 bg-[var(--color-hairline)]" />
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4">
             {loginError && (
-              <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
                 {loginError}
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <input
-                className="gn-input"
+                className="gn-input-auth"
                 type="email"
                 placeholder="Email address"
                 value={loginData.email}
-                onChange={(e) =>
-                  handleLoginInputChange("email", e.target.value)
-                }
+                onChange={(e) => handleLoginInputChange("email", e.target.value)}
                 required
               />
               <div>
                 <input
-                  className="gn-input"
+                  className="gn-input-auth"
                   type="password"
                   placeholder="Password"
                   value={loginData.password}
-                  onChange={(e) =>
-                    handleLoginInputChange("password", e.target.value)
-                  }
+                  onChange={(e) => handleLoginInputChange("password", e.target.value)}
                   required
                 />
-                <div className="mt-2 text-right">
+                <div className="mt-1.5 text-right">
                   <button
                     type="button"
                     onClick={openForgotPassword}
@@ -251,21 +308,16 @@ export default function SignInPage() {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Signing in..." : "Sign in ->"}
+              {isSubmitting ? "Signing in..." : "Sign in →"}
             </button>
           </form>
 
-          <div className="text-center">
-            <p className="text-sm text-[var(--color-muted)]">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/sign-up"
-                className="text-[var(--color-primary)] hover:underline"
-              >
-                Sign up
-              </Link>
-            </p>
-          </div>
+          <p className="text-center text-sm text-[var(--color-muted)]">
+            Don&apos;t have an account?{" "}
+            <Link href="/sign-up" className="text-[var(--color-primary)] hover:underline">
+              Sign up
+            </Link>
+          </p>
         </div>
       </main>
 

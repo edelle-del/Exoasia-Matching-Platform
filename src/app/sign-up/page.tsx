@@ -6,6 +6,62 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getClientContext } from "@/lib/client-context";
 
+function MarketingPanel() {
+  return (
+    <div className="fa-panel hidden lg:flex lg:w-[52%] xl:w-[56%] relative overflow-hidden flex-col justify-between">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="fa-panel-blob-1 absolute top-0 left-0 w-[60%] h-[60%] rounded-full opacity-40" />
+        <div className="fa-panel-blob-2 absolute bottom-0 right-0 w-[55%] h-[55%] rounded-full opacity-30" />
+        <div className="fa-panel-blob-3 absolute bottom-[20%] left-[10%] w-[40%] h-[40%] rounded-full opacity-25" />
+      </div>
+      <div className="relative z-10 flex flex-col justify-center flex-1 px-12 xl:px-16 py-10">
+        <div className="fa-panel-badge mb-6 inline-flex items-center gap-2 self-start rounded-full px-4 py-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B1F] animate-pulse" />
+          <span className="font-mono text-[10px] font-medium tracking-widest uppercase text-[#FF6B1F]">
+            Live · Philippine Blockchain Week · June 2026
+          </span>
+        </div>
+        <h2 className="fa-panel-headline text-4xl xl:text-5xl font-black leading-[1.08] tracking-tight text-white mb-4">
+          Stop Pitching<br />Blind.
+        </h2>
+        <p className="fa-panel-headline text-2xl xl:text-3xl font-black leading-tight text-white mb-4">
+          Your Next Investor Is<br />
+          <span className="fa-panel-accent">Already Looking for You.</span>
+        </p>
+        <div className="mb-5">
+          <span className="fa-panel-tagline inline-block text-xs tracking-[0.18em] uppercase pb-1">
+            Not by chance. By design.
+          </span>
+        </div>
+        <p className="fa-panel-body text-[15px] leading-relaxed mb-7 max-w-md">
+          The right capital partner exists — AI finds them. Founders Arena connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
+        </p>
+        <div className="grid grid-cols-2 gap-3 max-w-sm">
+          {[
+            { icon: "🧠", stat: "AI-Powered", label: "Matching Engine" },
+            { icon: "✅", stat: "500+", label: "Verified Investors" },
+            { icon: "🌏", stat: "15+", label: "Countries" },
+            { icon: "📂", stat: "27", label: "Sectors Covered" },
+          ].map(({ icon, stat, label }) => (
+            <div key={stat} className="fa-panel-stat flex items-center gap-3 rounded-xl px-4 py-3">
+              <span className="text-base">{icon}</span>
+              <div>
+                <p className="text-sm font-bold text-white leading-none">{stat}</p>
+                <p className="fa-panel-stat-label text-[10px] mt-0.5">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="fa-panel-footer relative z-10 px-12 xl:px-16 py-5">
+        <p className="text-[10px] tracking-widest uppercase">
+          Powered by <span className="fa-panel-accent">Exoasia Innovation Hub</span> · 21F 8 Rockwell, Makati City
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function SignUpPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "", confirmPassword: "" });
@@ -126,9 +182,10 @@ export default function SignUpPage() {
 
   if (checkEmailStep) {
     return (
-      <div className="min-h-screen bg-[var(--color-canvas)]">
-        <main className="px-[5%] py-20">
-          <div className="mx-auto max-w-[480px] space-y-6 text-center">
+      <div className="h-screen overflow-hidden flex bg-[var(--color-canvas)]">
+        <MarketingPanel />
+        <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-y-auto bg-[var(--color-canvas)]">
+          <div className="w-full max-w-[450px] space-y-5 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6 text-[var(--color-primary)]">
                 <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -180,20 +237,21 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)]">
-      <main className="px-[5%] py-20">
-        <div className="mx-auto max-w-[640px] space-y-8 text-center">
+    <div className="h-screen overflow-hidden flex bg-[var(--color-canvas)]">
+      <MarketingPanel />
+      <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-y-auto bg-[var(--color-canvas)]">
+        <div className="w-full max-w-[450px] space-y-6 text-center">
           <div>
-            <h1 className="font-display text-4xl font-700 text-[var(--color-ink)]">
+            <h1 className="font-display text-3xl font-bold text-[var(--color-ink)]">
               Create your account
             </h1>
-            <p className="mt-4 text-lg text-[var(--color-body)]">
-              Join FOUNDERS ARENA
+            <p className="mt-2 text-base text-[var(--color-body)]">
+              Join Founders Arena
             </p>
           </div>
 
           {/* OAuth buttons */}
-          <div className="space-y-3">
+          <div>
             <button
               type="button"
               onClick={() => handleOAuth("google")}
@@ -215,16 +273,16 @@ export default function SignUpPage() {
             <div className="h-px flex-1 bg-[var(--color-hairline)]" />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <input
-                className="gn-input"
+                className="gn-input-auth"
                 type="email"
                 placeholder="Email address"
                 value={formData.email}
@@ -232,7 +290,7 @@ export default function SignUpPage() {
                 required
               />
               <input
-                className="gn-input"
+                className="gn-input-auth"
                 type="password"
                 placeholder="Password (min. 8 characters)"
                 value={formData.password}
@@ -240,7 +298,7 @@ export default function SignUpPage() {
                 required
               />
               <input
-                className="gn-input"
+                className="gn-input-auth"
                 type="password"
                 placeholder="Confirm password"
                 value={formData.confirmPassword}
@@ -258,17 +316,12 @@ export default function SignUpPage() {
             </button>
           </form>
 
-          <div className="text-center">
-            <p className="text-sm text-[var(--color-muted)]">
-              Already have an account?{" "}
-              <Link
-                href="/sign-in"
-                className="text-[var(--color-primary)] hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="text-sm text-[var(--color-muted)]">
+            Already have an account?{" "}
+            <Link href="/sign-in" className="text-[var(--color-primary)] hover:underline">
+              Sign in
+            </Link>
+          </p>
         </div>
       </main>
     </div>

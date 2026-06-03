@@ -198,6 +198,32 @@ body {
     box-shadow 150ms ease;
 }
 
+.gn-input-auth {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  color: var(--color-ink);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 15px;
+  width: 100%;
+  font-family: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.gn-input-auth::placeholder { color: var(--color-muted); }
+.gn-input-auth:focus {
+  border-color: var(--fa-tangerine);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 107, 31, 0.15);
+}
+.gn-input-auth:-webkit-autofill,
+.gn-input-auth:-webkit-autofill:hover,
+.gn-input-auth:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-canvas) inset !important;
+  -webkit-text-fill-color: var(--color-ink) !important;
+  caret-color: var(--color-ink);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .gn-input::placeholder {
   color: var(--color-muted);
 }
@@ -216,6 +242,63 @@ body {
   -webkit-text-fill-color: var(--color-ink) !important;
   caret-color: var(--color-ink);
   transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ── Sign-in marketing panel ──────────────────────────── */
+
+.fa-panel {
+  background: linear-gradient(135deg, #1a0b2e 0%, #2d0a28 45%, #4a1040 100%);
+}
+
+.fa-panel-blob-1 {
+  background: radial-gradient(ellipse at 30% 30%, rgba(120, 40, 255, 0.5) 0%, transparent 65%);
+}
+
+.fa-panel-blob-2 {
+  background: radial-gradient(ellipse at 70% 70%, rgba(255, 46, 147, 0.4) 0%, transparent 65%);
+}
+
+.fa-panel-blob-3 {
+  background: radial-gradient(ellipse at 40% 60%, rgba(255, 107, 31, 0.5) 0%, transparent 65%);
+}
+
+.fa-panel-badge {
+  background: rgba(255, 107, 31, 0.12);
+  border: 1px solid rgba(255, 107, 31, 0.35);
+}
+
+.fa-panel-headline {
+  font-family: 'Montserrat', 'Inter', sans-serif;
+}
+
+.fa-panel-accent {
+  color: #ff6b1f;
+}
+
+.fa-panel-tagline {
+  color: #ff6b1f;
+  border-bottom: 1px solid #c9a040;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.fa-panel-body {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.fa-panel-stat {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fa-panel-stat-label {
+  color: rgba(255, 255, 255, 0.45);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.fa-panel-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* ── Buttons ──────────────────────────────────────────── */

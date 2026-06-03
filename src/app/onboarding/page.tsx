@@ -2135,7 +2135,7 @@ export default function OnboardingForm() {
           <div>
             <p className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
               Sector{" "}
-              {form.member_role === "investor" && (
+              {(form.member_role === "investor" || form.member_role === "ecosystem_partner") && (
                 <span className="text-xs font-400 text-[var(--color-muted)]">
                   (select all that apply)
                 </span>
@@ -2152,19 +2152,17 @@ export default function OnboardingForm() {
             )}
             <div className="mt-2 flex flex-wrap gap-2">
               {sectorOptions.map((s) => {
-                const selected =
-                  form.member_role === "investor"
-                    ? form.sector.split(",").filter(Boolean).includes(s)
-                    : form.sector === s;
+                const isMultiSector = form.member_role === "investor" || form.member_role === "ecosystem_partner";
+                const selected = isMultiSector
+                  ? form.sector.split(",").filter(Boolean).includes(s)
+                  : form.sector === s;
                 return (
                   <button
                     key={s}
                     type="button"
                     onClick={() => {
-                      if (form.member_role === "investor") {
-                        const current = form.sector
-                          .split(",")
-                          .filter(Boolean);
+                      if (isMultiSector) {
+                        const current = form.sector.split(",").filter(Boolean);
                         const updated = current.includes(s)
                           ? current.filter((x) => x !== s)
                           : [...current, s];

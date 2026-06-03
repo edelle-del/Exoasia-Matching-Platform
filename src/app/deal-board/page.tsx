@@ -15,6 +15,16 @@ const BOARD_COLUMNS = [
   "On Hold",
 ] as const;
 
+// Maps display label → DB enum value stored in deal_cards.stage
+const STAGE_DB: Record<string, string> = {
+  "Qualified":       "discover",
+  "Intro & Scoping": "intro",
+  "Proposal":        "proposal",
+  "Negotiation":     "negotiation",
+  "Closed Won":      "won",
+  "On Hold":         "lost",
+};
+
 type DealCard = {
   id: string;
   title: string;
@@ -55,7 +65,7 @@ export default function DealBoardPage() {
 
   const grouped = BOARD_COLUMNS.map((stage) => ({
     stage,
-    cards: cards.filter((card) => card.stage === stage),
+    cards: cards.filter((card) => card.stage === STAGE_DB[stage]),
   }));
 
   return (

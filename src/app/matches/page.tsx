@@ -491,7 +491,8 @@ export default function MatchesPage() {
                         {/* Investor score rows */}
                         {scores.length > 0 && (
                           <div className="mb-4 space-y-2">
-                            {scores.map((score) => {
+                            {scores.map((score, scoreIdx) => {
+                              const scoreLocked = !hasActiveSub && scoreIdx >= 2;
                               const requestKey = `${project.id}:${score.investor_profile_id}`;
                               const reqState = introRequests.get(requestKey);
                               const isDone =
@@ -500,58 +501,78 @@ export default function MatchesPage() {
                                 ) || reqState === "done";
 
                               return (
-                                <div
-                                  key={score.id}
-                                  className="flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-2.5"
-                                >
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-(--color-surface-soft) text-[10px] font-bold text-(--color-ink)">
-                                    {score.investor_name.charAt(0)}
-                                  </div>
-                                  <p className="flex-1 truncate text-sm text-(--color-ink)">
-                                    {score.investor_name}
-                                  </p>
-                                  <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 flex items-center justify-center">
-                                      <PieScore
-                                        score={score.fit_score}
-                                        size={44}
-                                        large
-                                      />
+                                <div key={score.id} className="relative">
+                                  <div
+                                    className={`flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-2.5 ${scoreLocked ? "blur-sm pointer-events-none select-none" : ""}`}
+                                  >
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-(--color-surface-soft) text-[10px] font-bold text-(--color-ink)">
+                                      {scoreLocked ? "?" : score.investor_name.charAt(0)}
                                     </div>
-                                    <Link
-                                      href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}`}
-                                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) transition hover:bg-(--color-hairline) hover:text-(--color-primary)"
-                                      aria-label="View compatibility breakdown"
-                                    >
-                                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                      </svg>
-                                    </Link>
-                                    {isDone ? (
-                                      <span className="rounded-lg bg-(--color-primary)/20 px-2.5 py-1 text-[10px] font-bold text-(--color-primary)">
-                                        Requested
-                                      </span>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          void handleRequestIntro(
-                                            project.id,
-                                            score.investor_profile_id,
-                                          )
-                                        }
-                                        disabled={reqState === "requesting"}
-                                        className="rounded-lg bg-(--color-primary)/30 px-2.5 py-1 text-[10px] font-bold text-(--color-primary) transition hover:bg-(--color-primary)/50 disabled:opacity-50"
+                                    <p className="flex-1 truncate text-sm text-(--color-ink)">
+                                      {scoreLocked ? "Upgrade to unlock" : score.investor_name}
+                                    </p>
+                                    <div className="flex items-center gap-3">
+                                      <div className="h-10 w-10 flex items-center justify-center">
+                                        <PieScore
+                                          score={score.fit_score}
+                                          size={44}
+                                          large
+                                        />
+                                      </div>
+                                      <Link
+                                        href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}`}
+                                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) transition hover:bg-(--color-hairline) hover:text-(--color-primary)"
+                                        aria-label="View compatibility breakdown"
                                       >
-                                        {reqState === "requesting"
-                                          ? "Sending…"
-                                          : "Request Intro"}
-                                      </button>
-                                    )}
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                      </Link>
+                                      {isDone ? (
+                                        <span className="rounded-lg bg-(--color-primary)/20 px-2.5 py-1 text-[10px] font-bold text-(--color-primary)">
+                                          Requested
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            void handleRequestIntro(
+                                              project.id,
+                                              score.investor_profile_id,
+                                            )
+                                          }
+                                          disabled={reqState === "requesting"}
+                                          className="rounded-lg bg-(--color-primary)/30 px-2.5 py-1 text-[10px] font-bold text-(--color-primary) transition hover:bg-(--color-primary)/50 disabled:opacity-50"
+                                        >
+                                          {reqState === "requesting"
+                                            ? "Sending…"
+                                            : "Request Intro"}
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
+                                  {scoreLocked && (
+                                    <div className="absolute inset-0 flex items-center justify-center rounded-xl">
+                                      <span className="flex items-center gap-1.5 rounded-full border border-(--color-hairline) bg-(--color-canvas) px-3 py-1 text-xs font-semibold text-(--color-ink) shadow-sm">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3 text-(--color-muted)">
+                                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                        </svg>
+                                        Upgrade to unlock
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
+                            {!hasActiveSub && scores.length > 2 && (
+                              <p className="pt-1 text-center text-xs text-(--color-muted)">
+                                {scores.length - 2} more match{scores.length - 2 !== 1 ? "es" : ""} hidden.{" "}
+                                <Link href="/payments" className="font-semibold text-(--color-primary) hover:underline">
+                                  Upgrade to unlock
+                                </Link>
+                              </p>
+                            )}
                           </div>
                         )}
 

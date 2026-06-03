@@ -172,7 +172,7 @@ export async function fetchDashboardSummary(
       .from("deal_cards")
       .select("id", { count: "exact", head: true })
       .or(`buyer_member_id.eq.${userId},provider_member_id.eq.${userId}`)
-      .not("stage", "in", '("Closed-Won","Closed-Lost / On Hold")'),
+      .not("stage", "in", '("won","lost")'),
     supabase
       .from("matches")
       .select("id", { count: "exact", head: true })
@@ -240,7 +240,7 @@ export async function fetchDashboardSummary(
         .from("deal_cards")
         .select("id", { count: "exact", head: true })
         .in("buyer_member_id", peerIds)
-        .not("stage", "in", '("Closed-Won / Pilot Go","Closed-Lost / On Hold")');
+        .not("stage", "in", '("won","lost")');
       sectorAvgDeals =
         Math.round(((sectorDeals ?? 0) / sectorPeers.length) * 10) / 10;
     }

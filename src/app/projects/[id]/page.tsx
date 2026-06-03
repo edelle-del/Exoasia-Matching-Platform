@@ -292,6 +292,8 @@ export default function ProjectDetailPage({
   const [matchesGenerated, setMatchesGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [expandedInvestorId, setExpandedInvestorId] = useState<string | null>(null);
+  const [introRequests, setIntroRequests] = useState<Map<string, "requesting" | "done" | "cancelling">>(new Map());
+  const [introMatchIds, setIntroMatchIds] = useState<Map<string, string>>(new Map()); // investorId → matchId
   const [activeTab, setActiveTab] = useState<"details" | "matches">("details");
   const [reportExpanded, setReportExpanded] = useState(false);
   const [reportTab, setReportTab] = useState<
@@ -373,14 +375,50 @@ export default function ProjectDetailPage({
       setMatchesLoading(true);
       fetch(`/api/projects/${id}/investor-matches`)
         .then((r) => r.json())
-        .then((data: { matches?: InvestorMatch[] }) => {
+        .then(async (data: { matches?: InvestorMatch[] }) => {
           const matches = data.matches ?? [];
           setInvestorMatches(matches);
           if (matches.length > 0) setMatchesGenerated(true);
+
+          // Fetch existing match records to pre-populate "done" state for already-requested intros
+          if (matches.length > 0) {
+            const { data: existingMatches } = await supabase
+              .from("matches")
+              .select("id, member_a_id, member_b_id")
+              .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`)
+              .not("status", "eq", "declined");
+
+            if (existingMatches && existingMatches.length > 0) {
+              const partnerMatchMap = new Map(
+                existingMatches.map((m) => [
+                  m.member_a_id === user.id ? m.member_b_id : m.member_a_id,
+                  m.id,
+                ]),
+              );
+              setIntroRequests((prev) => {
+                const next = new Map(prev);
+                for (const m of matches) {
+                  if (partnerMatchMap.has(m.investor_profile_id)) {
+                    next.set(m.investor_profile_id, "done");
+                  }
+                }
+                return next;
+              });
+              setIntroMatchIds((prev) => {
+                const next = new Map(prev);
+                for (const m of matches) {
+                  const mId = partnerMatchMap.get(m.investor_profile_id);
+                  if (mId) next.set(m.investor_profile_id, mId);
+                }
+                return next;
+              });
+            }
+          }
+
           setMatchesLoading(false);
         });
     }
-  }, [user?.id, project, id]);
+  }, [user?.id, project, id, supabase]);
 
   // Load data room access status for non-owners
   useEffect(() => {
@@ -597,6 +635,68 @@ export default function ProjectDetailPage({
       setMatchesGenerated(true);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleRequestIntro = async (investorProfileId: string) => {
+    setIntroRequests((prev) => new Map(prev).set(investorProfileId, "requesting"));
+    try {
+      const res = await fetch("/api/matches/request-intro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: id, investor_profile_id: investorProfileId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIntroRequests((prev) => new Map(prev).set(investorProfileId, "done"));
+        if (data?.match?.id) {
+          setIntroMatchIds((prev) => new Map(prev).set(investorProfileId, data.match.id));
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        window.alert(data?.error ?? "Failed to send intro request. Please try again.");
+        setIntroRequests((prev) => {
+          const next = new Map(prev);
+          next.delete(investorProfileId);
+          return next;
+        });
+      }
+    } catch {
+      window.alert("Network error. Please try again.");
+      setIntroRequests((prev) => {
+        const next = new Map(prev);
+        next.delete(investorProfileId);
+        return next;
+      });
+    }
+  };
+
+  const handleCancelIntro = async (investorProfileId: string) => {
+    const matchId = introMatchIds.get(investorProfileId);
+    if (!matchId) return;
+    setIntroRequests((prev) => new Map(prev).set(investorProfileId, "cancelling"));
+    try {
+      const res = await fetch(`/api/matches/${matchId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: "declined" }),
+      });
+      if (res.ok) {
+        setIntroRequests((prev) => {
+          const next = new Map(prev);
+          next.delete(investorProfileId);
+          return next;
+        });
+        setIntroMatchIds((prev) => {
+          const next = new Map(prev);
+          next.delete(investorProfileId);
+          return next;
+        });
+      } else {
+        setIntroRequests((prev) => new Map(prev).set(investorProfileId, "done"));
+      }
+    } catch {
+      setIntroRequests((prev) => new Map(prev).set(investorProfileId, "done"));
     }
   };
 
@@ -1948,20 +2048,77 @@ export default function ProjectDetailPage({
                             </div>
                           )}
 
-                          {/* LinkedIn */}
-                          {m.investor_linkedin && (
-                            <a
-                              href={m.investor_linkedin}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-(--color-primary) hover:underline"
+                          {/* Actions */}
+                          <div className="flex flex-wrap items-center gap-3 border-t border-(--color-hairline) pt-3">
+                            {(() => {
+                              const reqState = introRequests.get(m.investor_profile_id);
+                              const isDone = reqState === "done";
+                              const isRequesting = reqState === "requesting";
+                              const isCancelling = reqState === "cancelling";
+                              const hasMatchId = introMatchIds.has(m.investor_profile_id);
+                              if (isDone) {
+                                return (
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-lg bg-(--color-primary)/20 px-3 py-1.5 text-xs font-bold text-(--color-primary)">
+                                      Intro requested ✓
+                                    </span>
+                                    {hasMatchId && (
+                                      <button
+                                        type="button"
+                                        disabled={isCancelling}
+                                        onClick={() => void handleCancelIntro(m.investor_profile_id)}
+                                        className="rounded-lg border border-(--color-hairline) px-3 py-1.5 text-xs font-medium text-(--color-muted) hover:border-rose-300 hover:text-rose-500 disabled:opacity-50 transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={isRequesting || isCancelling}
+                                  onClick={() => void handleRequestIntro(m.investor_profile_id)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-(--color-primary)/10 px-3 py-1.5 text-xs font-bold text-(--color-primary) hover:bg-(--color-primary)/20 disabled:opacity-50 transition-colors"
+                                >
+                                  {isRequesting ? (
+                                    <>
+                                      <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                      </svg>
+                                      Sending…
+                                    </>
+                                  ) : (
+                                    "Request intro"
+                                  )}
+                                </button>
+                              );
+                            })()}
+                            <Link
+                              href={`/matches/breakdown?a=${project?.owner_id ?? ""}&b=${m.investor_profile_id}&score=${m.fit_score}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500/10 px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-500/20 transition-colors"
                             >
-                              <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                               </svg>
-                              View LinkedIn profile
-                            </a>
-                          )}
+                              Compatibility breakdown
+                            </Link>
+                            {m.investor_linkedin && (
+                              <a
+                                href={m.investor_linkedin}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs text-(--color-primary) hover:underline"
+                              >
+                                <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                                </svg>
+                                LinkedIn
+                              </a>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

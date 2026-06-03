@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../providers";
 import { createClient } from "@/lib/supabase/client";
-import { respondToMatch, type MatchRecord } from "@/lib/app-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -396,8 +395,12 @@ export default function MatchDeepDivePage() {
   const handleRespond = async (decision: "accepted" | "declined") => {
     if (!match || !user?.id) return;
     setResponding(decision);
-    const { error } = await respondToMatch(supabase, user.id, match as MatchRecord, decision);
-    if (!error) {
+    const res = await fetch(`/api/matches/${match.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision }),
+    });
+    if (res.ok) {
       setMatch((prev) =>
         prev
           ? {

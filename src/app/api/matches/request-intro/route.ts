@@ -95,6 +95,37 @@ export async function POST(req: Request) {
       .eq("member_b_id", pair.member_b_id)
       .single();
 
+    // Create a deal card in "Qualified" if one doesn't already exist for this pair.
+    // Wrapped in try/catch so a missing DB constraint doesn't block the match creation.
+    try {
+      const { data: existingCard } = await admin
+        .from("deal_cards")
+        .select("id")
+        .eq("buyer_member_id", startupId)
+        .eq("provider_member_id", investorId)
+        .maybeSingle();
+
+      if (!existingCard) {
+        const { data: projectRow } = await admin
+          .from("projects")
+          .select("name")
+          .eq("id", project_id)
+          .single();
+
+        await admin.from("deal_cards").insert({
+          buyer_member_id: startupId,
+          provider_member_id: investorId,
+          title: projectRow?.name ?? "Untitled project",
+          stage: "discover",
+          fit_score: scoreRow?.fit_score ?? null,
+          confidence: "Medium",
+          last_updated_at: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // Deal card creation is non-critical — match creation already succeeded
+    }
+
     return NextResponse.json({ success: true, match });
   } catch (err) {
     return NextResponse.json(

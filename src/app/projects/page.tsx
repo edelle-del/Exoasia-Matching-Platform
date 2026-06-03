@@ -671,20 +671,11 @@ export default function ProjectsPage() {
           /* ── ALL PROJECTS VIEW ───────────────────────────────────────────── */
           <div className="space-y-4">
             {(() => {
-              const scoredProjects = projects.filter((p) => scoreMap.has(p.id));
-              const freeScoreIds = new Set(
-                scoredProjects.slice(0, 3).map((p) => p.id),
-              );
-              const totalScored = scoredProjects.length;
               return projects.map((p) => {
                 const existingScore = scoreMap.get(p.id);
                 const isScoringThis = scoring.has(p.id);
                 const isGeneratingThis = generating.has(p.id);
                 const alreadyGenerated = generatedProjects.has(p.id);
-                const scoreLocked =
-                  !hasActiveSub && !!existingScore && !freeScoreIds.has(p.id);
-                const cannotScoreMore =
-                  !hasActiveSub && !existingScore && totalScored >= 3;
 
                 return (
                   <div
@@ -726,9 +717,7 @@ export default function ProjectsPage() {
                       <div className="mt-4 flex items-center justify-between border-t border-(--color-hairline) pt-3">
                         <div className="flex items-center gap-3">
                           {existingScore ? (
-                            <div
-                              className={`flex items-center gap-3 ${scoreLocked ? "blur-sm pointer-events-none select-none" : ""}`}
-                            >
+                            <div className="flex items-center gap-3">
                               <PieScore score={existingScore.fit_score} />
                               {existingScore.summary && (
                                 <span className="text-xs font-medium text-(--color-primary) hidden sm:inline line-clamp-1">
@@ -741,35 +730,8 @@ export default function ProjectsPage() {
                               Not yet scored
                             </span>
                           )}
-                          {scoreLocked && (
-                            <span className="flex items-center gap-1 rounded-full border border-(--color-hairline) bg-(--color-canvas) px-2.5 py-1 text-xs font-semibold text-(--color-ink) shadow-sm">
-                              <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                className="h-3 w-3 text-(--color-muted)"
-                              >
-                                <rect
-                                  x="3"
-                                  y="11"
-                                  width="18"
-                                  height="11"
-                                  rx="2"
-                                  ry="2"
-                                />
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                              </svg>
-                              Pro
-                            </span>
-                          )}
                         </div>
-                        {cannotScoreMore ? (
-                          <span className="rounded-xl border border-(--color-hairline) px-3 py-1.5 text-xs font-semibold text-(--color-primary)">
-                            Upgrade to score more
-                          </span>
-                        ) : (
-                          <button
+                        <button
                             type="button"
                             disabled={isScoringThis}
                             onClick={() => handleScoreProject(p.id)}
@@ -813,7 +775,6 @@ export default function ProjectsPage() {
                               </>
                             )}
                           </button>
-                        )}
                       </div>
                     )}
 

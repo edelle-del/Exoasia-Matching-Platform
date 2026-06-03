@@ -167,9 +167,9 @@ export default function TopHeader() {
                 icon={ICONS.dealBoard}
               />
               <NavLink
-                href="/projects"
-                label="Projects"
-                icon={ICONS.projects}
+                href="/matches"
+                label="Matches"
+                icon={ICONS.matches}
               />
               <NavLink
                 href="/data-room"

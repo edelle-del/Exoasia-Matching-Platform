@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../providers";
 import { createClient } from "@/lib/supabase/client";
-import { fetchUserMatches, fetchUserProjects } from "@/lib/app-data";
-import type { MatchRecord, ProjectRecord } from "@/lib/app-data";
+import {
+  fetchUserMatches,
+  fetchUserProjects,
+  fetchAllStartupProjects,
+  type MatchRecord,
+  type ProjectRecord,
+} from "@/lib/app-data";
 import PieScore from "@/components/PieScore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,38 +29,40 @@ type ProjectScore = {
   investor_name: string;
 };
 
+type MatchScore = {
+  project_id: string;
+  fit_score: number;
+  summary: string | null;
+  generated_at: string;
+};
+
+type FounderProfile = {
+  id: string;
+  full_name: string | null;
+  business_name: string | null;
+  sector: string | null;
+  city: string | null;
+  short_bio: string | null;
+  role_title: string | null;
+  years_in_operation: string | null;
+  employee_band: string | null;
+  asks_summary: string | null;
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const RANK_STYLE = [
+  "border-amber-400/60 bg-amber-400/10 text-amber-300",
+  "border-slate-400/60 bg-slate-400/10 text-slate-300",
+  "border-orange-400/60 bg-orange-400/10 text-orange-300",
+  "border-indigo-400/40 bg-indigo-400/8 text-indigo-300",
+  "border-indigo-400/40 bg-indigo-400/8 text-indigo-300",
+];
 
 function scoreColorClass(s: number) {
   if (s >= 75) return "text-(--color-primary)";
   if (s >= 50) return "text-amber-400";
   return "text-(--color-muted)";
-}
-
-function statusStyle(status: string) {
-  switch (status) {
-    case "pending":
-      return {
-        label: "Pending",
-        pill: "rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400",
-      };
-    case "accepted":
-      return {
-        label: "Accepted",
-        pill: "rounded-full bg-(--color-primary)/20 px-2 py-0.5 text-[10px] font-bold text-(--color-primary)",
-      };
-    case "introduced":
-      return {
-        label: "Introduced",
-        pill: "rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-bold text-(--color-muted)",
-      };
-    case "declined":
-    default:
-      return {
-        label: status.charAt(0).toUpperCase() + status.slice(1),
-        pill: "rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-bold text-(--color-muted)",
-      };
-  }
 }
 
 function scoreBarClass(s: number) {
@@ -64,21 +71,27 @@ function scoreBarClass(s: number) {
   return "bg-(--color-hairline)";
 }
 
+function statusStyle(status: string) {
+  switch (status) {
+    case "pending":
+      return { label: "Pending", pill: "bg-amber-500/20 text-amber-400" };
+    case "accepted":
+      return { label: "Accepted", pill: "bg-(--color-primary)/20 text-(--color-primary)" };
+    case "introduced":
+      return { label: "Introduced", pill: "bg-(--color-surface-soft) text-(--color-muted)" };
+    default:
+      return {
+        label: status.charAt(0).toUpperCase() + status.slice(1),
+        pill: "bg-(--color-surface-soft) text-(--color-muted)",
+      };
+  }
+}
+
 function getProjectNextStep(project: ProjectRecord, scores: ProjectScore[]) {
-  if (!project.description) {
-    return {
-      label: "Add a project description to attract investors",
-      href: `/projects/${project.id}`,
-      cta: "Edit project",
-    };
-  }
-  if (scores.length === 0) {
-    return {
-      label: "Awaiting investor matches — check back soon",
-      href: `/projects/${project.id}`,
-      cta: "View project",
-    };
-  }
+  if (!project.description)
+    return { label: "Add a project description to attract investors", href: `/projects/${project.id}`, cta: "Edit project" };
+  if (scores.length === 0)
+    return { label: "Awaiting investor matches — check back soon", href: `/projects/${project.id}`, cta: "View project" };
   return {
     label: `${scores.length} investor${scores.length > 1 ? "s" : ""} matched — request an intro to connect`,
     href: `/projects/${project.id}`,
@@ -91,21 +104,40 @@ function getProjectNextStep(project: ProjectRecord, scores: ProjectScore[]) {
 export default function MatchesPage() {
   const supabase = useMemo(() => createClient(), []);
   const { user } = useAuth();
+
   const [isLoading, setIsLoading] = useState(true);
   const [memberRole, setMemberRole] = useState<string | null>(null);
   const [hasActiveSub, setHasActiveSub] = useState(false);
-  const [matches, setMatches] = useState<MatchRow[]>([]);
-  const [projects, setProjects] = useState<
-    (ProjectRecord & { owner_name?: string })[]
-  >([]);
-  const [projectScores, setProjectScores] = useState<ProjectScore[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
-  const [introRequests, setIntroRequests] = useState<
-    Map<string, "requesting" | "done">
-  >(new Map());
-  const [respondingMatchId, setRespondingMatchId] = useState<string | null>(
-    null,
-  );
+  const [startupTab, setStartupTab] = useState<"projects" | "requests">("projects");
+  const [investorTab, setInvestorTab] = useState<"projects" | "requests">("projects");
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+
+  // Matches state
+  const [matches, setMatches] = useState<MatchRow[]>([]);
+  const [respondingMatchId, setRespondingMatchId] = useState<string | null>(null);
+  const [introRequests, setIntroRequests] = useState<Map<string, "requesting" | "done">>(new Map());
+
+  // Projects state (shared startup + investor)
+  const [projects, setProjects] = useState<(ProjectRecord & { owner_name?: string })[]>([]);
+
+  // Startup-specific
+  const [projectScores, setProjectScores] = useState<ProjectScore[]>([]);
+  const [generating, setGenerating] = useState<Set<string>>(new Set());
+  const [generatedProjects, setGeneratedProjects] = useState<Set<string>>(new Set());
+
+  // Investor-specific
+  const [scoreMap, setScoreMap] = useState<Map<string, MatchScore>>(new Map());
+  const [scoring, setScoring] = useState<Set<string>>(new Set());
+  const [view, setView] = useState<"all" | "top5">("all");
+  const [generatingTop5, setGeneratingTop5] = useState(false);
+  const [top5Progress, setTop5Progress] = useState(0);
+  const [top5Total, setTop5Total] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [founderProfiles, setFounderProfiles] = useState<Map<string, FounderProfile>>(new Map());
+  const [loadingFounders, setLoadingFounders] = useState<Set<string>>(new Set());
+
+  // ── Data loading ────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!user?.id) return;
@@ -125,35 +157,24 @@ export default function MatchesPage() {
       setMemberRole(role);
       setHasActiveSub(
         !!profile?.subscription_plan &&
-          (!profile.subscription_ends_at ||
-            new Date(profile.subscription_ends_at) > new Date()),
+          (!profile.subscription_ends_at || new Date(profile.subscription_ends_at) > new Date()),
       );
 
       // Enrich matches with counterpart sector
-      const cpIds = [
-        ...new Set(
-          rawMatches.map((m) =>
-            m.member_a_id === user.id ? m.member_b_id : m.member_a_id,
-          ),
-        ),
-      ];
+      const cpIds = [...new Set(rawMatches.map((m) => (m.member_a_id === user.id ? m.member_b_id : m.member_a_id)))];
       let sectorMap = new Map<string, string | null>();
       if (cpIds.length > 0) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("id, sector")
-          .in("id", cpIds);
+        const { data } = await supabase.from("profiles").select("id, sector").in("id", cpIds);
         sectorMap = new Map((data ?? []).map((p) => [p.id, p.sector ?? null]));
       }
       setMatches(
         rawMatches.map((m) => {
-          const cpId =
-            m.member_a_id === user.id ? m.member_b_id : m.member_a_id;
+          const cpId = m.member_a_id === user.id ? m.member_b_id : m.member_a_id;
           return { ...m, counterpart_sector: sectorMap.get(cpId) ?? null };
         }),
       );
 
-      // Startup: projects + project match scores
+      // ── Startup ──────────────────────────────────────────────────────────────
       if (role === "startup") {
         const userProjects = await fetchUserProjects(supabase, user.id);
         setProjects(userProjects);
@@ -161,18 +182,11 @@ export default function MatchesPage() {
         if (userProjects.length > 0) {
           const { data: scores } = await supabase
             .from("project_match_scores")
-            .select(
-              "id, project_id, investor_profile_id, fit_score, generated_at",
-            )
-            .in(
-              "project_id",
-              userProjects.map((p) => p.id),
-            )
+            .select("id, project_id, investor_profile_id, fit_score, generated_at")
+            .in("project_id", userProjects.map((p) => p.id))
             .order("fit_score", { ascending: false });
 
-          const investorIds = [
-            ...new Set((scores ?? []).map((s) => s.investor_profile_id)),
-          ];
+          const investorIds = [...new Set((scores ?? []).map((s) => s.investor_profile_id))];
           let nameMap = new Map<string, string>();
           if (investorIds.length > 0) {
             const { data: investors } = await supabase
@@ -180,62 +194,43 @@ export default function MatchesPage() {
               .select("id, full_name, business_name")
               .in("id", investorIds);
             nameMap = new Map(
-              (investors ?? []).map((p) => [
-                p.id,
-                p.business_name || p.full_name || "Verified investor",
-              ]),
+              (investors ?? []).map((p) => [p.id, p.business_name || p.full_name || "Verified investor"]),
             );
           }
           setProjectScores(
-            (scores ?? []).map((s) => ({
-              ...s,
-              investor_name:
-                nameMap.get(s.investor_profile_id) ?? "Verified investor",
-            })),
+            (scores ?? []).map((s) => ({ ...s, investor_name: nameMap.get(s.investor_profile_id) ?? "Verified investor" })),
           );
+
+          // Check which projects already have generated matches
+          const results = await Promise.all(
+            userProjects.map(async (p) => {
+              try {
+                const res = await fetch(`/api/projects/${p.id}/investor-matches`);
+                if (!res.ok) return { id: p.id, has: false };
+                const json = await res.json();
+                return { id: p.id, has: Array.isArray(json.matches) && json.matches.length > 0 };
+              } catch {
+                return { id: p.id, has: false };
+              }
+            }),
+          );
+          const generated = new Set<string>();
+          results.forEach((r) => { if (r.has) generated.add(r.id); });
+          setGeneratedProjects(generated);
         }
       }
 
-      // Investor: project match scores → projects + owner names
+      // ── Investor ─────────────────────────────────────────────────────────────
       if (role === "investor") {
-        const { data: scores } = await supabase
-          .from("project_match_scores")
-          .select(
-            "id, project_id, investor_profile_id, fit_score, generated_at",
-          )
-          .eq("investor_profile_id", user.id)
-          .order("fit_score", { ascending: false });
+        const allProjects = await fetchAllStartupProjects(supabase);
+        setProjects(allProjects);
 
-        if (scores && scores.length > 0) {
-          const projectIds = [...new Set(scores.map((s) => s.project_id))];
-          const { data: projs } = await supabase
-            .from("projects")
-            .select(
-              "id, owner_id, name, description, stage, sector, is_active, created_at, updated_at",
-            )
-            .in("id", projectIds);
-
-          const ownerIds = [...new Set((projs ?? []).map((p) => p.owner_id))];
-          let ownerNameMap = new Map<string, string>();
-          if (ownerIds.length > 0) {
-            const { data: owners } = await supabase
-              .from("profiles")
-              .select("id, full_name, business_name")
-              .in("id", ownerIds);
-            ownerNameMap = new Map(
-              (owners ?? []).map((p) => [
-                p.id,
-                p.business_name || p.full_name || "Verified startup",
-              ]),
-            );
-          }
-          setProjects(
-            (projs ?? []).map((p) => ({
-              ...p,
-              owner_name: ownerNameMap.get(p.owner_id),
-            })),
-          );
-          setProjectScores(scores.map((s) => ({ ...s, investor_name: "" })));
+        if (allProjects.length > 0) {
+          const res = await fetch("/api/projects/my-match-scores");
+          const data = (await res.json()) as { scores?: MatchScore[] };
+          const map = new Map<string, MatchScore>();
+          (data.scores ?? []).forEach((s) => map.set(s.project_id, s));
+          setScoreMap(map);
         }
       }
 
@@ -245,23 +240,9 @@ export default function MatchesPage() {
     load().catch(() => setIsLoading(false));
   }, [supabase, user?.id, reloadKey]);
 
-  const isStartup = memberRole === "startup";
-  const isInvestor = memberRole === "investor";
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
-  const existingMatchPartnerIds = useMemo(
-    () =>
-      new Set(
-        matches.map((m) =>
-          m.member_a_id === user?.id ? m.member_b_id : m.member_a_id,
-        ),
-      ),
-    [matches, user?.id],
-  );
-
-  const handleRespond = async (
-    match: MatchRow,
-    decision: "accepted" | "declined",
-  ) => {
+  const handleRespond = async (match: MatchRow, decision: "accepted" | "declined") => {
     if (!user?.id) return;
     setRespondingMatchId(match.id);
     try {
@@ -270,283 +251,428 @@ export default function MatchesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decision }),
       });
-      if (res.ok) {
-        setReloadKey((k) => k + 1);
-      }
+      if (res.ok) setReloadKey((k) => k + 1);
     } finally {
       setRespondingMatchId(null);
     }
   };
 
-  const handleRequestIntro = async (
-    projectId: string,
-    investorProfileId: string,
-  ) => {
+  const handleRequestIntro = async (projectId: string, investorProfileId: string) => {
     const key = `${projectId}:${investorProfileId}`;
     setIntroRequests((prev) => new Map(prev).set(key, "requesting"));
     try {
       const res = await fetch("/api/matches/request-intro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectId,
-          investor_profile_id: investorProfileId,
-        }),
+        body: JSON.stringify({ project_id: projectId, investor_profile_id: investorProfileId }),
       });
       if (res.ok) {
         setIntroRequests((prev) => new Map(prev).set(key, "done"));
         setReloadKey((k) => k + 1);
       } else {
-        setIntroRequests((prev) => {
-          const next = new Map(prev);
-          next.delete(key);
-          return next;
-        });
+        setIntroRequests((prev) => { const next = new Map(prev); next.delete(key); return next; });
       }
     } catch {
-      setIntroRequests((prev) => {
-        const next = new Map(prev);
-        next.delete(key);
-        return next;
-      });
+      setIntroRequests((prev) => { const next = new Map(prev); next.delete(key); return next; });
     }
   };
 
-  const pendingMatches = matches.filter((m) => {
-    const myStatus =
-      m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
-    return myStatus === "pending" && ["pending", "approved"].includes(m.status);
-  });
+  const handleFindInvestors = useCallback(async (projectId: string) => {
+    setGenerating((prev) => new Set(prev).add(projectId));
+    try {
+      await fetch(`/api/projects/${projectId}/generate-match`, { method: "POST" });
+      setGeneratedProjects((prev) => new Set(prev).add(projectId));
 
-  const activeMatches = matches.filter((m) =>
-    ["accepted", "introduced"].includes(m.status),
+      // Reload scores for this project so names appear immediately
+      const { data: scores } = await supabase
+        .from("project_match_scores")
+        .select("id, project_id, investor_profile_id, fit_score, generated_at")
+        .eq("project_id", projectId)
+        .order("fit_score", { ascending: false });
+
+      if (scores && scores.length > 0) {
+        const investorIds = [...new Set(scores.map((s) => s.investor_profile_id))];
+        const { data: investors } = await supabase
+          .from("profiles")
+          .select("id, full_name, business_name")
+          .in("id", investorIds);
+        const nameMap = new Map(
+          (investors ?? []).map((p) => [p.id, p.business_name || p.full_name || "Verified investor"]),
+        );
+        const enriched = scores.map((s) => ({
+          ...s,
+          investor_name: nameMap.get(s.investor_profile_id) ?? "Verified investor",
+        }));
+        setProjectScores((prev) => [
+          ...prev.filter((s) => s.project_id !== projectId),
+          ...enriched,
+        ]);
+        // Auto-expand to show results
+        setExpandedProjects((prev) => new Set(prev).add(projectId));
+      }
+    } finally {
+      setGenerating((prev) => { const next = new Set(prev); next.delete(projectId); return next; });
+    }
+  }, [supabase]);
+
+  const handleScoreProject = useCallback(async (projectId: string) => {
+    setScoring((prev) => new Set(prev).add(projectId));
+    try {
+      const res = await fetch(`/api/projects/${projectId}/generate-match`, { method: "POST" });
+      const data = (await res.json()) as { score?: { project_id: string; fit_score: number; summary: string; generated_at?: string } };
+      if (data.score) {
+        setScoreMap((prev) => {
+          const next = new Map(prev);
+          next.set(projectId, {
+            project_id: projectId,
+            fit_score: data.score!.fit_score,
+            summary: data.score!.summary,
+            generated_at: data.score!.generated_at ?? new Date().toISOString(),
+          });
+          return next;
+        });
+      }
+    } finally {
+      setScoring((prev) => { const next = new Set(prev); next.delete(projectId); return next; });
+    }
+  }, []);
+
+  const handleGetTop5 = useCallback(async () => {
+    setGeneratingTop5(true);
+    setTop5Progress(0);
+    const unscored = projects.filter((p) => !scoreMap.has(p.id));
+    setTop5Total(unscored.length);
+    let done = 0;
+    const newScores = new Map(scoreMap);
+    await Promise.all(
+      unscored.map(async (p) => {
+        try {
+          const res = await fetch(`/api/projects/${p.id}/generate-match`, { method: "POST" });
+          const data = await res.json();
+          if (data.score) {
+            newScores.set(p.id, {
+              project_id: p.id,
+              fit_score: data.score.fit_score,
+              summary: data.score.summary,
+              generated_at: data.score.generated_at ?? new Date().toISOString(),
+            });
+          }
+        } catch { /* skip */ } finally {
+          done += 1;
+          setTop5Progress(done);
+        }
+      }),
+    );
+    setScoreMap(newScores);
+    setGeneratingTop5(false);
+    setView("top5");
+  }, [projects, scoreMap]);
+
+  const fetchFounderProfile = useCallback(
+    async (ownerId: string) => {
+      if (founderProfiles.has(ownerId) || loadingFounders.has(ownerId)) return;
+      setLoadingFounders((prev) => new Set(prev).add(ownerId));
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, full_name, business_name, sector, city, short_bio, role_title, years_in_operation, employee_band, asks_summary")
+          .eq("id", ownerId)
+          .single();
+        if (data) setFounderProfiles((prev) => { const next = new Map(prev); next.set(ownerId, data as FounderProfile); return next; });
+      } finally {
+        setLoadingFounders((prev) => { const next = new Set(prev); next.delete(ownerId); return next; });
+      }
+    },
+    [supabase, founderProfiles, loadingFounders],
   );
 
+  const handleToggleExpand = useCallback(
+    (p: ProjectRecord) => {
+      setExpandedId((prev) => (prev === p.id ? null : p.id));
+      void fetchFounderProfile(p.owner_id);
+    },
+    [fetchFounderProfile],
+  );
+
+  // ── Derived ──────────────────────────────────────────────────────────────────
+
+  const isStartup = memberRole === "startup";
+  const isInvestor = memberRole === "investor";
+
+  // Maps partner ID → match status so buttons can show accurate state
+  const matchStatusByPartnerId = useMemo(
+    () => new Map(matches.map((m) => {
+      const partnerId = m.member_a_id === user?.id ? m.member_b_id : m.member_a_id;
+      return [partnerId, m.status];
+    })),
+    [matches, user?.id],
+  );
+
+  const existingMatchPartnerIds = useMemo(
+    () => new Set(matches.map((m) => (m.member_a_id === user?.id ? m.member_b_id : m.member_a_id))),
+    [matches, user?.id],
+  );
+
+  const pendingMatches = matches.filter((m) => {
+    const myStatus = m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
+    return myStatus === "pending" && ["pending", "approved"].includes(m.status);
+  });
   const pendingCount = pendingMatches.length;
+
+  const top5Projects = useMemo(() => {
+    if (!isInvestor) return [];
+    return [...projects]
+      .filter((p) => scoreMap.has(p.id))
+      .sort((a, b) => (scoreMap.get(b.id)?.fit_score ?? 0) - (scoreMap.get(a.id)?.fit_score ?? 0))
+      .slice(0, 5);
+  }, [projects, scoreMap, isInvestor]);
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-(--color-canvas) text-(--color-ink)">
       {/* Header */}
       <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-8">
-        <div className="mx-auto max-w-4xl">
-          <Link
-            href="/dashboard"
-            className="text-sm text-(--color-primary) hover:underline"
-          >
-            ← Back to dashboard
-          </Link>
-          <h1 className="mt-3 text-3xl font-bold text-(--color-ink)">
-            Your Pipeline
-          </h1>
-          <p className="mt-1 text-sm text-(--color-muted)">
-            {isLoading
-              ? "Loading…"
-              : pendingCount > 0
-                ? `${pendingCount} pending response${pendingCount > 1 ? "s" : ""} · ${matches.length} total intro${matches.length !== 1 ? "s" : ""}`
-                : `${matches.length} intro${matches.length !== 1 ? "s" : ""} · all reviewed`}
-          </p>
+        <div className="mx-auto max-w-4xl flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Matches</p>
+            <h1 className="mt-1 text-3xl font-bold text-(--color-ink)">
+              {isInvestor ? "Projects & Pipeline" : "Your Projects & Pipeline"}
+            </h1>
+            <p className="mt-1 text-sm text-(--color-muted)">
+              {isLoading
+                ? "Loading…"
+                : isInvestor
+                  ? `${projects.length} project${projects.length !== 1 ? "s" : ""} · ${matches.length} intro${matches.length !== 1 ? "s" : ""}`
+                  : pendingCount > 0
+                    ? `${pendingCount} pending response${pendingCount > 1 ? "s" : ""} · ${matches.length} total intro${matches.length !== 1 ? "s" : ""}`
+                    : `${projects.length} project${projects.length !== 1 ? "s" : ""} · ${matches.length} intro${matches.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+
+          {/* Investor controls — only on Projects tab */}
+          {isInvestor && !isLoading && investorTab === "projects" && (
+            <div className="flex shrink-0 items-center gap-3">
+              {top5Projects.length > 0 && (
+                <div className="flex rounded-xl border border-(--color-hairline) overflow-hidden text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setView("all")}
+                    className={`px-4 py-2 transition-colors ${view === "all" ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
+                  >
+                    All projects
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("top5")}
+                    className={`px-4 py-2 transition-colors ${view === "top5" ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
+                  >
+                    Top 5 matches
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={generatingTop5}
+                onClick={() => void handleGetTop5()}
+                className="inline-flex items-center gap-2 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/10 px-4 py-2 text-sm font-semibold text-(--color-primary) hover:bg-(--color-primary)/20 disabled:opacity-60 transition-colors"
+              >
+                {generatingTop5 ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {top5Total > 0 ? `Scoring ${top5Progress}/${top5Total}…` : "Scoring…"}
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                    </svg>
+                    Get top 5 matches
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Startup: new project */}
+          {isStartup && !isLoading && (
+            <Link
+              href={!hasActiveSub && projects.length >= 1 ? "/payments" : "/projects/new"}
+              className="gn-btn-primary shrink-0"
+            >
+              + New project
+            </Link>
+          )}
         </div>
       </section>
 
       <div className="mx-auto max-w-4xl space-y-10 px-[5%] py-10">
-        {/* Urgent banner */}
-        {!isLoading && pendingCount > 0 && (
-          <div className="flex items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
-              <svg
-                className="h-5 w-5 text-amber-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-amber-300">
-                {pendingCount} intro{pendingCount > 1 ? "s" : ""} awaiting your
-                response
-              </p>
-              <p className="mt-0.5 text-xs text-(--color-muted)">
-                Respond to keep your pipeline moving
-              </p>
-            </div>
-          </div>
-        )}
 
-        {/* ── STARTUP VIEW ──────────────────────────────────────────────────── */}
+
+        {/* ── STARTUP VIEW ───────────────────────────────────────────────────── */}
         {isStartup && (
           <>
+            {/* Tab bar */}
+            <div className="flex gap-1 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
+              <button
+                type="button"
+                onClick={() => setStartupTab("projects")}
+                className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                  startupTab === "projects"
+                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
+                    : "text-(--color-muted) hover:text-(--color-ink)"
+                }`}
+              >
+                Projects
+              </button>
+              <button
+                type="button"
+                onClick={() => setStartupTab("requests")}
+                className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                  startupTab === "requests"
+                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
+                    : "text-(--color-muted) hover:text-(--color-ink)"
+                }`}
+              >
+                Requests
+                {pendingCount > 0 && (
+                  <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-(--color-primary) text-[10px] font-bold text-white">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* ── Projects tab ── */}
+            {startupTab === "projects" && (
             <section>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                  Your Projects
-                </h2>
-                <Link
-                  href="/projects"
-                  className="text-xs font-semibold text-(--color-primary) hover:underline"
-                >
-                  Manage projects →
-                </Link>
+                <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Your Projects</h2>
               </div>
 
               {isLoading ? (
                 <div className="space-y-4">
                   {[...Array(2)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-44 animate-pulse rounded-2xl bg-(--color-surface-soft)"
-                    />
+                    <div key={i} className="h-44 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
                   ))}
                 </div>
               ) : projects.length === 0 ? (
                 <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
-                  <p className="text-sm font-semibold text-(--color-ink)">
-                    No active projects
-                  </p>
-                  <p className="mt-1 text-xs text-(--color-muted)">
-                    Create a project to start getting matched with investors.
-                  </p>
-                  <Link
-                    href="/projects"
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-95"
-                  >
+                  <p className="text-sm font-semibold text-(--color-ink)">No active projects</p>
+                  <p className="mt-1 text-xs text-(--color-muted)">Create a project to start getting matched with investors.</p>
+                  <Link href="/projects/new" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white hover:opacity-95">
                     Create a project
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {projects.map((project) => {
-                    const scores = projectScores.filter(
-                      (s) => s.project_id === project.id,
-                    );
-                    const bestScore =
-                      scores.length > 0 ? scores[0].fit_score : null;
-                    const nextStep = getProjectNextStep(project, scores);
+                    const scores = projectScores.filter((s) => s.project_id === project.id);
+                    const bestScore = scores.length > 0 ? scores[0].fit_score : null;
+                    const isGeneratingThis = generating.has(project.id);
+                    const alreadyGenerated = generatedProjects.has(project.id);
+                    const isExpanded = expandedProjects.has(project.id);
+                    const toggleExpand = () => setExpandedProjects((prev) => {
+                      const next = new Set(prev);
+                      next.has(project.id) ? next.delete(project.id) : next.add(project.id);
+                      return next;
+                    });
 
                     return (
-                      <div
-                        key={project.id}
-                        className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6"
-                      >
-                        {/* Project header */}
-                        <div className="mb-5 flex items-start justify-between gap-4">
-                          <div>
+                      <div key={project.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas)">
+                        {/* Compact header row */}
+                        <div className="flex items-center gap-3 px-5 py-4">
+                          <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-bold text-(--color-ink)">
-                                {project.name}
-                              </h3>
-                              <span className="rounded-full bg-(--color-primary)/20 px-2 py-0.5 text-[10px] font-bold text-(--color-primary)">
-                                Active
-                              </span>
+                              <h3 className="text-sm font-semibold text-(--color-ink)">{project.name}</h3>
                               {project.stage && (
-                                <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-bold text-(--color-muted)">
-                                  {project.stage}
-                                </span>
+                                <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{project.stage}</span>
+                              )}
+                              {project.sector && (
+                                <span className="rounded-full border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{project.sector}</span>
                               )}
                             </div>
-                            {project.sector && (
-                              <p className="mt-1 text-xs text-(--color-muted)">
-                                {project.sector}
-                              </p>
-                            )}
+                            <p className="mt-0.5 text-xs text-(--color-muted)">
+                              {scores.length > 0
+                                ? `${scores.length} investor match${scores.length !== 1 ? "es" : ""}${bestScore !== null ? ` · ${bestScore}% best fit` : ""}`
+                                : "No investor matches yet"}
+                            </p>
                           </div>
-                          <Link
-                            href={`/projects/${project.id}`}
-                            className="shrink-0 text-xs font-semibold text-(--color-primary) hover:underline"
-                          >
-                            View →
-                          </Link>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {scores.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={toggleExpand}
+                                className="inline-flex items-center gap-1 rounded-lg border border-(--color-hairline) px-2.5 py-1.5 text-xs font-medium text-(--color-muted) hover:border-(--color-primary)/40 hover:text-(--color-ink) transition-colors"
+                              >
+                                {isExpanded ? "Hide" : `Show matches (${scores.length})`}
+                                <svg className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={isGeneratingThis}
+                              onClick={() => void handleFindInvestors(project.id)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-primary)/30 bg-(--color-primary)/5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                            >
+                              {isGeneratingThis ? (
+                                <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                              ) : (
+                                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
+                                  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                                </svg>
+                              )}
+                              {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate" : "Find investors"}
+                            </button>
+                            <Link href={`/projects/${project.id}`} className="text-xs font-semibold text-(--color-primary) hover:underline">View →</Link>
+                          </div>
                         </div>
 
-                        {/* Stats */}
-                        <div className="mb-5 grid grid-cols-3 gap-3">
-                          <Stat
-                            label="Investor matches"
-                            value={String(scores.length)}
-                          />
-                          <Stat
-                            label="Pending intros"
-                            value={String(pendingCount)}
-                            accent={
-                              pendingCount > 0 ? "text-amber-400" : undefined
-                            }
-                          />
-                          <Stat
-                            label="Best fit"
-                            value={bestScore !== null ? `${bestScore}%` : "—"}
-                            accent={
-                              bestScore !== null
-                                ? scoreColorClass(bestScore)
-                                : "text-(--color-muted)"
-                            }
-                          />
-                        </div>
-
-                        {/* Investor score rows */}
-                        {scores.length > 0 && (
-                          <div className="mb-4 space-y-2">
+                        {/* Expandable investor rows */}
+                        {isExpanded && scores.length > 0 && (
+                          <div className="border-t border-(--color-hairline) px-5 py-3 space-y-2">
                             {scores.map((score, scoreIdx) => {
                               const scoreLocked = !hasActiveSub && scoreIdx >= 2;
                               const requestKey = `${project.id}:${score.investor_profile_id}`;
                               const reqState = introRequests.get(requestKey);
-                              const isDone =
-                                existingMatchPartnerIds.has(
-                                  score.investor_profile_id,
-                                ) || reqState === "done";
+                              const isDone = existingMatchPartnerIds.has(score.investor_profile_id) || reqState === "done";
 
                               return (
                                 <div key={score.id} className="relative">
-                                  <div
-                                    className={`flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-2.5 ${scoreLocked ? "blur-sm pointer-events-none select-none" : ""}`}
-                                  >
-                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-(--color-surface-soft) text-[10px] font-bold text-(--color-ink)">
+                                  <div className={`flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-3 py-2 ${scoreLocked ? "blur-sm pointer-events-none select-none" : ""}`}>
+                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-(--color-canvas) text-[10px] font-bold text-(--color-ink)">
                                       {scoreLocked ? "?" : score.investor_name.charAt(0)}
                                     </div>
-                                    <p className="flex-1 truncate text-sm text-(--color-ink)">
+                                    <p className="flex-1 truncate text-xs text-(--color-ink)">
                                       {scoreLocked ? "Upgrade to unlock" : score.investor_name}
                                     </p>
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-10 w-10 flex items-center justify-center">
-                                        <PieScore
-                                          score={score.fit_score}
-                                          size={44}
-                                          large
-                                        />
-                                      </div>
+                                    <div className="flex items-center gap-2">
+                                      <PieScore score={score.fit_score} size={32} />
                                       <Link
                                         href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}`}
-                                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) transition hover:bg-(--color-hairline) hover:text-(--color-primary)"
-                                        aria-label="View compatibility breakdown"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-(--color-canvas) text-(--color-muted) hover:text-(--color-primary)"
+                                        aria-label="View compatibility"
                                       >
-                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                                         </svg>
                                       </Link>
-                                      {isDone ? (
-                                        <span className="rounded-lg bg-(--color-primary)/20 px-2.5 py-1 text-[10px] font-bold text-(--color-primary)">
-                                          Requested
-                                        </span>
-                                      ) : (
+                                      {!isDone && (
                                         <button
                                           type="button"
-                                          onClick={() =>
-                                            void handleRequestIntro(
-                                              project.id,
-                                              score.investor_profile_id,
-                                            )
-                                          }
+                                          onClick={() => void handleRequestIntro(project.id, score.investor_profile_id)}
                                           disabled={reqState === "requesting"}
-                                          className="rounded-lg bg-(--color-primary)/30 px-2.5 py-1 text-[10px] font-bold text-(--color-primary) transition hover:bg-(--color-primary)/50 disabled:opacity-50"
+                                          className="rounded-md bg-(--color-primary)/30 px-2 py-0.5 text-[10px] font-bold text-(--color-primary) hover:bg-(--color-primary)/50 disabled:opacity-50"
                                         >
-                                          {reqState === "requesting"
-                                            ? "Sending…"
-                                            : "Request Intro"}
+                                          {reqState === "requesting" ? "…" : "Request Connection"}
                                         </button>
                                       )}
                                     </div>
@@ -567,29 +693,273 @@ export default function MatchesPage() {
                             })}
                             {!hasActiveSub && scores.length > 2 && (
                               <p className="pt-1 text-center text-xs text-(--color-muted)">
-                                {scores.length - 2} more match{scores.length - 2 !== 1 ? "es" : ""} hidden.{" "}
-                                <Link href="/payments" className="font-semibold text-(--color-primary) hover:underline">
-                                  Upgrade to unlock
-                                </Link>
+                                {scores.length - 2} more hidden.{" "}
+                                <Link href="/payments" className="font-semibold text-(--color-primary) hover:underline">Upgrade to unlock</Link>
                               </p>
                             )}
                           </div>
                         )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+            )} {/* end projects tab */}
 
-                        {/* Next step */}
-                        <div className="flex items-center justify-between rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-3">
-                          <p className="text-xs text-(--color-muted)">
-                            <span className="font-bold text-(--color-ink)">
-                              Next:{" "}
-                            </span>
-                            {nextStep.label}
-                          </p>
-                          <Link
-                            href={nextStep.href}
-                            className="shrink-0 text-xs font-semibold text-(--color-primary) hover:underline"
-                          >
-                            {nextStep.cta} →
-                          </Link>
+            {/* ── Requests tab ── */}
+            {startupTab === "requests" && (
+              <section>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(2)].map((_, i) => (
+                      <div key={i} className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
+                    ))}
+                  </div>
+                ) : pendingMatches.length === 0 ? (
+                  <div className="rounded-2xl border border-(--color-hairline) border-dashed bg-(--color-surface-soft) p-10 text-center">
+                    <p className="text-sm font-semibold text-(--color-ink)">No pending requests</p>
+                    <p className="mt-1 text-xs text-(--color-muted)">
+                      When an investor marks your project as Qualified, their request will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <MatchList
+                    matches={pendingMatches}
+                    userId={user?.id ?? ""}
+                    userRole={memberRole}
+                    onRespond={handleRespond}
+                    respondingId={respondingMatchId}
+                    subscriptionActive={true}
+                  />
+                )}
+              </section>
+            )}
+          </>
+        )}
+
+        {/* ── INVESTOR VIEW ──────────────────────────────────────────────────── */}
+        {isInvestor && (
+          <>
+            {/* Tab bar */}
+            <div className="flex gap-1 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
+              <button
+                type="button"
+                onClick={() => setInvestorTab("projects")}
+                className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                  investorTab === "projects"
+                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
+                    : "text-(--color-muted) hover:text-(--color-ink)"
+                }`}
+              >
+                Projects
+              </button>
+              <button
+                type="button"
+                onClick={() => setInvestorTab("requests")}
+                className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                  investorTab === "requests"
+                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
+                    : "text-(--color-muted) hover:text-(--color-ink)"
+                }`}
+              >
+                Requests
+                {pendingCount > 0 && (
+                  <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-(--color-primary) text-[10px] font-bold text-white">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* ── Projects tab ── */}
+            {investorTab === "projects" && (
+            <section>
+              <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                {view === "top5" ? "Top 5 Matches" : "All Projects"}
+              </h2>
+
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-24 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
+                  ))}
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-8">
+                  <p className="text-sm text-(--color-body)">No founder projects on the platform yet.</p>
+                </div>
+              ) : view === "top5" ? (
+                /* Top 5 view */
+                <div className="space-y-4">
+                  {top5Projects.length === 0 ? (
+                    <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-8 text-center">
+                      <p className="text-sm text-(--color-body)">Click "Get top 5 matches" to score and rank projects.</p>
+                    </div>
+                  ) : (
+                    top5Projects.map((p, idx) => {
+                      const score = scoreMap.get(p.id)!;
+                      const isExpanded = expandedId === p.id;
+                      const founder = founderProfiles.get(p.owner_id) ?? null;
+                      const founderLoading = loadingFounders.has(p.owner_id);
+                      let fundraisingStage: string | null = null;
+                      try {
+                        const parsed = JSON.parse(founder?.asks_summary ?? "");
+                        if (parsed?._v === 2) fundraisingStage = parsed.fundraising_stage ?? null;
+                      } catch { /* ignore */ }
+
+                      return (
+                        <div key={p.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden hover:shadow-md transition-shadow">
+                          <button type="button" onClick={() => handleToggleExpand(p)} className="w-full text-left p-5">
+                            <div className="flex items-center gap-4">
+                              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${RANK_STYLE[idx] ?? RANK_STYLE[4]}`}>
+                                {idx + 1}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-(--color-ink) truncate">{p.name}</p>
+                                <div className="mt-1 flex flex-wrap gap-1.5">
+                                  {p.stage && <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">{p.stage}</span>}
+                                  {p.sector && <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{p.sector}</span>}
+                                  {fundraisingStage && <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">{fundraisingStage}</span>}
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-3">
+                                <div className="text-right">
+                                  <p className={`text-xl font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</p>
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
+                                </div>
+                                <PieScore score={score.fit_score} />
+                                <svg className={`h-4 w-4 text-(--color-muted) transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                            {score.summary && <p className="mt-2 ml-12 text-xs text-(--color-primary) line-clamp-1">{score.summary}</p>}
+                          </button>
+
+                          {isExpanded && (
+                            <div className="border-t border-(--color-hairline) bg-(--color-surface-soft) p-5 space-y-5">
+                              <div>
+                                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Project details</p>
+                                {p.description && <p className="text-sm text-(--color-body) leading-relaxed">{p.description}</p>}
+                                <div className="mt-3 flex flex-wrap gap-4">
+                                  {p.stage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Stage</p><p className="text-sm font-medium text-(--color-ink)">{p.stage}</p></div>}
+                                  {p.sector && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p><p className="text-sm font-medium text-(--color-ink)">{p.sector}</p></div>}
+                                  {fundraisingStage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p><p className="text-sm font-medium text-(--color-ink)">{fundraisingStage}</p></div>}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4">
+                                <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Founder profile</p>
+                                {founderLoading ? (
+                                  <div className="h-16 animate-pulse rounded-lg bg-(--color-surface-soft)" />
+                                ) : founder ? (
+                                  <div className="space-y-3">
+                                    <div>
+                                      <p className="font-semibold text-(--color-ink)">{founder.business_name || founder.full_name || "Unnamed founder"}</p>
+                                      {founder.role_title && <p className="text-xs text-(--color-muted)">{founder.role_title}</p>}
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 text-xs text-(--color-muted)">
+                                      {founder.city && <span>📍 {founder.city}</span>}
+                                      {founder.sector && <span>🏭 {founder.sector}</span>}
+                                      {founder.years_in_operation && <span>🕐 {founder.years_in_operation} in operation</span>}
+                                      {founder.employee_band && <span>👥 {founder.employee_band} employees</span>}
+                                    </div>
+                                    {founder.short_bio && <p className="text-sm text-(--color-body) leading-relaxed">{founder.short_bio}</p>}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-(--color-muted)">Founder details unavailable.</p>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <ConnectButton
+                                  projectId={p.id}
+                                  ownerId={p.owner_id}
+                                  userId={user?.id ?? ""}
+                                  matchStatusByPartnerId={matchStatusByPartnerId}
+                                  introRequests={introRequests}
+                                  onRequest={handleRequestIntro}
+                                  size="md"
+                                />
+                                <Link href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${score.fit_score}`} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors">
+                                  View compatibility breakdown
+                                </Link>
+                                <Link href={`/projects/${p.id}/investor`} className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors">
+                                  View full project →
+                                </Link>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : (
+                /* All projects view */
+                <div className="space-y-4">
+                  {projects.map((p) => {
+                    const existingScore = scoreMap.get(p.id);
+                    const isScoringThis = scoring.has(p.id);
+
+                    return (
+                      <div key={p.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6 hover:shadow-md transition-shadow">
+                        <Link href={`/projects/${p.id}`} className="block">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h2 className="text-lg font-semibold text-(--color-ink)">{p.name}</h2>
+                              {p.description && <p className="mt-1 text-sm text-(--color-body) line-clamp-2">{p.description}</p>}
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {p.stage && <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{p.stage}</span>}
+                                {p.sector && <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{p.sector}</span>}
+                              </div>
+                            </div>
+                            <span className="shrink-0 text-sm text-(--color-muted)">{new Date(p.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </Link>
+                        <div className="mt-4 flex items-center justify-between border-t border-(--color-hairline) pt-3">
+                          <div className="flex items-center gap-3">
+                            {existingScore ? (
+                              <div className="flex items-center gap-3">
+                                <PieScore score={existingScore.fit_score} />
+                                {existingScore.summary && <span className="text-xs font-medium text-(--color-primary) hidden sm:inline line-clamp-1">{existingScore.summary}</span>}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-(--color-muted)">Not yet scored</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ConnectButton
+                              projectId={p.id}
+                              ownerId={p.owner_id}
+                              userId={user?.id ?? ""}
+                              matchStatusByPartnerId={matchStatusByPartnerId}
+                              introRequests={introRequests}
+                              onRequest={handleRequestIntro}
+                            />
+                            <button
+                              type="button"
+                              disabled={isScoringThis}
+                              onClick={() => handleScoreProject(p.id)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-3 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                            >
+                              {isScoringThis ? (
+                                <>
+                                  <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                  </svg>
+                                  AI is scoring…
+                                </>
+                              ) : (
+                                <>
+                                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
+                                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                                  </svg>
+                                  {existingScore ? "Rescore" : "Score this project"}
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -597,125 +967,50 @@ export default function MatchesPage() {
                 </div>
               )}
             </section>
+            )} {/* end investor projects tab */}
 
-            {!isLoading && pendingCount > 0 && (
+            {/* ── Requests tab ── */}
+            {investorTab === "requests" && (
               <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                  Pending Responses
-                </h2>
-                <MatchList
-                  matches={pendingMatches}
-                  userId={user?.id ?? ""}
-                  onRespond={handleRespond}
-                  respondingId={respondingMatchId}
-                  subscriptionActive={hasActiveSub}
-                />
-              </section>
-            )}
-
-            {!isLoading && activeMatches.length > 0 && (
-              <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                  Active Intros
-                </h2>
-                <MatchList
-                  matches={activeMatches}
-                  userId={user?.id ?? ""}
-                  subscriptionActive={hasActiveSub}
-                />
-              </section>
-            )}
-          </>
-        )}
-
-        {/* ── INVESTOR VIEW ─────────────────────────────────────────────────── */}
-        {isInvestor && (
-          <>
-            <section>
-              <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
-                <p className="text-[10px] font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                  Deal flow
-                </p>
-                <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
-                  Browse &amp; score founder projects
-                </h2>
-                <p className="mt-1 text-sm text-(--color-body)">
-                  Score individual projects or run AI matching to get your
-                  personalised top 5 ranked by fit.
-                </p>
-                <Link
-                  href="/projects"
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="h-4 w-4 shrink-0"
-                    aria-hidden="true"
-                  >
-                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                  </svg>
-                  Get top 5 matches
-                </Link>
-              </div>
-            </section>
-
-            {!isLoading && pendingCount > 0 && (
-              <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                  Pending Responses
-                </h2>
-                <MatchList
-                  matches={pendingMatches}
-                  userId={user?.id ?? ""}
-                  onRespond={handleRespond}
-                  respondingId={respondingMatchId}
-                />
-              </section>
-            )}
-
-            {!isLoading && activeMatches.length > 0 && (
-              <section>
-                <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                  Active Intros
-                </h2>
-                <MatchList matches={activeMatches} userId={user?.id ?? ""} />
-              </section>
-            )}
-          </>
-        )}
-
-        {/* ── FALLBACK (ecosystem partner / unknown role) ────────────────────── */}
-        {!isStartup && !isInvestor && (
-          <section>
-            <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-              Your Intros
-            </h2>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)"
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(2)].map((_, i) => (
+                      <div key={i} className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
+                    ))}
+                  </div>
+                ) : pendingMatches.length === 0 ? (
+                  <div className="rounded-2xl border border-(--color-hairline) border-dashed bg-(--color-surface-soft) p-10 text-center">
+                    <p className="text-sm font-semibold text-(--color-ink)">No pending requests</p>
+                    <p className="mt-1 text-xs text-(--color-muted)">
+                      When a startup requests a connection with you, it will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <MatchList
+                    matches={pendingMatches}
+                    userId={user?.id ?? ""}
+                    userRole={memberRole}
+                    onRespond={handleRespond}
+                    respondingId={respondingMatchId}
+                    subscriptionActive={true}
                   />
-                ))}
-              </div>
-            ) : matches.length === 0 ? (
+                )}
+              </section>
+            )}
+          </>
+        )}
+
+        {/* ── Fallback ───────────────────────────────────────────────────────── */}
+        {!isStartup && !isInvestor && !isLoading && (
+          <section>
+            <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Your Intros</h2>
+            {matches.length === 0 ? (
               <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
-                <p className="text-sm font-semibold text-(--color-ink)">
-                  No intros yet
-                </p>
-                <p className="mt-1 text-xs text-(--color-muted)">
-                  When you get matched with a counterpart, they'll appear here.
-                </p>
+                <p className="text-sm font-semibold text-(--color-ink)">No intros yet</p>
+                <p className="mt-1 text-xs text-(--color-muted)">When you get matched with a counterpart, they'll appear here.</p>
               </div>
             ) : (
-              <MatchList
-                matches={matches}
-                userId={user?.id ?? ""}
-                onRespond={handleRespond}
-                respondingId={respondingMatchId}
-              />
+              <MatchList matches={matches} userId={user?.id ?? ""} onRespond={handleRespond} respondingId={respondingMatchId} />
             )}
           </section>
         )}
@@ -726,36 +1021,62 @@ export default function MatchesPage() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ScoreBar({ score, barClass }: { score: number; barClass: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (ref.current) ref.current.style.width = `${score}%`;
-  }, [score]);
+function ConnectButton({
+  projectId,
+  ownerId,
+  userId,
+  matchStatusByPartnerId,
+  introRequests,
+  onRequest,
+  size = "sm",
+}: {
+  projectId: string;
+  ownerId: string;
+  userId: string;
+  matchStatusByPartnerId: Map<string, string>;
+  introRequests: Map<string, "requesting" | "done">;
+  onRequest: (projectId: string, investorId: string) => Promise<void>;
+  size?: "sm" | "md";
+}) {
+  const key = `${projectId}:${userId}`;
+  const reqState = introRequests.get(key);
+  const matchStatus = matchStatusByPartnerId.get(ownerId);
+
+  const base = size === "md"
+    ? "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+    : "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors";
+
+  if (matchStatus === "accepted" || matchStatus === "introduced") {
+    return <span className={`${base} bg-emerald-500/15 text-emerald-500`}>Connected</span>;
+  }
+
+  if (matchStatus === "pending" || reqState === "done") {
+    return <span className={`${base} bg-amber-500/15 text-amber-500`}>Qualified — awaiting founder</span>;
+  }
+
   return (
-    <div
-      ref={ref}
-      className={`h-full w-0 rounded-full transition-all duration-500 ${barClass}`}
-    />
+    <button
+      type="button"
+      disabled={reqState === "requesting"}
+      onClick={() => void onRequest(projectId, userId)}
+      className={`${base} bg-(--color-primary) text-white hover:opacity-90 disabled:opacity-50`}
+    >
+      {reqState === "requesting" ? "Sending…" : "Add as Qualified"}
+    </button>
   );
 }
 
-function Stat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: string;
-}) {
+function ScoreBar({ score, barClass }: { score: number; barClass: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (ref.current) ref.current.style.width = `${score}%`; }, [score]);
+  return <div ref={ref} className={`h-full w-0 rounded-full transition-all duration-500 ${barClass}`} />;
+}
+
+function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3 text-center">
-      <p className={`text-2xl font-bold ${accent ?? "text-(--color-ink)"}`}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
-        {label}
-      </p>
+      <p className={`text-2xl font-bold ${accent ?? "text-(--color-ink)"}`}>{value}</p>
+      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">{label}</p>
     </div>
   );
 }
@@ -763,16 +1084,15 @@ function Stat({
 function MatchList({
   matches,
   userId,
+  userRole,
   onRespond,
   respondingId,
   subscriptionActive = true,
 }: {
   matches: MatchRow[];
   userId: string;
-  onRespond?: (
-    match: MatchRow,
-    decision: "accepted" | "declined",
-  ) => Promise<void>;
+  userRole?: string | null;
+  onRespond?: (match: MatchRow, decision: "accepted" | "declined") => Promise<void>;
   respondingId?: string | null;
   subscriptionActive?: boolean;
 }) {
@@ -782,97 +1102,60 @@ function MatchList({
         const sc = statusStyle(m.status);
         const score = m.fit_score ?? 0;
         const name = m.counterpart_name ?? "Verified member";
-        const myStatus =
-          m.member_a_id === userId ? m.member_a_status : m.member_b_status;
-        const canRespond = myStatus === "pending" && !!onRespond;
+        const myStatus = m.member_a_id === userId ? m.member_a_status : m.member_b_status;
+        const initiatedByCounterpart = myStatus === "pending";
+        const canRespond = initiatedByCounterpart && !!onRespond;
         const isResponding = respondingId === m.id;
 
         return (
-          <div
-            key={m.id}
-            className="flex items-center gap-4 rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4"
-          >
+          <div key={m.id} className="flex items-center gap-4 rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-(--color-hairline) text-xs font-bold text-(--color-ink)">
               {!subscriptionActive ? "U" : name.charAt(0)}
             </div>
-
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-(--color-ink)">
-                  {subscriptionActive ? name : "Upgrade to unlock"}
-                </p>
-                {!canRespond && (
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${sc.pill}`}
-                  >
-                    {sc.label}
-                  </span>
-                )}
+                <p className="text-sm font-semibold text-(--color-ink)">{subscriptionActive ? name : "Upgrade to unlock"}</p>
+                {!canRespond && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${sc.pill}`}>{sc.label}</span>}
               </div>
-              {subscriptionActive && m.counterpart_sector && (
-                <p className="mb-1.5 text-[11px] text-(--color-muted)">
-                  {m.counterpart_sector}
+              {canRespond && userRole === "startup" && subscriptionActive && (
+                <p className="mb-1 text-xs font-medium text-amber-400">
+                  has marked your project as Qualified — accept to move to Intro &amp; Scoping
                 </p>
               )}
+              {canRespond && userRole === "investor" && subscriptionActive && (
+                <p className="mb-1 text-xs font-medium text-amber-400">
+                  wants to connect — accept to move to Intro &amp; Scoping
+                </p>
+              )}
+              {subscriptionActive && m.counterpart_sector && <p className="mb-1.5 text-[11px] text-(--color-muted)">{m.counterpart_sector}</p>}
               {subscriptionActive && score > 0 ? (
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--color-hairline)">
                     <ScoreBar score={score} barClass={scoreBarClass(score)} />
                   </div>
-                  <span
-                    className={`w-9 text-right text-xs font-bold ${scoreColorClass(score)}`}
-                  >
-                    {score}%
-                  </span>
+                  <span className={`w-9 text-right text-xs font-bold ${scoreColorClass(score)}`}>{score}%</span>
                 </div>
               ) : !subscriptionActive ? (
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--color-hairline)" />
-                  <span className="w-9 text-right text-xs font-bold text-(--color-muted)">
-                    Match limit reached
-                  </span>
+                  <span className="w-9 text-right text-xs font-bold text-(--color-muted)">Match limit reached</span>
                 </div>
               ) : null}
             </div>
-
             <div className="flex shrink-0 items-center gap-2">
               {canRespond && (
                 <>
-                  <button
-                    type="button"
-                    disabled={isResponding}
-                    onClick={() => void onRespond(m, "accepted")}
-                    className="rounded-lg bg-(--color-primary)/20 px-3 py-1.5 text-xs font-bold text-(--color-primary) transition hover:bg-(--color-primary)/30 disabled:opacity-50"
-                  >
+                  <button type="button" disabled={isResponding} onClick={() => void onRespond(m, "accepted")} className="rounded-lg bg-(--color-primary)/20 px-3 py-1.5 text-xs font-bold text-(--color-primary) hover:bg-(--color-primary)/30 disabled:opacity-50">
                     {isResponding ? "…" : "Accept"}
                   </button>
-                  <button
-                    type="button"
-                    disabled={isResponding}
-                    onClick={() => void onRespond(m, "declined")}
-                    className="rounded-lg bg-(--color-surface-soft) px-3 py-1.5 text-xs font-bold text-(--color-muted) transition hover:bg-(--color-hairline) disabled:opacity-50"
-                  >
+                  <button type="button" disabled={isResponding} onClick={() => void onRespond(m, "declined")} className="rounded-lg bg-(--color-surface-soft) px-3 py-1.5 text-xs font-bold text-(--color-muted) hover:bg-(--color-hairline) disabled:opacity-50">
                     Decline
                   </button>
                 </>
               )}
-              <Link
-                href={`/matches/${m.id}`}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) transition hover:bg-(--color-hairline) hover:text-(--color-primary)"
-                aria-label="View compatibility details"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 5l7 7-7 7"
-                  />
+              <Link href={`/matches/${m.id}`} className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) hover:bg-(--color-hairline) hover:text-(--color-primary)" aria-label="View details">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
             </div>

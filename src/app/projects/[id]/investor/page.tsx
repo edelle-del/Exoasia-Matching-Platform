@@ -154,7 +154,7 @@ export default function InvestorProjectOverviewPage() {
       <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
         <div className="mx-auto max-w-4xl text-center">
           <p className="text-base font-semibold text-(--color-ink)">Project not found</p>
-          <Link href="/projects" className="mt-3 inline-block text-sm text-(--color-primary) hover:underline">
+          <Link href="/matches" className="mt-3 inline-block text-sm text-(--color-primary) hover:underline">
             ← Back to projects
           </Link>
         </div>
@@ -167,7 +167,7 @@ export default function InvestorProjectOverviewPage() {
       {/* Header */}
       <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
         <div className="mx-auto max-w-4xl">
-          <Link href="/projects" className="text-sm text-(--color-primary) hover:underline">
+          <Link href="/matches" className="text-sm text-(--color-primary) hover:underline">
             ← Back to projects
           </Link>
           <div className="mt-4 flex items-start justify-between gap-6 flex-wrap">
@@ -422,7 +422,7 @@ export default function InvestorProjectOverviewPage() {
             </Link>
           )}
           <Link
-            href="/projects"
+            href="/matches"
             className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-5 py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
           >
             ← Back to projects

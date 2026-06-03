@@ -247,7 +247,7 @@ export default function BreakdownPage() {
       {/* Header */}
       <section className="border-b border-[#2A2A3E] bg-[#12121A] px-[5%] py-8">
         <div className="mx-auto max-w-5xl">
-          <Link href="/projects" className="text-sm text-indigo-400 hover:underline">
+          <Link href="/matches" className="text-sm text-indigo-400 hover:underline">
             ← Back to top 5 matches
           </Link>
           <div className="mt-3 flex items-start justify-between gap-4 flex-wrap">

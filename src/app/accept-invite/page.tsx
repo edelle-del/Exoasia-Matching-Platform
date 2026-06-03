@@ -108,7 +108,7 @@ export default function AcceptInvitePage() {
     if (signInError) { setError(signInError); setSubmitting(false); return; }
 
     setAccepted(true);
-    setTimeout(() => router.push("/projects"), 2000);
+    setTimeout(() => router.push("/matches"), 2000);
   };
 
   // Legacy path: admin-provisioned invited account

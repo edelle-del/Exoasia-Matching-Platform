@@ -11,6 +11,7 @@ export type InvestorProjectRow = {
   owner_name: string;
   access_status: "none" | "pending" | "approved" | "denied";
   access_request_id: string | null;
+  drive_link: string | null;
 };
 
 export async function GET() {
@@ -23,12 +24,31 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    // All active projects with owner name — exclude the investor's own projects
+    // Find all startup owners the investor has an accepted match with
+    const { data: matches, error: matchesError } = await admin
+      .from("matches")
+      .select("member_a_id, member_b_id")
+      .eq("status", "accepted")
+      .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`);
+
+    if (matchesError) {
+      return NextResponse.json({ error: matchesError.message }, { status: 500 });
+    }
+
+    const matchedOwnerIds = (matches ?? []).map((m) =>
+      m.member_a_id === user.id ? m.member_b_id : m.member_a_id,
+    );
+
+    if (matchedOwnerIds.length === 0) {
+      return NextResponse.json({ projects: [] });
+    }
+
+    // Only projects owned by matched startups
     const { data: projects, error: projectsError } = await admin
       .from("projects")
-      .select("id, name, stage, sector, owner_id, profiles!owner_id(full_name, business_name)")
+      .select("id, name, stage, sector, owner_id, drive_link, profiles!owner_id(full_name, business_name)")
       .eq("is_active", true)
-      .neq("owner_id", user.id)
+      .in("owner_id", matchedOwnerIds)
       .order("created_at", { ascending: false });
 
     if (projectsError) {
@@ -48,6 +68,7 @@ export async function GET() {
     const rows: InvestorProjectRow[] = (projects ?? []).map((p) => {
       const owner = p.profiles as { full_name?: string | null; business_name?: string | null } | null;
       const req = requestByOwner.get(p.owner_id);
+      const status = (req?.status as InvestorProjectRow["access_status"]) ?? "none";
       return {
         project_id: p.id,
         project_name: p.name,
@@ -55,8 +76,9 @@ export async function GET() {
         sector: p.sector,
         owner_id: p.owner_id,
         owner_name: owner?.full_name ?? owner?.business_name ?? "Unnamed startup",
-        access_status: (req?.status as InvestorProjectRow["access_status"]) ?? "none",
+        access_status: status,
         access_request_id: req?.id ?? null,
+        drive_link: status === "approved" ? (p.drive_link ?? null) : null,
       };
     });
 

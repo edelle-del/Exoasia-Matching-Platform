@@ -16,13 +16,26 @@ export async function GET(
     }
 
     const { id } = await params;
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("projects")
       .select(
-        "id, owner_id, name, description, stage, sector, venture_readiness_report, is_active, created_at, updated_at",
+        "id, owner_id, name, description, stage, sector, venture_readiness_report, drive_link, is_active, created_at, updated_at",
       )
       .eq("id", id)
       .single();
+
+    // drive_link column may not exist yet (migration pending) — retry without it
+    if (error?.message?.includes("drive_link")) {
+      const retry = await supabase
+        .from("projects")
+        .select(
+          "id, owner_id, name, description, stage, sector, venture_readiness_report, is_active, created_at, updated_at",
+        )
+        .eq("id", id)
+        .single();
+      data = retry.data ? { ...retry.data, drive_link: null } : null;
+      error = retry.error;
+    }
 
     if (error || !data)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -56,6 +69,7 @@ export async function PATCH(
       stage?: string;
       sector?: string;
       venture_readiness_report?: unknown;
+      drive_link?: string | null;
       is_active?: boolean;
     };
 
@@ -76,12 +90,24 @@ export async function PATCH(
     if (body.sector !== undefined) updates.sector = body.sector;
     if (body.venture_readiness_report !== undefined)
       updates.venture_readiness_report = body.venture_readiness_report;
+    if (body.drive_link !== undefined) updates.drive_link = body.drive_link ?? null;
     if (body.is_active !== undefined) updates.is_active = body.is_active;
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from("projects")
       .update(updates)
       .eq("id", id);
+
+    // drive_link column may not exist yet — retry without it
+    if (error?.message?.includes("drive_link")) {
+      const { drive_link: _omit, ...updatesWithoutDriveLink } = updates;
+      const retry = await supabase
+        .from("projects")
+        .update(updatesWithoutDriveLink)
+        .eq("id", id);
+      error = retry.error;
+    }
+
     if (error)
       return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });

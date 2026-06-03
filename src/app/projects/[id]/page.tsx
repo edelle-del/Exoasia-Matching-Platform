@@ -508,7 +508,7 @@ export default function ProjectDetailPage({
   const handleDelete = async () => {
     if (!window.confirm("Archive this project?")) return;
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    router.push("/projects");
+    router.push("/matches");
   };
 
   const handleReportReparseClick = () => {
@@ -789,7 +789,7 @@ export default function ProjectDetailPage({
           <div className="flex items-start justify-between gap-4">
             <div>
               <Link
-                href="/projects"
+                href="/matches"
                 className="text-sm text-(--color-primary) hover:underline"
               >
                 ← Back to projects

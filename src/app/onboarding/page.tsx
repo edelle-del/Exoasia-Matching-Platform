@@ -859,7 +859,7 @@ export default function OnboardingForm() {
   const isAdminView = ["advisor", "admin"].includes(role ?? "");
   const [step, setStep] = useState<"role" | "profile" | "startup">("role");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<string[]>([]);
   const [success, setSuccess] = useState("");
   const [projectForm, setProjectForm] = useState({
     name: "",
@@ -1004,12 +1004,12 @@ export default function OnboardingForm() {
 
   const set = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    setError("");
+    setErrors([]);
   };
 
   const setArr = (field: keyof ExtendedFields, value: string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    setError("");
+    setErrors([]);
   };
 
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -1229,6 +1229,19 @@ export default function OnboardingForm() {
     }
   };
 
+  const showLpFields = form.investment_interests.some(
+    (i) => i.includes("Funds") || i.includes("Fund Manager"),
+  );
+  const showAnpBadge =
+    form.investor_type === "Angel Networks" ||
+    form.entity_class.includes("Angel");
+
+  useEffect(() => {
+    if (showAnpBadge) {
+      setForm((prev) => ({ ...prev, anp_affiliated: true }));
+    }
+  }, [showAnpBadge]);
+
   const confirmRoleSelect = () => {
     if (!pendingRole) return;
     setForm((prev) => ({
@@ -1236,7 +1249,7 @@ export default function OnboardingForm() {
       member_role: pendingRole,
       ...EMPTY_EXTENDED,
     }));
-    setError("");
+    setErrors([]);
     setPendingRole(null);
     setRoleAgreeChecked(false);
     setStep("profile");
@@ -1245,92 +1258,74 @@ export default function OnboardingForm() {
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setErrors([]);
     setSuccess("");
 
-    if (!form.first_name.trim()) return fail("First name is required.");
-    if (!form.last_name.trim()) return fail("Last name is required.");
-    if (!form.business_name.trim()) return fail("Business name is required.");
-    if (!form.sector) return fail("Please choose a sector.");
+    const errs: string[] = [];
+
+    if (!form.first_name.trim()) errs.push("First name is required.");
+    if (!form.last_name.trim()) errs.push("Last name is required.");
+    if (!form.business_name.trim()) errs.push("Business name is required.");
+    if (!form.sector) errs.push("Please choose a sector.");
     if (!form.how_heard_about)
-      return fail("Please tell us how you heard about FOUNDERS ARENA.");
-    if (
-      form.how_heard_about === "Referred by a member" &&
-      !form.referred_by.trim()
-    )
-      return fail("Please add the name of the person who referred you.");
-    if (!form.phone_whatsapp.trim())
-      return fail("Phone Number / WhatsApp is required.");
-    if (!form.years_in_operation)
-      return fail("Please select your years in operation.");
-    if (!form.employee_band) return fail("Please select your employee band.");
-    if (!form.annual_revenue_estimate)
-      return fail("Please select your annual revenue range.");
-    if (!form.role_title.trim()) return fail("Role / title is required.");
-    if (!form.city.trim()) return fail("City is required.");
-    if (!form.short_bio.trim()) return fail("Short bio is required.");
-    if (!form.linkedin_url.trim())
-      return fail("LinkedIn profile URL is required.");
-    if (!isAdminView && !form.member_role)
-      return fail("Please select your role.");
+      errs.push("Please tell us how you heard about FOUNDERS ARENA.");
+    if (form.how_heard_about === "Referred by a member" && !form.referred_by.trim())
+      errs.push("Please add the name of the person who referred you.");
+    if (!form.phone_whatsapp.trim()) errs.push("Phone Number / WhatsApp is required.");
+    if (!form.years_in_operation) errs.push("Years in operation is required.");
+    if (!form.employee_band) errs.push("Employee band is required.");
+    if (!form.annual_revenue_estimate) errs.push("Annual revenue range is required.");
+    if (!form.role_title.trim()) errs.push("Role / title is required.");
+    if (!form.city.trim()) errs.push("City is required.");
+    if (!form.short_bio.trim()) errs.push("Short bio is required.");
+    if (!form.linkedin_url.trim()) errs.push("LinkedIn profile URL is required.");
+    if (!isAdminView && !form.member_role) errs.push("Please select your role.");
 
     const investorHasFundInterests = form.investment_interests.some(
       (i) => i.includes("Funds") || i.includes("Fund Manager"),
     );
 
     if (!isAdminView && form.member_role === "investor") {
-      if (!form.investor_type) return fail("Please select your investor type.");
-      if (!form.entity_class.length)
-        return fail("Please select at least one entity class.");
-      if (!form.investment_interests.length)
-        return fail("Please select at least one investment interest.");
-      if (!form.target_regions.length)
-        return fail("Please select at least one target region.");
-      if (!form.target_industries.length)
-        return fail("Please select at least one target industry.");
-      if (!form.target_stages.length)
-        return fail("Please select a target stage.");
+      if (!form.investor_type) errs.push("Investor type is required.");
+      if (!form.entity_class.length) errs.push("Please select at least one entity class.");
+      if (!form.investment_interests.length) errs.push("Please select at least one investment interest.");
+      if (!form.target_regions.length) errs.push("Please select at least one target region.");
+      if (!form.target_industries.length) errs.push("Please select at least one target industry.");
+      if (!form.target_stages.length) errs.push("Please select at least one target stage.");
       if (investorHasFundInterests) {
-        if (!form.lp_check_min.trim())
-          return fail("Please enter a minimum LP investment check size.");
-        if (!form.lp_check_max.trim())
-          return fail("Please enter a maximum LP investment check size.");
+        if (!form.lp_check_min.trim()) errs.push("Minimum LP investment check size is required.");
+        if (!form.lp_check_max.trim()) errs.push("Maximum LP investment check size is required.");
       }
-      if (!form.direct_check_min.trim())
-        return fail("Please enter a minimum direct startup check size.");
-      if (!form.direct_check_max.trim())
-        return fail("Please enter a maximum direct startup check size.");
+      if (!form.direct_check_min.trim()) errs.push("Minimum direct startup check size is required.");
+      if (!form.direct_check_max.trim()) errs.push("Maximum direct startup check size is required.");
       if (!form.referral_1_name.trim() || !form.referral_1_contact.trim())
-        return fail("Reference 1 name and contact are required.");
+        errs.push("Reference 1: name and contact are required.");
       if (!form.referral_2_name.trim() || !form.referral_2_contact.trim())
-        return fail("Reference 2 name and contact are required.");
+        errs.push("Reference 2: name and contact are required.");
       if (!form.referral_3_name.trim() || !form.referral_3_contact.trim())
-        return fail("Reference 3 name and contact are required.");
+        errs.push("Reference 3: name and contact are required.");
     }
 
     if (!isAdminView && form.member_role === "ecosystem_partner") {
-      if (!form.support_types.length)
-        return fail("Please select your organization type.");
-      if (!form.target_industries.length)
-        return fail("Please select at least one target industry.");
-      if (!form.target_regions.length)
-        return fail("Please select at least one target region.");
+      if (!form.support_types.length) errs.push("Please select your organization type.");
+      if (!form.target_industries.length) errs.push("Please select at least one target industry.");
+      if (!form.target_regions.length) errs.push("Please select at least one target region.");
       if (!form.referral_1_name.trim() || !form.referral_1_contact.trim())
-        return fail("Reference 1 name and contact are required.");
+        errs.push("Reference 1: name and contact are required.");
       if (!form.referral_2_name.trim() || !form.referral_2_contact.trim())
-        return fail("Reference 2 name and contact are required.");
+        errs.push("Reference 2: name and contact are required.");
       if (!form.referral_3_name.trim() || !form.referral_3_contact.trim())
-        return fail("Reference 3 name and contact are required.");
+        errs.push("Reference 3: name and contact are required.");
     }
 
     if (!form.pdpa_matching_consent)
-      return fail("You must agree to the data privacy consent to continue.");
+      errs.push("You must agree to the data privacy consent to continue.");
 
-    function fail(msg: string) {
-      setError(msg);
+    if (errs.length > 0) {
+      setErrors(errs);
       setLoading(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      return undefined as never;
+      return;
     }
 
     try {
@@ -1455,7 +1450,7 @@ export default function OnboardingForm() {
         setTimeout(() => router.push("/dashboard"), 900);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Save failed.");
+      setErrors([err instanceof Error ? err.message : "Save failed."]);
     } finally {
       setLoading(false);
     }
@@ -1912,19 +1907,6 @@ export default function OnboardingForm() {
     );
   }
 
-  const showLpFields = form.investment_interests.some(
-    (i) => i.includes("Funds") || i.includes("Fund Manager"),
-  );
-  const showAnpBadge =
-    form.investor_type === "Angel Networks" ||
-    form.entity_class.includes("Angel");
-
-  useEffect(() => {
-    if (showAnpBadge) {
-      setForm((prev) => ({ ...prev, anp_affiliated: true }));
-    }
-  }, [showAnpBadge]);
-
   return (
     <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
@@ -1962,6 +1944,31 @@ export default function OnboardingForm() {
             </div>
           </div>
         )}
+        {errors.length > 0 && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500">
+                <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-red-800">
+                  Please complete the following required fields:
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {errors.map((e) => (
+                    <li key={e} className="flex items-start gap-2 text-sm text-red-700">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                      {e}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div>

@@ -53,22 +53,37 @@ export async function POST(
         { status: 400 },
       );
 
-    const body = (await req.json().catch(() => ({}))) as { message?: string };
+    const body = (await req.json().catch(() => ({}))) as {
+      message?: string;
+      requester_email?: string;
+    };
 
-    const { data, error } = await supabase
+    const record: Record<string, unknown> = {
+      requester_id: user.id,
+      owner_id: ownerId,
+      status: "pending",
+      message: body.message ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    if (body.requester_email) record.requester_email = body.requester_email.trim().toLowerCase();
+
+    let { data, error } = await supabase
       .from("data_room_access_requests")
-      .upsert(
-        {
-          requester_id: user.id,
-          owner_id: ownerId,
-          status: "pending",
-          message: body.message ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "requester_id,owner_id" },
-      )
+      .upsert(record, { onConflict: "requester_id,owner_id" })
       .select("id, status, created_at")
       .single();
+
+    // requester_email column may not exist yet — retry without it
+    if (error?.message?.includes("requester_email")) {
+      const { requester_email: _omit, ...recordWithout } = record;
+      const retry = await supabase
+        .from("data_room_access_requests")
+        .upsert(recordWithout, { onConflict: "requester_id,owner_id" })
+        .select("id, status, created_at")
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error)
       return NextResponse.json({ error: error.message }, { status: 500 });

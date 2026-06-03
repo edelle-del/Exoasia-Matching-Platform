@@ -20,11 +20,13 @@ type AccessRequest = {
   requester_id: string;
   status: string;
   message: string | null;
+  requester_email: string | null;
   created_at: string;
   requester: {
     full_name: string | null;
     business_name: string | null;
     member_role: string | null;
+    email: string | null;
   } | null;
 };
 
@@ -47,10 +49,13 @@ function StatusBadge({ status }: { status: InvestorProjectRow["access_status"] }
 
 // ─── Investor view ────────────────────────────────────────────────────────────
 
+type EmailFormState = { email: string; error: string };
+
 function InvestorDataRoom() {
   const [projects, setProjects] = useState<InvestorProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<Record<string, boolean>>({});
+  const [emailForms, setEmailForms] = useState<Record<string, EmailFormState>>({});
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -63,15 +68,37 @@ function InvestorDataRoom() {
       .catch(() => setLoading(false));
   }, []);
 
+  const openEmailForm = (projectId: string) => {
+    setEmailForms((prev) => ({ ...prev, [projectId]: { email: "", error: "" } }));
+  };
+
+  const closeEmailForm = (projectId: string) => {
+    setEmailForms((prev) => {
+      const next = { ...prev };
+      delete next[projectId];
+      return next;
+    });
+  };
+
   const handleRequest = async (ownerId: string, projectId: string) => {
+    const form = emailForms[projectId];
+    const email = form?.email.trim() ?? "";
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailForms((prev) => ({
+        ...prev,
+        [projectId]: { ...prev[projectId], error: "Please enter a valid email address." },
+      }));
+      return;
+    }
     setRequesting((prev) => ({ ...prev, [projectId]: true }));
     const res = await fetch(`/api/data-room/${ownerId}/request`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ requester_email: email }),
     });
     setRequesting((prev) => ({ ...prev, [projectId]: false }));
     if (res.ok) {
+      closeEmailForm(projectId);
       setProjects((prev) =>
         prev.map((p) =>
           p.owner_id === ownerId ? { ...p, access_status: "pending" } : p,
@@ -116,7 +143,7 @@ function InvestorDataRoom() {
           <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Data Room</p>
           <h1 className="mt-1 text-3xl font-semibold text-(--color-ink)">Data room</h1>
           <p className="mt-1 text-sm text-(--color-body)">
-            Browse all projects on the platform and request access to view each startup&apos;s documents.
+            Projects from startups you&apos;ve mutually matched with appear here. Request access to view their documents.
           </p>
         </div>
       </section>
@@ -136,7 +163,7 @@ function InvestorDataRoom() {
         </div>
 
         {projects.length === 0 ? (
-          <p className="text-sm text-(--color-muted)">No projects on the platform yet.</p>
+          <p className="text-sm text-(--color-muted)">No matched projects yet. Data rooms become available once you and a startup have both accepted a match.</p>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-(--color-muted)">No projects match your search.</p>
         ) : (
@@ -171,29 +198,78 @@ function InvestorDataRoom() {
 
                     <div className="mt-4">
                       {project.access_status === "approved" && (
-                        <Link
-                          href={`/data-room/${project.project_id}`}
-                          className="inline-flex items-center gap-1 text-sm font-semibold text-(--color-primary) hover:underline"
-                        >
-                          View files →
-                        </Link>
+                        project.drive_link ? (
+                          <a
+                            href={project.drive_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-primary) hover:underline"
+                          >
+                            Open Drive folder
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        ) : (
+                          <p className="text-xs text-(--color-muted) italic">Access approved — waiting for founder to share the folder.</p>
+                        )
                       )}
                       {project.access_status === "pending" && (
-                        <p className="text-xs text-amber-600">Awaiting startup approval</p>
+                        <p className="text-xs text-amber-600">Awaiting founder approval</p>
                       )}
                       {(project.access_status === "none" || project.access_status === "denied") && (
-                        <button
-                          type="button"
-                          disabled={requesting[project.project_id]}
-                          onClick={() => void handleRequest(project.owner_id, project.project_id)}
-                          className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                        >
-                          {requesting[project.project_id]
-                            ? "Requesting…"
-                            : project.access_status === "denied"
-                              ? "Request again"
-                              : "Request access"}
-                        </button>
+                        emailForms[project.project_id] ? (
+                          <div className="space-y-2">
+                            <p className="text-xs text-(--color-muted)">
+                              Enter the Google account email you want the founder to share the Drive folder with.
+                            </p>
+                            <input
+                              type="email"
+                              autoFocus
+                              placeholder="your@gmail.com"
+                              value={emailForms[project.project_id].email}
+                              onChange={(e) =>
+                                setEmailForms((prev) => ({
+                                  ...prev,
+                                  [project.project_id]: { email: e.target.value, error: "" },
+                                }))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void handleRequest(project.owner_id, project.project_id);
+                                if (e.key === "Escape") closeEmailForm(project.project_id);
+                              }}
+                              className="w-full rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-xs text-(--color-ink) outline-none focus:border-(--color-primary)"
+                            />
+                            {emailForms[project.project_id].error && (
+                              <p className="text-xs text-red-500">{emailForms[project.project_id].error}</p>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                disabled={requesting[project.project_id]}
+                                onClick={() => void handleRequest(project.owner_id, project.project_id)}
+                                className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                              >
+                                {requesting[project.project_id] ? "Sending…" : "Send request"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => closeEmailForm(project.project_id)}
+                                className="text-xs text-(--color-muted) hover:text-(--color-ink)"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openEmailForm(project.project_id)}
+                            className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+                          >
+                            {project.access_status === "denied" ? "Request again" : "Request access"}
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -324,34 +400,60 @@ function StartupDataRoom() {
           ) : (
             <div className="mt-4 space-y-3">
               {[...pendingRequests, ...resolvedRequests].map((req) => (
-                <div key={req.id} className="flex items-center justify-between gap-4 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-(--color-ink)">
-                      {req.requester?.full_name || req.requester?.business_name || "Unknown"}
-                    </p>
-                    <p className="text-xs text-(--color-muted)">
-                      {req.requester?.member_role ?? "Member"} · {new Date(req.created_at).toLocaleDateString()}
-                    </p>
-                    {req.message && (
-                      <p className="mt-1 text-xs italic text-(--color-body)">&ldquo;{req.message}&rdquo;</p>
-                    )}
+                <div key={req.id} className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-(--color-ink)">
+                        {req.requester?.full_name || req.requester?.business_name || "Unknown"}
+                      </p>
+                      <p className="text-xs text-(--color-muted)">
+                        {req.requester?.member_role ?? "Member"} · {new Date(req.created_at).toLocaleDateString()}
+                      </p>
+                      {req.message && (
+                        <p className="mt-1 text-xs italic text-(--color-body)">&ldquo;{req.message}&rdquo;</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {req.status !== "pending" && (
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${req.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
+                          {req.status === "approved" ? "Approved" : "Denied"}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {req.status === "pending" ? (
-                      <>
-                        <button type="button" disabled={respondingId === req.id} onClick={() => void handleRespond(req.id, "approved")} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                          Approve
-                        </button>
-                        <button type="button" disabled={respondingId === req.id} onClick={() => void handleRespond(req.id, "denied")} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50">
-                          Deny
-                        </button>
-                      </>
-                    ) : (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${req.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
-                        {req.status === "approved" ? "Approved" : "Denied"}
-                      </span>
-                    )}
-                  </div>
+
+                  {req.requester_email && (
+                    <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-3 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-0.5">Drive share email</p>
+                      <p className="text-sm font-medium text-(--color-ink) break-all">{req.requester_email}</p>
+                      {req.status === "pending" && (
+                        <p className="mt-1 text-xs text-(--color-muted)">
+                          Share your restricted Drive folder with this email, then mark as approved below.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {req.status === "pending" && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={respondingId === req.id}
+                        onClick={() => void handleRespond(req.id, "approved")}
+                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                      >
+                        {respondingId === req.id ? "Saving…" : "Mark as approved"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={respondingId === req.id}
+                        onClick={() => void handleRespond(req.id, "denied")}
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        Deny
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

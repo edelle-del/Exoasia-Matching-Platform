@@ -25,7 +25,9 @@
       "Bash(node -e ' *)",
       "Bash(node -e \"const p = require\\('pdf-parse'\\); console.log\\('type:', typeof p\\); const keys = Object.keys\\(p\\); console.log\\('keys:', keys\\); const PDFParse = p.PDFParse; console.log\\('PDFParse type:', typeof PDFParse\\); if \\(PDFParse\\) { const inst = new PDFParse\\(\\); console.log\\('instance methods:', Object.getOwnPropertyNames\\(Object.getPrototypeOf\\(inst\\)\\)\\); }\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Edelle Lumabi\\\\Documents\\\\exoasia\\\\Exoasia-Matching-Platform\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ]
   }
 }

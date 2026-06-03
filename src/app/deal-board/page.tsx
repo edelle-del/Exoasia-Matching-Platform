@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { fetchDealCards, touchDealCard } from "@/lib/app-data";
+import { fetchDealCards, fetchUserMatches, touchDealCard } from "@/lib/app-data";
 import { useAuth } from "../providers";
 
 const BOARD_COLUMNS = [
@@ -37,17 +37,69 @@ type DealCard = {
   blocker: string | null;
   close_reason_code: string | null;
   last_updated_at: string;
+  counterpart_name: string;
+};
+
+type ActiveIntro = {
+  id: string;
+  counterpart_name: string;
+  counterpart_sector: string | null;
+  fit_score: number | null;
+  status: "accepted" | "introduced";
 };
 
 export default function DealBoardPage() {
   const supabase = useMemo(() => createClient(), []);
   const { user } = useAuth();
   const [cards, setCards] = useState<DealCard[]>([]);
+  const [activeIntros, setActiveIntros] = useState<ActiveIntro[]>([]);
 
   const load = async () => {
     if (!user?.id) return;
-    const next = (await fetchDealCards(supabase, user.id)) as DealCard[];
+    const [next, rawMatches] = await Promise.all([
+      fetchDealCards(supabase, user.id) as Promise<DealCard[]>,
+      fetchUserMatches(supabase, user.id),
+    ]);
     setCards(next);
+
+    const intros = rawMatches.filter((m) =>
+      ["accepted", "introduced"].includes(m.status),
+    );
+
+    const cpIds = [...new Set(intros.map((m) =>
+      m.member_a_id === user.id ? m.member_b_id : m.member_a_id,
+    ))];
+
+    let nameMap = new Map<string, { name: string; sector: string | null }>();
+    if (cpIds.length > 0) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, business_name, sector")
+        .in("id", cpIds);
+      nameMap = new Map(
+        (data ?? []).map((p) => [
+          p.id,
+          {
+            name: p.business_name || p.full_name || "Verified member",
+            sector: p.sector ?? null,
+          },
+        ]),
+      );
+    }
+
+    setActiveIntros(
+      intros.map((m) => {
+        const cpId = m.member_a_id === user.id ? m.member_b_id : m.member_a_id;
+        const cp = nameMap.get(cpId);
+        return {
+          id: m.id,
+          counterpart_name: cp?.name ?? "Verified member",
+          counterpart_sector: cp?.sector ?? null,
+          fit_score: m.fit_score ?? null,
+          status: m.status as "accepted" | "introduced",
+        };
+      }),
+    );
   };
 
   useEffect(() => {
@@ -95,9 +147,57 @@ export default function DealBoardPage() {
                 {column.stage}
               </h2>
               <p className="mt-1 text-xs text-(--color-muted)">
-                {column.cards.length} cards
+                {column.stage === "Intro & Scoping" && activeIntros.length > 0
+                  ? `${activeIntros.length} intro${activeIntros.length !== 1 ? "s" : ""} · ${column.cards.length} card${column.cards.length !== 1 ? "s" : ""}`
+                  : `${column.cards.length} card${column.cards.length !== 1 ? "s" : ""}`}
               </p>
             </div>
+
+            {/* Active intros — only shown in Intro & Scoping */}
+            {column.stage === "Intro & Scoping" && activeIntros.length > 0 && (
+              <div className="border-b border-(--color-hairline) p-4 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-3">
+                  Active intros
+                </p>
+                {activeIntros.map((intro) => (
+                  <div
+                    key={intro.id}
+                    className="flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--color-canvas) text-xs font-bold text-(--color-ink)">
+                      {intro.counterpart_name.charAt(0)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-(--color-ink) truncate">
+                        {intro.counterpart_name}
+                      </p>
+                      {intro.counterpart_sector && (
+                        <p className="text-xs text-(--color-muted)">{intro.counterpart_sector}</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      {intro.fit_score != null && (
+                        <span className="text-xs font-bold text-(--color-primary)">
+                          {intro.fit_score}% fit
+                        </span>
+                      )}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${intro.status === "introduced" ? "bg-(--color-surface-soft) text-(--color-muted)" : "bg-(--color-primary)/20 text-(--color-primary)"}`}>
+                        {intro.status === "introduced" ? "Introduced" : "Accepted"}
+                      </span>
+                      <Link
+                        href={`/matches/${intro.id}`}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-(--color-canvas) text-(--color-muted) hover:text-(--color-primary) transition-colors"
+                        aria-label="View match details"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {column.cards.length === 0 ? (
               <div className="p-4">
@@ -126,6 +226,9 @@ export default function DealBoardPage() {
                           <h3 className="text-sm font-semibold text-(--color-ink)">
                             {card.title}
                           </h3>
+                          <p className="mt-0.5 text-xs text-(--color-muted)">
+                            with {card.counterpart_name}
+                          </p>
                           <p className="mt-1 text-xs text-(--color-body)">
                             Fit {card.fit_score ?? "-"} · {card.confidence}{" "}
                             confidence

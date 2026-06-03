@@ -535,7 +535,7 @@ export default function ProfilePage() {
                 Register a project
               </Link>
               <Link
-                href="/projects"
+                href="/matches"
                 className="inline-flex h-[46px] items-center justify-center whitespace-nowrap rounded-xl border border-(--color-hairline) px-4 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
               >
                 View projects

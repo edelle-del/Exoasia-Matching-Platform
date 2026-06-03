@@ -73,7 +73,7 @@ export async function POST(req: Request) {
             ...pair,
             fit_score: scoreRow?.fit_score ?? null,
             summary: scoreRow?.summary ?? null,
-            rationale: "Member-initiated intro from project match",
+            rationale: "Member-initiated connection from project match",
             status: "pending",
             member_a_status,
             member_b_status,

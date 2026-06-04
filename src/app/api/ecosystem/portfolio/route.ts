@@ -10,6 +10,7 @@ export type PortfolioProject = {
   description: string | null;
   best_fit_score: number | null;
   investor_match_count: number;
+  eco_fit_score: number | null;
 };
 
 export type PortfolioMatch = {
@@ -31,6 +32,7 @@ export type PortfolioCompany = {
   sector: string | null;
   stage: string | null;
   verification_status: string | null;
+  best_eco_fit_score: number | null;
   projects: PortfolioProject[];
   matches: PortfolioMatch[];
 };
@@ -199,12 +201,26 @@ export async function GET() {
           .in("project_id", projectIds)
       : { data: [] };
 
-    // Group scores by project
+    // Group investor scores by project
     const scoresByProject = new Map<string, number[]>();
     (allScores ?? []).forEach((s) => {
       const arr = scoresByProject.get(s.project_id) ?? [];
       arr.push(s.fit_score);
       scoresByProject.set(s.project_id, arr);
+    });
+
+    // 4b. Fetch eco mandate-fit scores for this partner
+    const { data: ecoScores } = projectIds.length > 0
+      ? await admin
+          .from("ecosystem_match_scores")
+          .select("project_id, fit_score")
+          .eq("eco_partner_profile_id", user.id)
+          .in("project_id", projectIds)
+      : { data: [] };
+
+    const ecoScoreByProject = new Map<string, number>();
+    (ecoScores ?? []).forEach((s) => {
+      ecoScoreByProject.set(s.project_id, s.fit_score);
     });
 
     // 5. Fetch matches for all startups
@@ -264,6 +280,7 @@ export async function GET() {
           description: p.description ?? null,
           best_fit_score: scores.length > 0 ? Math.max(...scores) : null,
           investor_match_count: scores.length,
+          eco_fit_score: ecoScoreByProject.get(p.id) ?? null,
         };
       });
 
@@ -290,6 +307,8 @@ export async function GET() {
         };
       });
 
+      const ecoScores = projects.map((p) => p.eco_fit_score).filter((s): s is number => s !== null);
+
       return {
         startup_id: row.startup_id,
         portfolio_entry_id: row.id,
@@ -299,6 +318,7 @@ export async function GET() {
         sector: prof?.sector ?? null,
         stage: prof?.stage ?? null,
         verification_status: prof?.verification_status ?? null,
+        best_eco_fit_score: ecoScores.length > 0 ? Math.max(...ecoScores) : null,
         projects,
         matches,
       };

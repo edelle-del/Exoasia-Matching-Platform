@@ -5,10 +5,12 @@ import { useAuth } from "../providers";
 import { PortfolioOverview } from "./_components/PortfolioOverview";
 import { CoPilotKanban }   from "./_components/CoPilotKanban";
 import { NominateModal }    from "./_components/NominateModal";
+import { DiscoverView }     from "./_components/DiscoverView";
 import type { PortfolioCompany, PortfolioResponse } from "@/app/api/ecosystem/portfolio/route";
+import type { DiscoverProject } from "@/app/api/ecosystem/discover/route";
 import Link from "next/link";
 
-type View = "portfolio" | "kanban" | "deep-dive";
+type View = "portfolio" | "kanban" | "discover" | "deep-dive";
 
 // ─── Company deep-dive panel ──────────────────────────────────────────────────
 
@@ -184,13 +186,16 @@ function NavTab({ label, active, onClick, badge }: {
 
 export default function EcosystemPage() {
   const { user } = useAuth();
-  const [view, setView]                 = useState<View>("portfolio");
-  const [isLoading, setIsLoading]       = useState(true);
-  const [data, setData]                 = useState<PortfolioResponse | null>(null);
-  const [selectedId, setSelectedId]     = useState<string | null>(null);
-  const [nominateOpen, setNominateOpen] = useState(false);
-  const [reloadKey, setReloadKey]       = useState(0);
-  const [forbidden, setForbidden]       = useState(false);
+  const [view, setView]                   = useState<View>("portfolio");
+  const [isLoading, setIsLoading]         = useState(true);
+  const [data, setData]                   = useState<PortfolioResponse | null>(null);
+  const [selectedId, setSelectedId]       = useState<string | null>(null);
+  const [nominateOpen, setNominateOpen]   = useState(false);
+  const [reloadKey, setReloadKey]         = useState(0);
+  const [forbidden, setForbidden]         = useState(false);
+  const [discoverProjects, setDiscoverProjects] = useState<DiscoverProject[]>([]);
+  const [discoverLoading, setDiscoverLoading]   = useState(false);
+  const [addingToPortfolio, setAddingToPortfolio] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user?.id) return;
@@ -205,6 +210,37 @@ export default function EcosystemPage() {
       })
       .catch(() => setIsLoading(false));
   }, [user?.id, reloadKey]);
+
+  useEffect(() => {
+    if (view !== "discover") return;
+    setDiscoverLoading(true);
+    fetch("/api/ecosystem/discover")
+      .then((r) => r.json())
+      .then((json: { projects?: DiscoverProject[] }) => {
+        setDiscoverProjects(json.projects ?? []);
+        setDiscoverLoading(false);
+      })
+      .catch(() => setDiscoverLoading(false));
+  }, [view, reloadKey]);
+
+  const handleAddToPortfolio = async (ownerId: string) => {
+    setAddingToPortfolio((prev) => ({ ...prev, [ownerId]: true }));
+    try {
+      const res = await fetch("/api/ecosystem/portfolio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startup_id: ownerId }),
+      });
+      if (res.ok) {
+        setDiscoverProjects((prev) =>
+          prev.map((p) => p.owner_id === ownerId ? { ...p, already_in_portfolio: true } : p),
+        );
+        setReloadKey((k) => k + 1);
+      }
+    } finally {
+      setAddingToPortfolio((prev) => ({ ...prev, [ownerId]: false }));
+    }
+  };
 
   if (forbidden) {
     return (
@@ -241,8 +277,8 @@ export default function EcosystemPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Ecosystem Partner</p>
-            <h1 className="mt-1 text-2xl font-extrabold text-[#F4F4FF]">Deal Flow Command Center</h1>
-            <p className="mt-1 text-sm text-[#8B8BA7]">Portfolio pipeline · Demo Day nominations · Year-round deal flow</p>
+            <h1 className="mt-1 text-2xl font-extrabold text-[#F4F4FF]">Portfolio</h1>
+            <p className="mt-1 text-sm text-[#8B8BA7]">Portfolio pipeline · Invite startups · Year-round deal flow</p>
           </div>
           <button
             type="button"
@@ -252,7 +288,7 @@ export default function EcosystemPage() {
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nominate for Demo Day
+            Invite Startup
           </button>
         </div>
 
@@ -260,7 +296,8 @@ export default function EcosystemPage() {
         {!selectedCompany && (
           <div className="flex items-center gap-1 rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-1.5">
             <NavTab label="Portfolio Overview" active={view === "portfolio"} onClick={() => setView("portfolio")} />
-            <NavTab label="Co-Pilot Kanban"    active={view === "kanban"}    onClick={() => setView("kanban")}    badge={staleTotal} />
+            <NavTab label="Discover"           active={view === "discover"}  onClick={() => setView("discover")} />
+            <NavTab label="Deal Board"         active={view === "kanban"}    onClick={() => setView("kanban")}   badge={staleTotal} />
           </div>
         )}
 
@@ -274,6 +311,13 @@ export default function EcosystemPage() {
             isLoading={isLoading}
             onSelectCompany={handleSelectCompany}
             onNominate={() => setNominateOpen(true)}
+          />
+        ) : view === "discover" ? (
+          <DiscoverView
+            projects={discoverProjects}
+            isLoading={discoverLoading}
+            adding={addingToPortfolio}
+            onAdd={handleAddToPortfolio}
           />
         ) : (
           <CoPilotKanban

@@ -59,7 +59,7 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nominate for Demo Day
+            Invite Startup
           </button>
         </div>
 
@@ -72,13 +72,13 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
         ) : companies.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm font-semibold text-[#F4F4FF]">No portfolio companies yet</p>
-            <p className="mt-1 text-xs text-[#8B8BA7]">Nominate a portfolio company for Demo Day to begin tracking their pipeline.</p>
+            <p className="mt-1 text-xs text-[#8B8BA7]">Invite a startup to the platform to begin tracking their pipeline.</p>
             <button
               type="button"
               onClick={onNominate}
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-violet-700"
             >
-              Nominate for Demo Day →
+              Invite Startup →
             </button>
           </div>
         ) : (
@@ -109,6 +109,9 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
                       <p className="text-sm font-semibold text-[#F4F4FF]">{name}</p>
                       {company.verification_status === "verified" && (
                         <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-400">Verified</span>
+                      )}
+                      {company.status === "pending" && (
+                        <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-bold text-amber-400">Awaiting acceptance</span>
                       )}
                       {stale > 0 && (
                         <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[9px] font-bold text-rose-400">

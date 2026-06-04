@@ -136,7 +136,7 @@ export function CoPilotKanban({ companies, isLoading, onSelectCompany }: Props) 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <p className="text-sm font-bold text-[#F4F4FF]">Co-Pilot Kanban</p>
+          <p className="text-sm font-bold text-[#F4F4FF]">Deal Board</p>
           {staleTotal > 0 && (
             <span className="flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-xs font-bold text-rose-400">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />

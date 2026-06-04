@@ -354,7 +354,7 @@ export function PartnerPortfolioCard() {
               />
             </svg>
           </div>
-          <p className="text-xs font-bold text-[#F4F4FF]">Co-Pilot Kanban</p>
+          <p className="text-xs font-bold text-[#F4F4FF]">Deal Board</p>
           <p className="text-[10px] text-[#8B8BA7]">
             Live intro statuses, stale alerts
           </p>
@@ -366,7 +366,7 @@ export function PartnerPortfolioCard() {
         className="mt-auto flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 transition-colors hover:border-violet-500/50"
       >
         <p className="text-xs font-medium text-violet-300">
-          Nominate for Demo Day · Track mandate-matched deal flow
+          Invite startups to the platform · Track mandate-matched deal flow
         </p>
         <svg
           className="h-4 w-4 shrink-0 text-violet-400"

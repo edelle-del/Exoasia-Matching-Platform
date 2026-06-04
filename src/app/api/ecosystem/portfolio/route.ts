@@ -53,6 +53,82 @@ function isStale(dateStr: string) {
   return (Date.now() - new Date(dateStr).getTime()) > STALE_DAYS * 86_400_000;
 }
 
+export async function POST(request: Request) {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("member_role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.member_role !== "ecosystem_partner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { startup_id } = (await request.json().catch(() => ({}))) as { startup_id?: string };
+    if (!startup_id) {
+      return NextResponse.json({ error: "startup_id is required" }, { status: 400 });
+    }
+
+    // Verify the target is a startup
+    const { data: targetProfile } = await admin
+      .from("profiles")
+      .select("id, member_role")
+      .eq("id", startup_id)
+      .single();
+
+    if (!targetProfile || targetProfile.member_role !== "startup") {
+      return NextResponse.json({ error: "Startup not found" }, { status: 404 });
+    }
+
+    const { error: insertError } = await admin
+      .from("portfolio_companies")
+      .insert({ partner_id: user.id, startup_id, status: "pending" });
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        const { data: existing } = await admin
+          .from("portfolio_companies")
+          .select("id, status")
+          .eq("partner_id", user.id)
+          .eq("startup_id", startup_id)
+          .single();
+
+        if (existing?.status === "pending") {
+          return NextResponse.json({ error: "Invitation already pending" }, { status: 409 });
+        }
+        if (existing?.status === "active") {
+          return NextResponse.json({ error: "Already in your portfolio" }, { status: 409 });
+        }
+
+        const { error: updateError } = await admin
+          .from("portfolio_companies")
+          .update({ status: "pending", nominated_at: new Date().toISOString() })
+          .eq("id", existing!.id);
+
+        if (updateError) throw updateError;
+        return NextResponse.json({ ok: true, status: "pending" });
+      }
+      throw insertError;
+    }
+
+    return NextResponse.json({ ok: true, status: "pending" });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -79,7 +155,7 @@ export async function GET() {
       .from("portfolio_companies")
       .select("id, startup_id, status")
       .eq("partner_id", user.id)
-      .eq("status", "active");
+      .in("status", ["active", "pending"]);
 
     if (!portfolioRows || portfolioRows.length === 0) {
       return NextResponse.json({

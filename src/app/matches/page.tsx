@@ -12,6 +12,7 @@ import {
   type ProjectRecord,
 } from "@/lib/app-data";
 import PieScore from "@/components/PieScore";
+import type { PortfolioInvite } from "@/app/api/ecosystem/portfolio-invites/route";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -117,6 +118,8 @@ export default function MatchesPage() {
   const [matches, setMatches] = useState<MatchRow[]>([]);
   const [respondingMatchId, setRespondingMatchId] = useState<string | null>(null);
   const [introRequests, setIntroRequests] = useState<Map<string, "requesting" | "done">>(new Map());
+  const [portfolioInvites, setPortfolioInvites] = useState<PortfolioInvite[]>([]);
+  const [respondingInviteId, setRespondingInviteId] = useState<string | null>(null);
 
   // Projects state (shared startup + investor)
   const [projects, setProjects] = useState<(ProjectRecord & { owner_name?: string })[]>([]);
@@ -176,8 +179,12 @@ export default function MatchesPage() {
 
       // ── Startup ──────────────────────────────────────────────────────────────
       if (role === "startup") {
-        const userProjects = await fetchUserProjects(supabase, user.id);
+        const [userProjects, invitesRes] = await Promise.all([
+          fetchUserProjects(supabase, user.id),
+          fetch("/api/ecosystem/portfolio-invites").then((r) => r.json()),
+        ]);
         setProjects(userProjects);
+        setPortfolioInvites((invitesRes as { invites?: PortfolioInvite[] }).invites ?? []);
 
         if (userProjects.length > 0) {
           const { data: scores } = await supabase
@@ -218,6 +225,8 @@ export default function MatchesPage() {
           results.forEach((r) => { if (r.has) generated.add(r.id); });
           setGeneratedProjects(generated);
         }
+      } else {
+        setPortfolioInvites([]);
       }
 
       // ── Investor ─────────────────────────────────────────────────────────────
@@ -254,6 +263,20 @@ export default function MatchesPage() {
       if (res.ok) setReloadKey((k) => k + 1);
     } finally {
       setRespondingMatchId(null);
+    }
+  };
+
+  const handlePortfolioInviteRespond = async (inviteId: string, decision: "accepted" | "declined") => {
+    setRespondingInviteId(inviteId);
+    try {
+      const res = await fetch(`/api/ecosystem/portfolio-invites/${inviteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      if (res.ok) setReloadKey((k) => k + 1);
+    } finally {
+      setRespondingInviteId(null);
     }
   };
 
@@ -417,7 +440,7 @@ export default function MatchesPage() {
     const myStatus = m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
     return myStatus === "pending" && ["pending", "approved"].includes(m.status);
   });
-  const pendingCount = pendingMatches.length;
+  const pendingCount = pendingMatches.length + portfolioInvites.length;
 
   const top5Projects = useMemo(() => {
     if (!isInvestor) return [];
@@ -709,29 +732,92 @@ export default function MatchesPage() {
 
             {/* ── Requests tab ── */}
             {startupTab === "requests" && (
-              <section>
+              <section className="space-y-6">
                 {isLoading ? (
                   <div className="space-y-3">
                     {[...Array(2)].map((_, i) => (
                       <div key={i} className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
                     ))}
                   </div>
-                ) : pendingMatches.length === 0 ? (
+                ) : pendingMatches.length === 0 && portfolioInvites.length === 0 ? (
                   <div className="rounded-2xl border border-(--color-hairline) border-dashed bg-(--color-surface-soft) p-10 text-center">
                     <p className="text-sm font-semibold text-(--color-ink)">No pending requests</p>
                     <p className="mt-1 text-xs text-(--color-muted)">
-                      When an investor marks your project as Qualified, their request will appear here.
+                      When an investor marks your project as Qualified, or an ecosystem partner invites you to their portfolio, requests will appear here.
                     </p>
                   </div>
                 ) : (
-                  <MatchList
-                    matches={pendingMatches}
-                    userId={user?.id ?? ""}
-                    userRole={memberRole}
-                    onRespond={handleRespond}
-                    respondingId={respondingMatchId}
-                    subscriptionActive={true}
-                  />
+                  <>
+                    {portfolioInvites.length > 0 && (
+                      <div className="space-y-2.5">
+                        <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                          Portfolio invitations
+                        </h2>
+                        {portfolioInvites.map((invite) => {
+                          const isResponding = respondingInviteId === invite.id;
+                          return (
+                            <div
+                              key={invite.id}
+                              className="flex items-center gap-4 rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4"
+                            >
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-xs font-bold text-violet-400">
+                                {invite.partner_name.charAt(0)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-(--color-ink)">{invite.partner_name}</p>
+                                <p className="mt-0.5 text-xs text-(--color-muted)">
+                                  Invited you to join their ecosystem partner portfolio
+                                </p>
+                                <p className="mt-1 text-[10px] text-(--color-muted)">
+                                  {new Date(invite.nominated_at).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={isResponding}
+                                  onClick={() => void handlePortfolioInviteRespond(invite.id, "declined")}
+                                  className="rounded-lg border border-(--color-hairline) px-3 py-1.5 text-xs font-semibold text-(--color-muted) transition hover:border-rose-400/40 hover:text-rose-500 disabled:opacity-50"
+                                >
+                                  Decline
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isResponding}
+                                  onClick={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
+                                  className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                                >
+                                  {isResponding ? "…" : "Accept"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {pendingMatches.length > 0 && (
+                      <div className="space-y-2.5">
+                        {portfolioInvites.length > 0 && (
+                          <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+                            Intro requests
+                          </h2>
+                        )}
+                        <MatchList
+                          matches={pendingMatches}
+                          userId={user?.id ?? ""}
+                          userRole={memberRole}
+                          onRespond={handleRespond}
+                          respondingId={respondingMatchId}
+                          subscriptionActive={true}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             )}

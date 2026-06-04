@@ -1266,7 +1266,7 @@ export default function OnboardingForm() {
     if (!form.first_name.trim()) errs.push("First name is required.");
     if (!form.last_name.trim()) errs.push("Last name is required.");
     if (!form.business_name.trim()) errs.push("Business name is required.");
-    if (!form.sector) errs.push("Please choose a sector.");
+    if (!form.sector) errs.push("Please choose at least one sector.");
     if (!form.how_heard_about)
       errs.push("Please tell us how you heard about FOUNDERS ARENA.");
     if (form.how_heard_about === "Referred by a member" && !form.referred_by.trim())
@@ -2135,11 +2135,9 @@ export default function OnboardingForm() {
           <div>
             <p className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]">
               Sector{" "}
-              {(form.member_role === "investor" || form.member_role === "ecosystem_partner") && (
-                <span className="text-xs font-400 text-[var(--color-muted)]">
-                  (select all that apply)
-                </span>
-              )}{" "}
+              <span className="text-xs font-400 text-[var(--color-muted)]">
+                (select all that apply)
+              </span>{" "}
               <Req />
             </p>
             {form.sector && (
@@ -2152,24 +2150,17 @@ export default function OnboardingForm() {
             )}
             <div className="mt-2 flex flex-wrap gap-2">
               {sectorOptions.map((s) => {
-                const isMultiSector = form.member_role === "investor" || form.member_role === "ecosystem_partner";
-                const selected = isMultiSector
-                  ? form.sector.split(",").filter(Boolean).includes(s)
-                  : form.sector === s;
+                const selected = form.sector.split(",").filter(Boolean).includes(s);
                 return (
                   <button
                     key={s}
                     type="button"
                     onClick={() => {
-                      if (isMultiSector) {
-                        const current = form.sector.split(",").filter(Boolean);
-                        const updated = current.includes(s)
-                          ? current.filter((x) => x !== s)
-                          : [...current, s];
-                        set("sector", updated.join(","));
-                      } else {
-                        set("sector", form.sector === s ? "" : s);
-                      }
+                      const current = form.sector.split(",").filter(Boolean);
+                      const updated = current.includes(s)
+                        ? current.filter((x) => x !== s)
+                        : [...current, s];
+                      set("sector", updated.join(","));
                     }}
                     className={`rounded-full border px-3 py-1 text-xs font-500 transition-colors ${
                       selected

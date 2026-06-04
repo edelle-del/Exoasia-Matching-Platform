@@ -196,6 +196,7 @@ export default function EcosystemPage() {
   const [discoverProjects, setDiscoverProjects] = useState<DiscoverProject[]>([]);
   const [discoverLoading, setDiscoverLoading]   = useState(false);
   const [addingToPortfolio, setAddingToPortfolio] = useState<Record<string, boolean>>({});
+  const [scoringId, setScoringId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -222,6 +223,20 @@ export default function EcosystemPage() {
       })
       .catch(() => setDiscoverLoading(false));
   }, [view, reloadKey]);
+
+  const handleScoreCompany = async (startupId: string) => {
+    setScoringId(startupId);
+    try {
+      await fetch("/api/ecosystem/score-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startup_id: startupId }),
+      });
+      setReloadKey((k) => k + 1);
+    } finally {
+      setScoringId(null);
+    }
+  };
 
   const handleAddToPortfolio = async (ownerId: string) => {
     setAddingToPortfolio((prev) => ({ ...prev, [ownerId]: true }));
@@ -311,6 +326,8 @@ export default function EcosystemPage() {
             isLoading={isLoading}
             onSelectCompany={handleSelectCompany}
             onNominate={() => setNominateOpen(true)}
+            onScoreCompany={handleScoreCompany}
+            scoringId={scoringId}
           />
         ) : view === "discover" ? (
           <DiscoverView

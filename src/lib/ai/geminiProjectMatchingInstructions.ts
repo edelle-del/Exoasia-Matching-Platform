@@ -23,6 +23,12 @@ Return valid JSON only (no markdown fences), shaped as:
   "project_id": "the project id from input",
   "fit_score": 0,
   "summary": "short one-liner",
+  "category_scores": {
+    "sector_vertical": 0,
+    "stage_fit": 0,
+    "investment_thesis": 0,
+    "geographic_fit": 0
+  },
   "rationale": {
     "sector_alignment": "...",
     "stage_fit": "...",
@@ -33,6 +39,7 @@ Return valid JSON only (no markdown fences), shaped as:
 
 Additional constraints:
 - fit_score must be an integer between 0 and 100.
+- All category_scores must be integers between 0 and 100 and must independently reflect alignment on that dimension alone — do not anchor them to fit_score.
 - If investor data is sparse, score conservatively but still return a result.
 - project_id must be copied verbatim from the input.
 `;
@@ -108,6 +115,12 @@ Return valid JSON only (no markdown fences), shaped as:
       "investor_id": "profile uuid",
       "fit_score": 0,
       "summary": "short one-liner",
+      "category_scores": {
+        "sector_vertical": 0,
+        "stage_fit": 0,
+        "investment_thesis": 0,
+        "geographic_fit": 0
+      },
       "rationale": {
         "sector_alignment": "...",
         "stage_fit": "...",
@@ -121,5 +134,6 @@ Additional constraints:
 - Return at most 5 recommendations, ordered by fit_score descending.
 - Do not include investors with empty or missing profiles.
 - fit_score must be an integer between 0 and 100.
+- All category_scores must be integers between 0 and 100 and must independently reflect alignment on that dimension alone — do not anchor them to fit_score.
 - investor_id must be copied verbatim from the input array.
 `;

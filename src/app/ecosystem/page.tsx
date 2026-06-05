@@ -197,6 +197,11 @@ export default function EcosystemPage() {
   const [discoverLoading, setDiscoverLoading]   = useState(false);
   const [addingToPortfolio, setAddingToPortfolio] = useState<Record<string, boolean>>({});
   const [scoringId, setScoringId] = useState<string | null>(null);
+  const [scoringDiscover, setScoringDiscover] = useState<Record<string, boolean>>({});
+  const [discoverViewMode, setDiscoverViewMode] = useState<"all" | "top5">("all");
+  const [generatingTop5, setGeneratingTop5]     = useState(false);
+  const [top5Progress, setTop5Progress]         = useState(0);
+  const [top5Total, setTop5Total]               = useState(0);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -236,6 +241,49 @@ export default function EcosystemPage() {
     } finally {
       setScoringId(null);
     }
+  };
+
+  const handleScoreDiscover = async (ownerId: string) => {
+    setScoringDiscover((prev) => ({ ...prev, [ownerId]: true }));
+    try {
+      const res = await fetch("/api/ecosystem/score-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startup_id: ownerId }),
+      });
+      if (res.ok) {
+        const json = await fetch("/api/ecosystem/discover").then((r) => r.json()) as { projects?: DiscoverProject[] };
+        setDiscoverProjects(json.projects ?? []);
+      }
+    } finally {
+      setScoringDiscover((prev) => ({ ...prev, [ownerId]: false }));
+    }
+  };
+
+  const handleGetTop5Discover = async () => {
+    setGeneratingTop5(true);
+    setTop5Progress(0);
+    const unscored = discoverProjects.filter((p) => p.eco_score === null);
+    setTop5Total(unscored.length);
+    let done = 0;
+    await Promise.all(
+      unscored.map(async (p) => {
+        try {
+          await fetch("/api/ecosystem/score-company", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ startup_id: p.owner_id }),
+          });
+        } catch { /* skip */ } finally {
+          done += 1;
+          setTop5Progress(done);
+        }
+      }),
+    );
+    const json = await fetch("/api/ecosystem/discover").then((r) => r.json()) as { projects?: DiscoverProject[] };
+    setDiscoverProjects(json.projects ?? []);
+    setGeneratingTop5(false);
+    setDiscoverViewMode("top5");
   };
 
   const handleAddToPortfolio = async (ownerId: string) => {
@@ -334,7 +382,16 @@ export default function EcosystemPage() {
             projects={discoverProjects}
             isLoading={discoverLoading}
             adding={addingToPortfolio}
+            scoring={scoringDiscover}
+            viewMode={discoverViewMode}
+            onViewModeChange={setDiscoverViewMode}
+            generatingTop5={generatingTop5}
+            top5Progress={top5Progress}
+            top5Total={top5Total}
+            userId={user?.id ?? ""}
             onAdd={handleAddToPortfolio}
+            onScore={handleScoreDiscover}
+            onGetTop5={handleGetTop5Discover}
           />
         ) : (
           <CoPilotKanban

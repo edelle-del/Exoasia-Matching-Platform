@@ -123,6 +123,81 @@ const INVESTOR_TYPES = [
   "Multilateral / ASEAN Partners",
 ];
 
+// ─── Ask / Offer options per role ────────────────────────────────────────────
+
+const INVESTOR_ASKS = [
+  "Deal flow / Investment opportunities",
+  "Co-investment partners",
+  "LP introductions",
+  "Expert advisors",
+  "Board seat opportunities",
+  "Secondary market deals",
+  "Fund manager introductions",
+];
+
+const INVESTOR_OFFERS = [
+  "Capital / Funding",
+  "Strategic guidance",
+  "Network / Introductions",
+  "Industry expertise",
+  "Board support",
+  "Follow-on capital",
+  "Market access",
+  "Governance support",
+  "Operational support",
+];
+
+const STARTUP_ASKS = [
+  "Funding / Investment capital",
+  "Mentorship / Advisory",
+  "Strategic partnerships",
+  "Technical expertise",
+  "Legal / Compliance support",
+  "Marketing / PR support",
+  "Distribution / Sales networks",
+  "International expansion support",
+  "Talent / Recruitment",
+  "Business Development",
+  "Accounting / Finance support",
+  "Government relations",
+];
+
+const STARTUP_OFFERS = [
+  "Technology / Product",
+  "Market access",
+  "Co-founder opportunity",
+  "Advisory board seat",
+  "Revenue partnership",
+  "Pilot / Beta access",
+  "Strategic collaboration",
+  "IP / Patents",
+];
+
+const ECO_ASKS = [
+  "Deal flow / Investment pipeline",
+  "Startup applications",
+  "Partnership opportunities",
+  "Co-programme partners",
+  "Mentor networks",
+  "Corporate sponsors",
+];
+
+const ECO_OFFERS = [
+  "Mentorship / Advisory",
+  "Legal Advisory",
+  "Technical Support",
+  "Marketing / PR",
+  "Business Development",
+  "HR / Talent",
+  "Finance / Accounting",
+  "Industry Connections",
+  "Corporate Partnerships",
+  "Government Relations",
+  "Academic / Research",
+  "Community Building",
+  "Capital / Incubation / Acceleration",
+];
+
 const SUPPORT_TYPES = [
   "Mentorship / Advisory",
   "Legal Advisory",
@@ -893,6 +968,8 @@ export default function OnboardingForm() {
     additional_notes: "",
     offers_summary: "",
     linkedin_url: "",
+    ask_categories: [] as string[],
+    offer_categories: [] as string[],
     ...EMPTY_EXTENDED,
   });
 
@@ -912,7 +989,7 @@ export default function OnboardingForm() {
         const { data: profile } = await supabase
           .from("profiles")
           .select(
-            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,member_role,asks_summary,offers_summary,pdpa_matching_consent,additional_notes,linkedin_url",
+            "full_name,business_name,role_title,city,short_bio,how_heard_about,referred_by,phone_whatsapp,years_in_operation,sector,employee_band,annual_revenue_estimate,member_role,asks_summary,offers_summary,ask_categories,offer_categories,pdpa_matching_consent,additional_notes,linkedin_url",
           )
           .eq("id", userId)
           .single();
@@ -965,6 +1042,8 @@ export default function OnboardingForm() {
             additional_notes: profile.additional_notes ?? prev.additional_notes,
             offers_summary: profile.offers_summary ?? prev.offers_summary,
             linkedin_url: (profile as any).linkedin_url ?? prev.linkedin_url,
+            ask_categories: (profile as any).ask_categories ?? prev.ask_categories,
+            offer_categories: (profile as any).offer_categories ?? prev.offer_categories,
             ...extended,
             referral_1_name: refs[0]?.name ?? "",
             referral_1_contact: refs[0]?.contact ?? "",
@@ -1009,6 +1088,17 @@ export default function OnboardingForm() {
 
   const setArr = (field: keyof ExtendedFields, value: string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors([]);
+  };
+
+  const toggleAskOffer = (field: "ask_categories" | "offer_categories", item: string) => {
+    setForm((prev) => {
+      const current = prev[field] as string[];
+      return {
+        ...prev,
+        [field]: current.includes(item) ? current.filter((x) => x !== item) : [...current, item],
+      };
+    });
     setErrors([]);
   };
 
@@ -1244,9 +1334,21 @@ export default function OnboardingForm() {
 
   const confirmRoleSelect = () => {
     if (!pendingRole) return;
+    const defaultAsks =
+      pendingRole === "investor"         ? ["Deal flow / Investment opportunities"]
+      : pendingRole === "startup"        ? ["Funding / Investment capital"]
+      : pendingRole === "ecosystem_partner" ? ["Deal flow / Investment pipeline"]
+      : [];
+    const defaultOffers =
+      pendingRole === "investor"         ? ["Capital / Funding"]
+      : pendingRole === "startup"        ? ["Technology / Product"]
+      : pendingRole === "ecosystem_partner" ? ["Capital / Incubation / Acceleration"]
+      : [];
     setForm((prev) => ({
       ...prev,
       member_role: pendingRole,
+      ask_categories: defaultAsks,
+      offer_categories: defaultOffers,
       ...EMPTY_EXTENDED,
     }));
     setErrors([]);
@@ -1329,25 +1431,22 @@ export default function OnboardingForm() {
     }
 
     try {
-      const ask_categories =
-        form.member_role === "investor"
-          ? ["Deal flow / Investment opportunities"]
-          : form.member_role === "startup"
-            ? ["Funding / Investment capital"]
-            : form.member_role === "ecosystem_partner"
-              ? ["Deal flow / Investment pipeline"]
-              : ["General networking"];
+      // Use user-selected ask/offer categories; fall back to role defaults only if empty.
+      const defaultAsks =
+        form.member_role === "investor"         ? ["Deal flow / Investment opportunities"]
+        : form.member_role === "startup"        ? ["Funding / Investment capital"]
+        : form.member_role === "ecosystem_partner" ? ["Deal flow / Investment pipeline"]
+        : ["General networking"];
 
-      const offer_categories =
-        form.member_role === "investor"
-          ? ["Capital / Funding"]
-          : form.member_role === "startup"
-            ? ["Technology / Product"]
-            : form.member_role === "ecosystem_partner"
-              ? form.support_types.length
-                ? form.support_types
-                : ["Capital / Incubation / Acceleration"]
-              : ["Industry expertise"];
+      const defaultOffers =
+        form.member_role === "investor"         ? ["Capital / Funding"]
+        : form.member_role === "startup"        ? ["Technology / Product"]
+        : form.member_role === "ecosystem_partner"
+          ? (form.support_types.length ? form.support_types : ["Capital / Incubation / Acceleration"])
+        : ["Industry expertise"];
+
+      const ask_categories   = form.ask_categories.length   > 0 ? form.ask_categories   : defaultAsks;
+      const offer_categories = form.offer_categories.length > 0 ? form.offer_categories : defaultOffers;
 
       // Startup extended fields are collected in the dedicated "startup" step
       const extendedPayload =
@@ -2348,6 +2447,52 @@ export default function OnboardingForm() {
                 )}
               </div>
 
+              {/* ─── Startup Ask & Offer ───────────────────────────────────── */}
+              {form.member_role === "startup" && (
+                <SectionCard
+                  label="Ask &amp; Offer"
+                  description="Tell us what your startup needs and what it brings. This directly powers Investment Thesis matching with investors and ecosystem partners."
+                >
+                  <Field label="What are you looking for?">
+                    <p className="mb-2 text-xs text-[var(--color-muted)]">Select everything that applies.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {STARTUP_ASKS.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => toggleAskOffer("ask_categories", item)}
+                          className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                            form.ask_categories.includes(item)
+                              ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                              : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  <Field label="What does your startup offer to partners?">
+                    <div className="flex flex-wrap gap-2">
+                      {STARTUP_OFFERS.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => toggleAskOffer("offer_categories", item)}
+                          className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                            form.offer_categories.includes(item)
+                              ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                              : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                </SectionCard>
+              )}
+
               {/* ─── Investor sections ─────────────────────────────────────── */}
               {form.member_role === "investor" && (
                 <div className="space-y-4">
@@ -2450,7 +2595,50 @@ export default function OnboardingForm() {
                   </SectionCard>
 
                   <SectionCard
-                    label="Section C — Financials"
+                    label="Section C — Ask &amp; Offer"
+                    description="Tell us what you're looking for and what you bring to the table. This directly powers Investment Thesis matching."
+                  >
+                    <Field label="What are you looking for?">
+                      <p className="mb-2 text-xs text-[var(--color-muted)]">Select everything that applies — used for ask/offer compatibility scoring.</p>
+                      <div className="flex flex-wrap gap-2">
+                        {INVESTOR_ASKS.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => toggleAskOffer("ask_categories", item)}
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                              form.ask_categories.includes(item)
+                                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                                : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                    <Field label="What do you offer to startups?">
+                      <div className="flex flex-wrap gap-2">
+                        {INVESTOR_OFFERS.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => toggleAskOffer("offer_categories", item)}
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                              form.offer_categories.includes(item)
+                                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                                : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </SectionCard>
+
+                  <SectionCard
+                    label="Section D — Financials"
                     description="Approximate check sizes in USD. Used for matching precision only."
                   >
                     {showLpFields && (
@@ -2474,7 +2662,7 @@ export default function OnboardingForm() {
                   </SectionCard>
 
                   <SectionCard
-                    label="Section D — References"
+                    label="Section E — References"
                     description="Provide 3 people who can verify your role as an investor. All fields required."
                   >
                     {([1, 2, 3] as const).map((n) => (
@@ -2588,7 +2776,50 @@ export default function OnboardingForm() {
                   </SectionCard>
 
                   <SectionCard
-                    label="Section B — References"
+                    label="Section B — Ask &amp; Offer"
+                    description="Tell us what your organisation is looking for and what it offers to startups. This powers mandate-fit scoring."
+                  >
+                    <Field label="What are you looking for?">
+                      <div className="flex flex-wrap gap-2">
+                        {ECO_ASKS.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => toggleAskOffer("ask_categories", item)}
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                              form.ask_categories.includes(item)
+                                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                                : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                    <Field label="What do you offer to startups?">
+                      <p className="mb-2 text-xs text-[var(--color-muted)]">Your support types above are included automatically — add anything extra here.</p>
+                      <div className="flex flex-wrap gap-2">
+                        {ECO_OFFERS.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => toggleAskOffer("offer_categories", item)}
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                              form.offer_categories.includes(item)
+                                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                                : "border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-body)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </SectionCard>
+
+                  <SectionCard
+                    label="Section C — References"
                     description="Provide 3 people who can verify your organization (e.g. colleagues, portfolio founders, co-investors). All fields required."
                   >
                     {([1, 2, 3] as const).map((n) => (

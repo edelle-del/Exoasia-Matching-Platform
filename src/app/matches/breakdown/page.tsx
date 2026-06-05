@@ -20,15 +20,12 @@ type Profile = {
   role_title: string | null;
   ask_categories: string[] | null;
   offer_categories: string[] | null;
-  employee_band: string | null;
-  annual_revenue_estimate: string | null;
-  years_in_operation: string | null;
-  short_bio: string | null;
+  asks_summary: string | null;
 };
 
 type ParamStatus = "matched" | "partial" | "mismatch";
 type Param = { name: string; myVal: string; theirVal: string; status: ParamStatus };
-type Category = { id: string; label: string; score: number; color: string; params: Param[] };
+type Category = { id: string; label: string; score: number; color: string; params: Param[]; isEstimated: boolean };
 
 // ─── Canvas radar ─────────────────────────────────────────────────────────────
 
@@ -99,79 +96,339 @@ function useRadar(
 
 // ─── Computation ──────────────────────────────────────────────────────────────
 
-function clamp(v: number) { return Math.min(100, Math.max(30, Math.round(v))); }
 function displayName(p: Profile | null) { return p?.business_name || p?.full_name || "Verified member"; }
 
-function computeCategories(mine: Profile | null, theirs: Profile | null, fitScore: number): Category[] {
-  const stageA = parseInt(mine?.stage ?? "1") || 1;
-  const stageB = parseInt(theirs?.stage ?? "1") || 1;
-  const stageDiff = Math.abs(stageA - stageB);
-  const sectorMatch = !!(mine?.sector && mine.sector === theirs?.sector);
-  const askSet   = new Set(mine?.ask_categories ?? []);
-  const offerSet = new Set(theirs?.offer_categories ?? []);
-  const overlap1 = [...askSet].filter((c) => offerSet.has(c)).length;
-  const offerSetA = new Set(mine?.offer_categories ?? []);
-  const askSetB   = new Set(theirs?.ask_categories ?? []);
-  const overlap2  = [...offerSetA].filter((c) => askSetB.has(c)).length;
-  const bothVerified = mine?.verification_status === "verified" && theirs?.verification_status === "verified";
-  const fieldsA = [mine?.full_name, mine?.short_bio, mine?.city, mine?.role_title].filter(Boolean).length;
-  const fieldsB = [theirs?.full_name, theirs?.short_bio, theirs?.city, theirs?.role_title].filter(Boolean).length;
+// Compute a score purely from evidence row statuses.
+// matched=100, partial=50, mismatch=0 — averaged across all params.
+// This gives an honest 0-100 that directly reflects what the evidence shows,
+// rather than anchoring to the overall AI score with a small offset.
+function scoreFromEvidence(params: Param[]): number {
+  const scoreable = params.filter((p) => p.status !== "partial" || true); // include all
+  if (scoreable.length === 0) return 50;
+  const pts = scoreable.map((p) =>
+    p.status === "matched" ? 100 : p.status === "partial" ? 50 : 0,
+  );
+  return Math.round(pts.reduce((a, b) => a + b, 0) / pts.length);
+}
+
+// Maps every known category string (lowercase) → semantic cluster ID.
+// Categories in the same cluster are treated as matching even if worded differently.
+const SEMANTIC_CLUSTERS: Record<string, string> = {
+  // Funding
+  "capital / funding":                     "funding",
+  "funding / investment capital":           "funding",
+  "capital / incubation / acceleration":   "funding",
+  "seed funding":                           "funding",
+  "investment capital":                     "funding",
+  "venture capital":                        "funding",
+  "angel investment":                       "funding",
+  "investment":                             "funding",
+
+  // Deal flow
+  "deal flow / investment opportunities":  "dealflow",
+  "deal flow / investment pipeline":        "dealflow",
+  "investment opportunities":              "dealflow",
+  "deal flow":                              "dealflow",
+  "project pipeline":                       "dealflow",
+
+  // Technology / Product
+  "technology / product":                  "technology",
+  "technical support":                     "technology",
+  "software development":                  "technology",
+  "tech support":                           "technology",
+  "product development":                   "technology",
+
+  // Mentorship / Advisory
+  "mentorship / advisory":                 "mentorship",
+  "advisory":                              "mentorship",
+  "mentorship":                            "mentorship",
+  "coaching":                              "mentorship",
+
+  // Legal
+  "legal advisory":                        "legal",
+  "legal":                                 "legal",
+  "compliance":                            "legal",
+  "legal / compliance":                    "legal",
+  "regulatory affairs":                    "legal",
+
+  // Marketing / PR
+  "marketing / pr":                        "marketing",
+  "marketing":                             "marketing",
+  "pr":                                    "marketing",
+  "brand development":                     "marketing",
+  "digital marketing":                     "marketing",
+  "marketing / adtech":                    "marketing",
+
+  // Business development
+  "business development":                  "bizdev",
+  "corporate partnerships":               "bizdev",
+  "strategic partnerships":               "bizdev",
+  "partnerships":                          "bizdev",
+
+  // HR / Talent
+  "hr / talent":                           "hr",
+  "human resources":                       "hr",
+  "talent acquisition":                    "hr",
+  "recruitment":                           "hr",
+
+  // Finance / Accounting
+  "finance / accounting":                  "finance",
+  "accounting":                            "finance",
+  "financial advisory":                    "finance",
+  "finance":                               "finance",
+
+  // Networking / Connections
+  "industry connections":                  "network",
+  "networking":                            "network",
+  "network":                               "network",
+  "connections":                           "network",
+  "general networking":                    "network",
+  "introductions":                         "network",
+
+  // Government
+  "government relations":                  "government",
+  "public policy":                         "government",
+
+  // Academic / Research
+  "academic / research":                   "academic",
+  "research":                              "academic",
+  "r&d":                                   "academic",
+
+  // Community
+  "community building":                    "community",
+  "community":                             "community",
+  "events":                                "community",
+};
+
+function semanticMatch(a: string, b: string): boolean {
+  const al = a.toLowerCase().trim();
+  const bl = b.toLowerCase().trim();
+  if (al === bl) return true;
+  const ca = SEMANTIC_CLUSTERS[al];
+  const cb = SEMANTIC_CLUSTERS[bl];
+  if (ca && cb && ca === cb) return true;
+  // Substring fallback for partial phrase overlap
+  return al.includes(bl) || bl.includes(al);
+}
+
+function parseV2(raw: string | null | undefined): Record<string, unknown> | null {
+  try {
+    const p = JSON.parse(raw ?? "");
+    if (p?._v === 2) return p;
+  } catch { /* */ }
+  return null;
+}
+
+function raiseLabel(min: number | null, max: number | null): string {
+  if (min != null && max != null) return `$${min.toLocaleString()} – $${max.toLocaleString()}`;
+  if (min != null) return `From $${min.toLocaleString()}`;
+  if (max != null) return `Up to $${max.toLocaleString()}`;
+  return "Not specified";
+}
+
+type AICategoryScores = {
+  sector_vertical?: number;
+  stage_fit?: number;
+  investment_thesis?: number;
+  geographic_fit?: number;
+};
+
+function computeCategories(
+  mine: Profile | null,
+  theirs: Profile | null,
+  fitScore: number,
+  projectStage: string | null = null,
+  aiScores: AICategoryScores = {},
+): Category[] {
   const ps = (m: boolean, p: boolean): ParamStatus => m ? "matched" : p ? "partial" : "mismatch";
+
+  const myV2    = parseV2(mine?.asks_summary);
+  const theirV2 = parseV2(theirs?.asks_summary);
+
+  // Treat investor AND ecosystem_partner as the "matchmaker" side.
+  const myIsInvestor    = mine?.member_role  === "investor" || mine?.member_role  === "ecosystem_partner";
+  const theirIsInvestor = theirs?.member_role === "investor" || theirs?.member_role === "ecosystem_partner";
+
+  const investorV2 = myIsInvestor ? myV2 : theirIsInvestor ? theirV2 : null;
+
+  // Startup v2 must come from the startup profile specifically, not just whichever is "theirs".
+  const startupV2 = mine?.member_role === "startup" ? myV2
+    : theirs?.member_role === "startup" ? theirV2
+    : myIsInvestor ? theirV2 : myV2;
+
+  const startupProfile = mine?.member_role === "startup" ? mine
+    : theirs?.member_role === "startup" ? theirs
+    : myIsInvestor ? theirs : mine;
+
+  // ── 1. Sector & Vertical Alignment (High weight) ─────────────────────────
+  const sectorMatch = !!(mine?.sector && mine.sector === theirs?.sector);
+  const investorIndustries: string[] = (investorV2?.target_industries as string[] | null) ?? [];
+  const startupSector      = startupProfile?.sector ?? "";
+  const startupIndustries: string[] = (startupV2?.target_industries as string[] | null) ?? [];
+  const allStartupIndustries = [startupSector, ...startupIndustries].filter(Boolean).map(s => s.toLowerCase());
+  const industryHits = investorIndustries.filter(i =>
+    allStartupIndustries.some(s => s.includes(i.toLowerCase()) || i.toLowerCase().includes(s))
+  ).length;
+
+  const sectorParams: Param[] = [
+    {
+      name: "Primary sector",
+      myVal: mine?.sector ?? "Not specified",
+      theirVal: theirs?.sector ?? "Not specified",
+      status: ps(sectorMatch, !!(mine?.sector || theirs?.sector)),
+    },
+    {
+      name: "Target industries",
+      myVal: myIsInvestor
+        ? investorIndustries.slice(0, 3).join(", ") || "Not specified"
+        : startupIndustries.slice(0, 3).join(", ") || startupSector || "Not specified",
+      theirVal: myIsInvestor
+        ? startupIndustries.slice(0, 3).join(", ") || startupSector || "Not specified"
+        : investorIndustries.slice(0, 3).join(", ") || "Not specified",
+      status: ps(industryHits >= 2, industryHits >= 1 || investorIndustries.length === 0),
+    },
+  ];
+  const sectorScore = aiScores.sector_vertical ?? scoreFromEvidence(sectorParams);
+
+  // ── 2. Stage Fit (High weight) ────────────────────────────────────────────
+  // Priority: project.stage (what the AI actually receives) → asks_summary.fundraising_stage
+  // profiles.stage is a numeric internal field ("1", "2"…) and is never a valid fundraising stage.
+  const fundraisingStage =
+    projectStage ??
+    (startupV2?.fundraising_stage as string | null) ??
+    "";
+  const productStage = (startupV2?.product_stage as string | null) ?? "";
+  const targetStages: string[] = (investorV2?.target_stages as string[] | null) ?? [];
+  // No fundraising stage data → cannot determine fit (not a match).
+  // Empty string would always pass includes("") so we guard explicitly.
+  const stageFit = !fundraisingStage
+    ? false
+    : targetStages.length === 0
+      ? true   // matchmaker is flexible on stage
+      : targetStages.some(s =>
+          s.toLowerCase().includes(fundraisingStage.toLowerCase()) ||
+          fundraisingStage.toLowerCase().includes(s.toLowerCase())
+        );
+
+  const stageParams: Param[] = [
+    {
+      name: myIsInvestor ? "Target stages" : "Fundraising stage",
+      myVal:    myIsInvestor ? targetStages.slice(0, 3).join(", ") || "Flexible" : fundraisingStage || "Not specified",
+      theirVal: myIsInvestor ? fundraisingStage || "Not specified" : targetStages.slice(0, 3).join(", ") || "Flexible",
+      status: ps(stageFit && targetStages.length > 0, stageFit || targetStages.length === 0),
+    },
+    {
+      name: "Product stage",
+      myVal:    myIsInvestor ? "—" : productStage || "Not specified",
+      theirVal: myIsInvestor ? productStage || "Not specified" : "—",
+      status: ps(false, !!productStage),
+    },
+  ];
+  const stageScore = aiScores.stage_fit ?? scoreFromEvidence(stageParams);
+
+  // ── 3. Investment Thesis / Ask–Offer Fit (High weight) ───────────────────
+  const myAsks     = mine?.ask_categories   ?? [];
+  const theirOffers= theirs?.offer_categories ?? [];
+  const myOffers   = mine?.offer_categories  ?? [];
+  const theirAsks  = theirs?.ask_categories  ?? [];
+  const askOfferOverlap = myAsks.filter(a  => theirOffers.some(o => semanticMatch(a, o))).length;
+  const offerAskOverlap = myOffers.filter(o => theirAsks.some(a  => semanticMatch(o, a))).length;
+  const totalOverlap    = askOfferOverlap + offerAskOverlap;
+
+  const targetRaiseMin = startupV2?.target_raise_min != null ? Number(startupV2.target_raise_min) : null;
+  const targetRaiseMax = startupV2?.target_raise_max != null ? Number(startupV2.target_raise_max) : null;
+
+  // MATCHED = overlap covers all possible matches (e.g. 1/1 is a full match, not partial)
+  // PARTIAL  = at least 1 match but not full coverage, or either side has no data yet
+  // MISMATCH = both sides have data but zero semantic overlap
+  const aoMax = Math.min(myAsks.length,   theirOffers.length);
+  const oaMax = Math.min(myOffers.length, theirAsks.length);
+
+  const thesisParams: Param[] = [
+    {
+      name: "Ask / Offer fit",
+      myVal:    myAsks.slice(0, 3).join(", ")     || "None",
+      theirVal: theirOffers.slice(0, 3).join(", ") || "None",
+      status: ps(
+        askOfferOverlap > 0 && askOfferOverlap >= aoMax,
+        askOfferOverlap >= 1 || !myAsks.length || !theirOffers.length,
+      ),
+    },
+    {
+      name: "Offer / Ask fit",
+      myVal:    myOffers.slice(0, 3).join(", ") || "None",
+      theirVal: theirAsks.slice(0, 3).join(", ") || "None",
+      status: ps(
+        offerAskOverlap > 0 && offerAskOverlap >= oaMax,
+        offerAskOverlap >= 1 || !myOffers.length || !theirAsks.length,
+      ),
+    },
+  ];
+  if (targetRaiseMin != null || targetRaiseMax != null) {
+    thesisParams.push({
+      name: "Target raise",
+      myVal:    myIsInvestor ? "Investor" : raiseLabel(targetRaiseMin, targetRaiseMax),
+      theirVal: myIsInvestor ? raiseLabel(targetRaiseMin, targetRaiseMax) : "Investor",
+      status: "partial",
+    });
+  }
+
+  const thesisScore = aiScores.investment_thesis ?? scoreFromEvidence(thesisParams);
+
+  // ── 4. Geographic Fit (Low weight) ────────────────────────────────────────
+  const cityMatch    = !!(mine?.city && mine.city === theirs?.city);
+  const myRegions: string[]    = (myV2?.target_regions    as string[] | null) ?? [];
+  const theirRegions: string[] = (theirV2?.target_regions as string[] | null) ?? [];
+  const regionOverlap = myRegions.filter(r => theirRegions.includes(r)).length;
+  const hasRegionData = myRegions.length > 0 || theirRegions.length > 0;
+
+  const geoParams: Param[] = [
+    {
+      name: "City / Location",
+      myVal: mine?.city ?? "Not specified",
+      theirVal: theirs?.city ?? "Not specified",
+      status: ps(cityMatch, !!(mine?.city || theirs?.city)),
+    },
+    {
+      name: "Target regions",
+      myVal:    myRegions.slice(0, 3).join(", ")    || "Not specified",
+      theirVal: theirRegions.slice(0, 3).join(", ") || "Not specified",
+      status: ps(regionOverlap >= 2, regionOverlap >= 1 || !hasRegionData),
+    },
+  ];
+  const geoScore = aiScores.geographic_fit ?? scoreFromEvidence(geoParams);
 
   return [
     {
-      id: "financial", label: "Financial Alignment",
-      score: clamp(fitScore + (stageDiff === 0 ? 8 : stageDiff === 1 ? 0 : -12)),
-      color: "#6366F1",
-      params: [
-        { name: "Platform stage", myVal: `Stage ${mine?.stage ?? "—"}`, theirVal: `Stage ${theirs?.stage ?? "—"}`, status: ps(stageDiff === 0, stageDiff === 1) },
-        { name: "Revenue estimate", myVal: mine?.annual_revenue_estimate ?? "Not specified", theirVal: theirs?.annual_revenue_estimate ?? "Not specified", status: ps(!!(mine?.annual_revenue_estimate && mine.annual_revenue_estimate === theirs?.annual_revenue_estimate), !!(mine?.annual_revenue_estimate || theirs?.annual_revenue_estimate)) },
-        { name: "Team size (band)", myVal: mine?.employee_band ?? "Not specified", theirVal: theirs?.employee_band ?? "Not specified", status: ps(!!(mine?.employee_band && mine.employee_band === theirs?.employee_band), !!(mine?.employee_band || theirs?.employee_band)) },
-      ],
+      id: "sector", label: "Sector & Vertical",
+      score: sectorScore, color: "#6366F1",
+      params: sectorParams,
+      isEstimated: aiScores.sector_vertical == null,
     },
     {
-      id: "market", label: "Market & Sector Fit",
-      score: clamp(fitScore + (sectorMatch ? 12 : -8) + overlap1 * 3),
-      color: "#10B981",
-      params: [
-        { name: "Primary sector", myVal: mine?.sector ?? "Not specified", theirVal: theirs?.sector ?? "Not specified", status: ps(sectorMatch, !!(mine?.sector || theirs?.sector)) },
-        { name: "City / Region", myVal: mine?.city ?? "Not specified", theirVal: theirs?.city ?? "Not specified", status: ps(!!(mine?.city && mine.city === theirs?.city), !!(mine?.city || theirs?.city)) },
-        { name: "Ask categories", myVal: (mine?.ask_categories ?? []).slice(0, 2).join(", ") || "None", theirVal: (theirs?.ask_categories ?? []).slice(0, 2).join(", ") || "None", status: ps(overlap1 >= 2, overlap1 >= 1) },
-      ],
+      id: "stage", label: "Stage Fit",
+      score: stageScore, color: "#10B981",
+      params: stageParams,
+      isEstimated: aiScores.stage_fit == null,
     },
     {
-      id: "technology", label: "Technology Stack",
-      score: clamp(fitScore + overlap2 * 5 - 8),
-      color: "#8B5CF6",
-      params: [
-        { name: "Offer categories", myVal: (mine?.offer_categories ?? []).slice(0, 2).join(", ") || "None", theirVal: (theirs?.offer_categories ?? []).slice(0, 2).join(", ") || "None", status: ps(overlap2 >= 2, overlap2 >= 1) },
-        { name: "Offer–Ask overlap", myVal: `${overlap2} shared`, theirVal: `${overlap1} shared`, status: ps(overlap2 >= 2 && overlap1 >= 2, overlap2 >= 1 || overlap1 >= 1) },
-      ],
+      id: "thesis", label: "Investment Thesis",
+      score: thesisScore, color: "#8B5CF6",
+      params: thesisParams,
+      isEstimated: aiScores.investment_thesis == null,
     },
     {
-      id: "timeline", label: "Operational Timeline",
-      score: clamp(fitScore + (bothVerified ? 6 : -4) + (stageDiff <= 1 ? 4 : -8)),
-      color: "#F59E0B",
-      params: [
-        { name: "Verification status", myVal: mine?.verification_status ?? "unverified", theirVal: theirs?.verification_status ?? "unverified", status: ps(bothVerified, !!(mine?.verification_status || theirs?.verification_status)) },
-        { name: "Years in operation", myVal: mine?.years_in_operation ?? "Not specified", theirVal: theirs?.years_in_operation ?? "Not specified", status: ps(!!(mine?.years_in_operation && mine.years_in_operation === theirs?.years_in_operation), !!(mine?.years_in_operation || theirs?.years_in_operation)) },
-      ],
-    },
-    {
-      id: "team", label: "Team Dynamics",
-      score: clamp(fitScore + Math.round(((fieldsA + fieldsB) / 8) * 15) - 5),
-      color: "#EC4899",
-      params: [
-        { name: "Role title", myVal: mine?.role_title ?? "Not specified", theirVal: theirs?.role_title ?? "Not specified", status: ps(!!(mine?.role_title && theirs?.role_title), !!(mine?.role_title || theirs?.role_title)) },
-        { name: "Bio completeness", myVal: mine?.short_bio ? "Provided" : "Missing", theirVal: theirs?.short_bio ? "Provided" : "Missing", status: ps(!!(mine?.short_bio && theirs?.short_bio), !!(mine?.short_bio || theirs?.short_bio)) },
-      ],
+      id: "geographic", label: "Geographic Fit",
+      score: geoScore, color: "#F59E0B",
+      params: geoParams,
+      isEstimated: aiScores.geographic_fit == null,
     },
   ];
 }
 
 const CAT_BG: Record<string, string> = {
-  financial: "bg-indigo-500", market: "bg-emerald-500",
-  technology: "bg-violet-500", timeline: "bg-amber-500", team: "bg-pink-500",
+  sector: "bg-indigo-500", stage: "bg-emerald-500",
+  thesis: "bg-violet-500", geographic: "bg-amber-500",
 };
 
 function StatusBadge({ status }: { status: ParamStatus }) {
@@ -189,7 +446,7 @@ function StatusBadge({ status }: { status: ParamStatus }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const FIELDS = "id, full_name, business_name, sector, stage, city, verification_status, member_role, role_title, ask_categories, offer_categories, employee_band, annual_revenue_estimate, years_in_operation, short_bio";
+const FIELDS = "id, full_name, business_name, sector, stage, city, verification_status, member_role, role_title, ask_categories, offer_categories, asks_summary";
 
 export default function BreakdownPage() {
   const params   = useSearchParams();
@@ -198,12 +455,18 @@ export default function BreakdownPage() {
 
   const profileAId = params.get("a");
   const profileBId = params.get("b");
-  const fitScore   = parseInt(params.get("score") ?? "70") || 70;
+  const projectId  = params.get("project");
+  const initialScore = parseInt(params.get("score") ?? "70") || 70;
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [mine,      setMine]      = useState<Profile | null>(null);
-  const [theirs,    setTheirs]    = useState<Profile | null>(null);
-  const [openCat,   setOpenCat]   = useState<number | null>(0);
+  const [isLoading,  setIsLoading]  = useState(true);
+  const [mine,       setMine]       = useState<Profile | null>(null);
+  const [theirs,     setTheirs]     = useState<Profile | null>(null);
+  const [openCat,    setOpenCat]    = useState<number | null>(0);
+  const [fitScore,      setFitScore]      = useState(initialScore);
+  const [projectStage,  setProjectStage]  = useState<string | null>(null);
+  const [aiCatScores,   setAiCatScores]   = useState<AICategoryScores>({});
+  const [isRescoring,  setIsRescoring]  = useState(false);
+  const [rescoreError, setRescoreError] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -211,35 +474,146 @@ export default function BreakdownPage() {
     if (!user?.id || !profileAId || !profileBId) return;
     void (async () => {
       setIsLoading(true);
-      const myId    = profileAId;
-      const theirId = profileBId;
-      const [{ data: myProfile }, { data: theirProfile }] = await Promise.all([
-        supabase.from("profiles").select(FIELDS).eq("id", myId).single(),
-        supabase.from("profiles").select(FIELDS).eq("id", theirId).single(),
+      const [
+        { data: myProfile },
+        { data: theirProfile },
+        projectRes,
+        scoreRes,
+      ] = await Promise.all([
+        supabase.from("profiles").select(FIELDS).eq("id", profileAId).single(),
+        supabase.from("profiles").select(FIELDS).eq("id", profileBId).single(),
+        projectId
+          ? supabase.from("projects").select("stage").eq("id", projectId).single()
+          : Promise.resolve({ data: null }),
+        projectId
+          ? supabase
+              .from("project_match_scores")
+              .select("rationale")
+              .eq("project_id", projectId)
+              .or(`investor_profile_id.eq.${profileAId},investor_profile_id.eq.${profileBId}`)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
+
       setMine(myProfile as Profile ?? null);
       setTheirs(theirProfile as Profile ?? null);
+      const proj = (projectRes as { data: unknown }).data as { stage: string | null } | null;
+      setProjectStage(proj?.stage ?? null);
+
+      // Extract AI category scores stored as _cs_* keys in the rationale JSONB column.
+      const rat = ((scoreRes as { data: unknown }).data as { rationale?: Record<string, unknown> } | null)?.rationale ?? {};
+      const toNum = (v: unknown) => typeof v === "number" ? v : typeof v === "string" ? Number(v) || undefined : undefined;
+      setAiCatScores({
+        sector_vertical:   toNum(rat._cs_sector_vertical),
+        stage_fit:         toNum(rat._cs_stage_fit),
+        investment_thesis: toNum(rat._cs_investment_thesis),
+        geographic_fit:    toNum(rat._cs_geographic_fit),
+      });
       setIsLoading(false);
     })();
-  }, [supabase, user?.id, profileAId, profileBId]);
+  }, [supabase, user?.id, profileAId, profileBId, projectId]);
 
-  const categories  = useMemo(() => computeCategories(mine, theirs, fitScore), [mine, theirs, fitScore]);
+  const categories  = useMemo(() => computeCategories(mine, theirs, fitScore, projectStage, aiCatScores), [mine, theirs, fitScore, projectStage, aiCatScores]);
   const catScores   = categories.map((c) => c.score);
   const catAxes     = categories.map((c) => c.label);
 
   useRadar(canvasRef, catAxes, catScores, 260);
 
-  const overall      = Math.round(catScores.reduce((a, b) => a + b, 0) / (catScores.length || 1));
+  // When AI dimension scores exist: ring = fitScore (AI produced overall + dimensions together — consistent).
+  // When all dimensions are estimated from evidence: ring = average of category scores so the
+  // ring is logically consistent with what the categories show. Showing the AI's holistic fitScore
+  // alongside evidence-only category scores produces an unexplainable contradiction (e.g. ring 75%,
+  // categories 25/0/0/25).
+  const allEstimated  = categories.every((c) => c.isEstimated);
+  const ringScore     = allEstimated
+    ? Math.round(categories.reduce((sum, c) => sum + c.score, 0) / categories.length)
+    : fitScore;
   const circumf      = 2 * Math.PI * 28;
-  const ringOffset   = circumf - (overall / 100) * circumf;
-  const overallLabel = overall >= 80 ? "Strong Match" : overall >= 60 ? "Good Match" : "Developing Match";
-
+  const ringOffset   = circumf - (ringScore / 100) * circumf;
   const matchedCount  = categories.flatMap((c) => c.params).filter((p) => p.status === "matched").length;
   const partialCount  = categories.flatMap((c) => c.params).filter((p) => p.status === "partial").length;
   const mismatchCount = categories.flatMap((c) => c.params).filter((p) => p.status === "mismatch").length;
 
+  // If gaps outnumber matches in the evidence, cap at "Developing Match" regardless of score.
+  const overallLabel = mismatchCount > matchedCount
+    ? "Developing Match"
+    : ringScore >= 80 ? "Strong Match"
+    : ringScore >= 60 ? "Good Match"
+    : "Developing Match";
+
   const myName    = displayName(mine);
   const theirName = displayName(theirs);
+
+  const handleRescore = async () => {
+    if (!projectId) return;
+    setIsRescoring(true);
+    setRescoreError(null);
+    const isEcoPartner = mine?.member_role === "ecosystem_partner";
+    try {
+      let newScore: number | undefined;
+
+      if (isEcoPartner) {
+        // Ecosystem partner rescores via a different endpoint; startup owner is profileBId.
+        const startupOwnerId = mine?.id === profileAId ? profileBId : profileAId;
+        const res = await fetch("/api/ecosystem/score-company", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ startup_id: startupOwnerId }),
+        });
+        const data = await res.json() as {
+          error?: string;
+          scores?: { project_id: string; fit_score: number }[];
+        };
+        if (!res.ok) { setRescoreError(data.error ?? `Error ${res.status} — try again.`); return; }
+        newScore = projectId
+          ? data.scores?.find((s) => s.project_id === projectId)?.fit_score
+          : data.scores?.[0]?.fit_score;
+      } else {
+        // Investor or startup path.
+        const res = await fetch(`/api/projects/${projectId}/generate-match`, { method: "POST" });
+        const data = await res.json() as {
+          error?: string;
+          score?: { fit_score: number };
+          scores?: { investor_profile_id?: string; fit_score: number }[];
+        };
+        if (!res.ok) { setRescoreError(data.error ?? `Error ${res.status} — try again.`); return; }
+        newScore =
+          data.score?.fit_score ??
+          data.scores?.find((s) => s.investor_profile_id === profileBId || s.investor_profile_id === profileAId)?.fit_score;
+
+        // Re-fetch AI category scores from project_match_scores (investor/startup only).
+        if (newScore != null && projectId) {
+          const { data: fresh } = await supabase
+            .from("project_match_scores")
+            .select("rationale")
+            .eq("project_id", projectId)
+            .or(`investor_profile_id.eq.${profileAId},investor_profile_id.eq.${profileBId}`)
+            .maybeSingle();
+          const rat = (fresh as { rationale?: Record<string, unknown> } | null)?.rationale ?? {};
+          const toNum = (v: unknown) => typeof v === "number" ? v : typeof v === "string" ? Number(v) || undefined : undefined;
+          setAiCatScores({
+            sector_vertical:   toNum(rat._cs_sector_vertical),
+            stage_fit:         toNum(rat._cs_stage_fit),
+            investment_thesis: toNum(rat._cs_investment_thesis),
+            geographic_fit:    toNum(rat._cs_geographic_fit),
+          });
+        }
+      }
+
+      if (newScore != null) setFitScore(newScore);
+      else setRescoreError("Score updated — refresh to see the latest.");
+    } catch (e) {
+      setRescoreError(e instanceof Error ? e.message : "Rescore failed — try again.");
+    } finally {
+      setIsRescoring(false);
+    }
+  };
+
+  const canRescore = !!projectId && (
+    mine?.member_role === "investor" ||
+    mine?.member_role === "startup"  ||
+    mine?.member_role === "ecosystem_partner"
+  );
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-[#F4F4FF]">
@@ -247,9 +621,41 @@ export default function BreakdownPage() {
       {/* Header */}
       <section className="border-b border-[#2A2A3E] bg-[#12121A] px-[5%] py-8">
         <div className="mx-auto max-w-5xl">
-          <Link href="/matches" className="text-sm text-indigo-400 hover:underline">
-            ← Back to top 5 matches
-          </Link>
+          <div className="flex items-center justify-between gap-4">
+            <Link href="/matches" className="text-sm text-indigo-400 hover:underline">
+              ← Back to matches
+            </Link>
+            {canRescore && (
+              <div className="flex items-center gap-3">
+                {rescoreError && (
+                  <p className="text-xs text-rose-400">{rescoreError}</p>
+                )}
+                <button
+                  type="button"
+                  disabled={isRescoring || isLoading}
+                  onClick={() => void handleRescore()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-400 hover:bg-indigo-500/20 disabled:opacity-50 transition-colors"
+                >
+                  {isRescoring ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Rescoring…
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                      </svg>
+                      Rescore
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
           <div className="mt-3 flex items-start justify-between gap-4 flex-wrap">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-400">
@@ -277,15 +683,20 @@ export default function BreakdownPage() {
                     strokeLinecap="round" strokeDasharray={circumf} strokeDashoffset={ringOffset}
                     transform="rotate(-90 34 34)" />
                   <text x="34" y="39" textAnchor="middle" fill="#F4F4FF" fontSize="12" fontWeight="700" fontFamily="system-ui,sans-serif">
-                    {overall}%
+                    {ringScore}%
                   </text>
                 </svg>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Overall Fit</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+                    {allEstimated ? "Evidence Score" : "Overall Fit"}
+                  </p>
                   <p className="mt-1 text-sm font-bold text-[#F4F4FF]">{overallLabel}</p>
                   <p className="text-[11px] text-[#8B8BA7]">
                     {matchedCount} matched · {partialCount} partial · {mismatchCount} gap{mismatchCount !== 1 ? "s" : ""}
                   </p>
+                  {allEstimated && fitScore !== ringScore && (
+                    <p className="mt-1 text-[10px] text-[#4A4A6A]">AI score: {fitScore}% · rescore for breakdown</p>
+                  )}
                 </div>
               </div>
             )}
@@ -306,8 +717,8 @@ export default function BreakdownPage() {
             <div className="grid lg:grid-cols-5 gap-6">
               {/* Radar */}
               <div className="lg:col-span-2 rounded-2xl bg-[#12121A] border border-[#2A2A3E] p-6 flex flex-col items-center">
-                <p className="self-start text-xs font-bold text-[#F4F4FF]">5-Axis Compatibility</p>
-                <p className="self-start text-[11px] text-[#8B8BA7] mt-0.5 mb-6">Per-category fit scores</p>
+                <p className="self-start text-xs font-bold text-[#F4F4FF]">AI Dimension Scores</p>
+                <p className="self-start text-[11px] text-[#8B8BA7] mt-0.5 mb-6">Per-dimension fit assessed by AI — rescore to update</p>
                 <canvas ref={canvasRef} width={260} height={260} />
                 <div className="mt-5 w-full space-y-2.5">
                   {categories.map((cat) => (
@@ -316,7 +727,7 @@ export default function BreakdownPage() {
                         <div className={`h-2 w-2 rounded-full shrink-0 ${CAT_BG[cat.id] ?? "bg-indigo-500"}`} />
                         <span className="text-[#8B8BA7]">{cat.label}</span>
                       </div>
-                      <span className="font-bold text-[#F4F4FF]">{cat.score}%</span>
+                      <span className="font-bold text-[#F4F4FF]">{cat.score}%{cat.isEstimated ? " *" : ""}</span>
                     </div>
                   ))}
                 </div>
@@ -348,7 +759,12 @@ export default function BreakdownPage() {
                               {partial > 0 && <span className="text-amber-400">{partial}~</span>}
                               {mismatch > 0 && <span className="text-red-400">{mismatch}✗</span>}
                             </div>
-                            <span className="font-bold text-sm text-[#F4F4FF]">{cat.score}%</span>
+                            {cat.isEstimated && (
+                              <span className="rounded-full bg-[#2A2A3E] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[#8B8BA7]" title="Estimated from evidence — rescore for AI-assessed value">
+                                est.
+                              </span>
+                            )}
+                            <span className="font-bold text-sm text-[#F4F4FF]" title={cat.isEstimated ? "Estimated from evidence — rescore for AI-assessed value" : "AI-assessed score for this dimension"}>{cat.score}%</span>
                             <svg className={`h-4 w-4 text-[#8B8BA7] transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
@@ -357,9 +773,19 @@ export default function BreakdownPage() {
                         {isOpen && (
                           <div className="border-t border-[#2A2A3E] px-4 py-3 space-y-3">
                             <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7] pb-1 border-b border-[#2A2A3E]">
-                              <span>Parameter</span>
-                              <span>{myName.split(" ")[0]}</span>
-                              <span>{theirName.split(" ")[0]}</span>
+                              <span>Evidence</span>
+                              <div>
+                                <p>{mine?.full_name || myName}</p>
+                                {mine?.business_name && (
+                                  <p className="mt-0.5 text-[9px] font-normal normal-case tracking-normal text-[#4A4A6A]">{mine.business_name}</p>
+                                )}
+                              </div>
+                              <div>
+                                <p>{theirs?.full_name || theirName}</p>
+                                {theirs?.business_name && (
+                                  <p className="mt-0.5 text-[9px] font-normal normal-case tracking-normal text-[#4A4A6A]">{theirs.business_name}</p>
+                                )}
+                              </div>
                             </div>
                             {cat.params.map((p) => (
                               <div key={p.name} className="grid grid-cols-3 gap-2 items-start">
@@ -384,9 +810,10 @@ export default function BreakdownPage() {
             <div className="rounded-2xl bg-[#12121A] border border-[#2A2A3E] p-5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7] mb-2">AI Scoring Note</p>
               <p className="text-sm text-[#C4C4D4] leading-relaxed">
-                This compatibility breakdown is generated by AI based on profile data at the time of scoring.
-                Scores reflect alignment across financial, market, technology, timeline, and team dimensions.
-                Fit score: <span className="font-bold text-[#F4F4FF]">{fitScore}%</span>
+                The <span className="font-bold text-[#F4F4FF]">{fitScore}%</span> overall score is the AI's holistic judgment — it is not the sum or average of the dimension scores.
+                Each dimension score (e.g. Stage Fit: 45%) is the AI's independent assessment of that specific aspect alone.
+                The <span className="text-[#8B8BA7]">Evidence</span> rows beneath each dimension show the actual profile data points that support or explain the AI's score — they do not calculate it.
+                Dimension scores only reflect real AI judgment after a rescore; older matches show estimated values.
               </p>
             </div>
           </>

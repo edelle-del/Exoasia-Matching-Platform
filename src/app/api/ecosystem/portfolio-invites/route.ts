@@ -6,7 +6,13 @@ export type PortfolioInvite = {
   id: string;
   partner_id: string;
   partner_name: string;
+  partner_sector: string | null;
+  partner_city: string | null;
+  partner_bio: string | null;
   nominated_at: string;
+  eco_score: number | null;
+  eco_summary: string | null;
+  scored_project_id: string | null;
 };
 
 export async function GET() {
@@ -41,23 +47,60 @@ export async function GET() {
     }
 
     const partnerIds = [...new Set((rows ?? []).map((r) => r.partner_id))];
-    const { data: partners } = partnerIds.length > 0
+
+    // Fetch startup's project IDs, partner profiles — in parallel
+    const [{ data: myProjects }, { data: partners }] = await Promise.all([
+      admin.from("projects").select("id").eq("owner_id", user.id).eq("is_active", true),
+      partnerIds.length > 0
+        ? admin.from("profiles").select("id, full_name, business_name, sector, city, short_bio").in("id", partnerIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const myProjectIds = (myProjects ?? []).map((p) => p.id);
+
+    // Fetch mandate-fit scores for this startup's projects from these partners
+    const { data: scores } = myProjectIds.length > 0 && partnerIds.length > 0
       ? await admin
-          .from("profiles")
-          .select("id, full_name, business_name")
-          .in("id", partnerIds)
+          .from("ecosystem_match_scores")
+          .select("project_id, eco_partner_profile_id, fit_score, summary")
+          .in("project_id", myProjectIds)
+          .in("eco_partner_profile_id", partnerIds)
+          .order("fit_score", { ascending: false })
       : { data: [] };
 
-    const partnerNameMap = new Map(
-      (partners ?? []).map((p) => [p.id, p.business_name || p.full_name || "Ecosystem partner"]),
+    // Best score per partner (highest fit_score across all their projects)
+    const bestScoreByPartner = new Map<string, { fit_score: number; summary: string | null; project_id: string }>();
+    for (const s of (scores ?? [])) {
+      const existing = bestScoreByPartner.get(s.eco_partner_profile_id);
+      if (!existing || s.fit_score > existing.fit_score) {
+        bestScoreByPartner.set(s.eco_partner_profile_id, {
+          fit_score: s.fit_score,
+          summary: s.summary ?? null,
+          project_id: s.project_id,
+        });
+      }
+    }
+
+    const partnerMap = new Map(
+      (partners ?? []).map((p) => [p.id, p]),
     );
 
-    const invites: PortfolioInvite[] = (rows ?? []).map((r) => ({
-      id: r.id,
-      partner_id: r.partner_id,
-      partner_name: partnerNameMap.get(r.partner_id) ?? "Ecosystem partner",
-      nominated_at: r.nominated_at,
-    }));
+    const invites: PortfolioInvite[] = (rows ?? []).map((r) => {
+      const partner = partnerMap.get(r.partner_id);
+      const score = bestScoreByPartner.get(r.partner_id);
+      return {
+        id: r.id,
+        partner_id: r.partner_id,
+        partner_name: partner?.business_name || partner?.full_name || "Ecosystem partner",
+        partner_sector: partner?.sector ?? null,
+        partner_city: partner?.city ?? null,
+        partner_bio: partner?.short_bio ?? null,
+        nominated_at: r.nominated_at,
+        eco_score: score?.fit_score ?? null,
+        eco_summary: score?.summary ?? null,
+        scored_project_id: score?.project_id ?? null,
+      };
+    });
 
     return NextResponse.json({ invites });
   } catch (err) {

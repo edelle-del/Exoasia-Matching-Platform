@@ -76,9 +76,15 @@ export async function middleware(request: NextRequest) {
     if (!isOnboardingPath && isMemberRole) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, sector")
+        .select("full_name, sector, stage")
         .eq("id", user.id)
         .single();
+
+      // Stage 4 = Guide/Advisor — bypass onboarding regardless of JWT role claim.
+      // This handles cases where the custom_access_token_hook is not yet enabled.
+      if (profile?.stage === "4") {
+        return response;
+      }
 
       const needsOnboarding = !profile?.full_name || !profile?.sector;
       if (needsOnboarding) {

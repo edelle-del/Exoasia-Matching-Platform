@@ -9,6 +9,22 @@ import {
 const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
+// Keys inside asks_summary that are admin/platform metadata and should not
+// be included in the AI payload — they add noise without improving match quality.
+const ASKS_NOISE_KEYS = ["referrals", "pitch_deck_url", "anp_affiliated", "demo_day_judge"];
+
+function cleanAsksForAI(raw: string | null | undefined): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(raw ?? "");
+    if (!parsed || parsed._v !== 2) return null;
+    const cleaned = { ...parsed };
+    for (const key of ASKS_NOISE_KEYS) delete cleaned[key];
+    return cleaned;
+  } catch {
+    return null;
+  }
+}
+
 function extractJson(text: string): string {
   const trimmed = text.trim();
   if (trimmed.startsWith("{")) return trimmed;
@@ -34,7 +50,7 @@ async function callOpenRouter(systemInstruction: string, payload: unknown) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "openrouter/owl-alpha",
+      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: JSON.stringify(payload) },
@@ -136,7 +152,7 @@ export async function POST(
     const { data: callerProfile } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, business_name, role_title, city, short_bio, sector, stage, member_role, ask_categories, offer_categories, asks_summary, offers_summary",
+        "id, full_name, business_name, role_title, city, short_bio, sector, member_role, ask_categories, offer_categories, asks_summary, offers_summary, employee_band, annual_revenue_estimate",
       )
       .eq("id", user.id)
       .single();
@@ -160,24 +176,34 @@ export async function POST(
       const { data: ownerProfile } = await admin
         .from("profiles")
         .select(
-          "id, full_name, business_name, sector, stage, asks_summary, offers_summary",
+          "id, full_name, business_name, sector, asks_summary, offers_summary, employee_band, annual_revenue_estimate",
         )
         .eq("id", project.owner_id)
         .single();
 
       const payload = {
-        investor: callerProfile,
-        project: { ...project, owner: ownerProfile },
+        investor: {
+          ...callerProfile,
+          asks_summary: cleanAsksForAI(callerProfile.asks_summary),
+        },
+        project: {
+          ...project,
+          owner: ownerProfile
+            ? { ...ownerProfile, asks_summary: cleanAsksForAI(ownerProfile.asks_summary) }
+            : ownerProfile,
+        },
       };
 
       const json = await callOpenRouter(
         GEMINI_INVESTOR_SCORES_PROJECT_INSTRUCTIONS,
         payload,
       );
+      type CategoryScores = { sector_vertical?: number; stage_fit?: number; investment_thesis?: number; geographic_fit?: number };
       type InvestorScoreResult = {
         project_id: string;
         fit_score: number;
         summary: string;
+        category_scores?: CategoryScores;
         rationale: Record<string, string>;
       };
       const result = JSON.parse(json) as InvestorScoreResult;
@@ -187,6 +213,16 @@ export async function POST(
         Math.min(100, Math.round(Number(result.fit_score) || 0)),
       );
 
+      const clampScore = (v: unknown) => typeof v === "number" ? Math.max(0, Math.min(100, Math.round(v))) : undefined;
+      const cs = result.category_scores;
+      const rationale = {
+        ...(result.rationale ?? {}),
+        ...(cs?.sector_vertical    != null ? { _cs_sector_vertical:    clampScore(cs.sector_vertical)    } : {}),
+        ...(cs?.stage_fit          != null ? { _cs_stage_fit:          clampScore(cs.stage_fit)          } : {}),
+        ...(cs?.investment_thesis  != null ? { _cs_investment_thesis:  clampScore(cs.investment_thesis)  } : {}),
+        ...(cs?.geographic_fit     != null ? { _cs_geographic_fit:     clampScore(cs.geographic_fit)     } : {}),
+      };
+
       const { error: upsertError } = await admin
         .from("project_match_scores")
         .upsert(
@@ -195,7 +231,7 @@ export async function POST(
             investor_profile_id: user.id,
             fit_score: fitScore,
             summary: String(result.summary || ""),
-            rationale: result.rationale ?? {},
+            rationale,
             generated_at: new Date().toISOString(),
           },
           { onConflict: "project_id,investor_profile_id" },
@@ -227,7 +263,7 @@ export async function POST(
     const { data: investors } = await admin
       .from("profiles")
       .select(
-        "id, full_name, business_name, role_title, city, sector, stage, member_role, ask_categories, offer_categories, asks_summary, offers_summary",
+        "id, full_name, business_name, role_title, city, sector, member_role, ask_categories, offer_categories, asks_summary, offers_summary, employee_band, annual_revenue_estimate",
       )
       .eq("member_role", "investor")
       .limit(50);
@@ -239,24 +275,34 @@ export async function POST(
     const { data: ownerProfile } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, business_name, sector, stage, asks_summary, offers_summary",
+        "id, full_name, business_name, sector, stage, asks_summary, offers_summary, employee_band, annual_revenue_estimate",
       )
       .eq("id", user.id)
       .single();
 
     const payload = {
-      project: { ...project, owner: ownerProfile },
-      investors,
+      project: {
+        ...project,
+        owner: ownerProfile
+          ? { ...ownerProfile, asks_summary: cleanAsksForAI(ownerProfile.asks_summary) }
+          : ownerProfile,
+      },
+      investors: investors.map((inv) => ({
+        ...inv,
+        asks_summary: cleanAsksForAI(inv.asks_summary),
+      })),
     };
 
     const json = await callOpenRouter(
       GEMINI_STARTUP_FINDS_INVESTORS_INSTRUCTIONS,
       payload,
     );
+    type CategoryScores = { sector_vertical?: number; stage_fit?: number; investment_thesis?: number; geographic_fit?: number };
     type InvestorRec = {
       investor_id: string;
       fit_score: number;
       summary: string;
+      category_scores?: CategoryScores;
       rationale: Record<string, string>;
     };
     type InvestorRecsResult = { recommendations: InvestorRec[] };
@@ -269,21 +315,30 @@ export async function POST(
       );
     }
 
+    const clampCS = (v: unknown) => typeof v === "number" ? Math.max(0, Math.min(100, Math.round(v))) : undefined;
+
     const validInvestorIds = new Set(investors.map((i) => i.id));
     const rows = result.recommendations
       .filter((r) => r.investor_id && validInvestorIds.has(r.investor_id))
       .slice(0, 5)
-      .map((r) => ({
-        project_id: projectId,
-        investor_profile_id: r.investor_id,
-        fit_score: Math.max(
-          0,
-          Math.min(100, Math.round(Number(r.fit_score) || 0)),
-        ),
-        summary: String(r.summary || ""),
-        rationale: r.rationale ?? {},
-        generated_at: new Date().toISOString(),
-      }));
+      .map((r) => {
+        const cs = r.category_scores;
+        const rationale = {
+          ...(r.rationale ?? {}),
+          ...(cs?.sector_vertical   != null ? { _cs_sector_vertical:   clampCS(cs.sector_vertical)   } : {}),
+          ...(cs?.stage_fit         != null ? { _cs_stage_fit:         clampCS(cs.stage_fit)         } : {}),
+          ...(cs?.investment_thesis != null ? { _cs_investment_thesis: clampCS(cs.investment_thesis) } : {}),
+          ...(cs?.geographic_fit    != null ? { _cs_geographic_fit:    clampCS(cs.geographic_fit)    } : {}),
+        };
+        return {
+          project_id: projectId,
+          investor_profile_id: r.investor_id,
+          fit_score: Math.max(0, Math.min(100, Math.round(Number(r.fit_score) || 0))),
+          summary: String(r.summary || ""),
+          rationale,
+          generated_at: new Date().toISOString(),
+        };
+      });
 
     if (rows.length > 0) {
       const { error: upsertError } = await admin

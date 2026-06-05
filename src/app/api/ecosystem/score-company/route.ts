@@ -25,7 +25,7 @@ async function callOpenRouter(systemInstruction: string, payload: unknown) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "openrouter/owl-alpha",
+      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: JSON.stringify(payload) },
@@ -85,21 +85,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "startup_id is required" }, { status: 400 });
     }
 
-    const { data: portfolioEntry } = await admin
-      .from("portfolio_companies")
-      .select("id")
-      .eq("partner_id", user.id)
-      .eq("startup_id", startup_id)
-      .eq("status", "active")
-      .single();
-
-    if (!portfolioEntry) {
-      return NextResponse.json({ error: "Startup not in your active portfolio" }, { status: 404 });
-    }
-
     const { data: startupProfile } = await admin
       .from("profiles")
-      .select("id, full_name, business_name, sector, stage, city, asks_summary")
+      .select("id, full_name, business_name, sector, city, asks_summary")
       .eq("id", startup_id)
       .single();
 
@@ -127,7 +115,6 @@ export async function POST(request: Request) {
         business_name: startupProfile?.business_name,
         full_name: startupProfile?.full_name,
         sector: startupProfile?.sector,
-        stage: startupProfile?.stage,
         city: startupProfile?.city,
         profile: startupProfile?.asks_summary,
       },

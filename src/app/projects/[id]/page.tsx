@@ -2097,7 +2097,7 @@ export default function ProjectDetailPage({
                               );
                             })()}
                             <Link
-                              href={`/matches/breakdown?a=${project?.owner_id ?? ""}&b=${m.investor_profile_id}&score=${m.fit_score}`}
+                              href={`/matches/breakdown?a=${project?.owner_id ?? ""}&b=${m.investor_profile_id}&score=${m.fit_score}&project=${project?.id ?? ""}`}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500/10 px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-500/20 transition-colors"
                             >
                               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -126,9 +126,19 @@ export default function DashboardPage() {
         ]);
         if (!active) return;
         setPipelineStats(stats);
+        // Map DB enum values → display labels used by the chart
+        const DB_TO_LABEL: Record<string, string> = {
+          discover:    "Qualified",
+          intro:       "Intro & Scoping",
+          proposal:    "Proposal",
+          negotiation: "Negotiation",
+          won:         "Closed Won",
+          lost:        "On Hold",
+        };
         const counts: Record<string, number> = {};
         for (const card of dealCards as { stage: string }[]) {
-          counts[card.stage] = (counts[card.stage] ?? 0) + 1;
+          const label = DB_TO_LABEL[card.stage] ?? card.stage;
+          counts[label] = (counts[label] ?? 0) + 1;
         }
         setDealStageCounts(counts);
       }

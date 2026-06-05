@@ -139,6 +139,7 @@ export default function MatchesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [founderProfiles, setFounderProfiles] = useState<Map<string, FounderProfile>>(new Map());
   const [loadingFounders, setLoadingFounders] = useState<Set<string>>(new Set());
+  const [selectedFounder, setSelectedFounder] = useState<FounderProfile | null>(null);
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -473,53 +474,6 @@ export default function MatchesPage() {
             </p>
           </div>
 
-          {/* Investor controls — only on Projects tab */}
-          {isInvestor && !isLoading && investorTab === "projects" && (
-            <div className="flex shrink-0 items-center gap-3">
-              {top5Projects.length > 0 && (
-                <div className="flex rounded-xl border border-(--color-hairline) overflow-hidden text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setView("all")}
-                    className={`px-4 py-2 transition-colors ${view === "all" ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
-                  >
-                    All projects
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("top5")}
-                    className={`px-4 py-2 transition-colors ${view === "top5" ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
-                  >
-                    Top 5 matches
-                  </button>
-                </div>
-              )}
-              <button
-                type="button"
-                disabled={generatingTop5}
-                onClick={() => void handleGetTop5()}
-                className="inline-flex items-center gap-2 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/10 px-4 py-2 text-sm font-semibold text-(--color-primary) hover:bg-(--color-primary)/20 disabled:opacity-60 transition-colors"
-              >
-                {generatingTop5 ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    {top5Total > 0 ? `Scoring ${top5Progress}/${top5Total}…` : "Scoring…"}
-                  </>
-                ) : (
-                  <>
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
-                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                    </svg>
-                    Get top 5 matches
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
           {/* Startup: new project */}
           {isStartup && !isLoading && (
             <Link
@@ -680,7 +634,7 @@ export default function MatchesPage() {
                                     <div className="flex items-center gap-2">
                                       <PieScore score={score.fit_score} size={32} />
                                       <Link
-                                        href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}`}
+                                        href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}&project=${project.id}`}
                                         className="flex h-7 w-7 items-center justify-center rounded-lg bg-(--color-canvas) text-(--color-muted) hover:text-(--color-primary)"
                                         aria-label="View compatibility"
                                       >
@@ -758,41 +712,72 @@ export default function MatchesPage() {
                           return (
                             <div
                               key={invite.id}
-                              className="flex items-center gap-4 rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4"
+                              className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4 space-y-3"
                             >
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-xs font-bold text-violet-400">
-                                {invite.partner_name.charAt(0)}
+                              {/* Partner header */}
+                              <div className="flex items-start gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-xs font-bold text-violet-400">
+                                  {invite.partner_name.charAt(0)}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-(--color-ink)">{invite.partner_name}</p>
+                                  {(invite.partner_sector || invite.partner_city) && (
+                                    <p className="text-xs text-(--color-muted)">
+                                      {[invite.partner_sector, invite.partner_city].filter(Boolean).join(" · ")}
+                                    </p>
+                                  )}
+                                  <p className="mt-0.5 text-[10px] text-(--color-muted)">
+                                    Invited {new Date(invite.nominated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                  </p>
+                                </div>
+                                {invite.eco_score !== null && (
+                                  <div className="shrink-0 text-right">
+                                    <p className={`text-lg font-bold tabular-nums ${invite.eco_score >= 75 ? "text-emerald-400" : invite.eco_score >= 50 ? "text-amber-400" : "text-rose-400"}`}>
+                                      {invite.eco_score}%
+                                    </p>
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Mandate fit</p>
+                                  </div>
+                                )}
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-(--color-ink)">{invite.partner_name}</p>
-                                <p className="mt-0.5 text-xs text-(--color-muted)">
-                                  Invited you to join their ecosystem partner portfolio
-                                </p>
-                                <p className="mt-1 text-[10px] text-(--color-muted)">
-                                  {new Date(invite.nominated_at).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 gap-2">
-                                <button
-                                  type="button"
-                                  disabled={isResponding}
-                                  onClick={() => void handlePortfolioInviteRespond(invite.id, "declined")}
-                                  className="rounded-lg border border-(--color-hairline) px-3 py-1.5 text-xs font-semibold text-(--color-muted) transition hover:border-rose-400/40 hover:text-rose-500 disabled:opacity-50"
-                                >
-                                  Decline
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={isResponding}
-                                  onClick={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
-                                  className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                                >
-                                  {isResponding ? "…" : "Accept"}
-                                </button>
+
+                              {/* Partner bio */}
+                              {invite.partner_bio && (
+                                <p className="text-xs text-(--color-muted) leading-relaxed line-clamp-2">{invite.partner_bio}</p>
+                              )}
+
+                              {/* AI summary */}
+                              {invite.eco_summary && (
+                                <p className="text-xs text-violet-400 italic line-clamp-2">{invite.eco_summary}</p>
+                              )}
+
+                              {/* Actions */}
+                              <div className="flex flex-wrap items-center gap-2 pt-1">
+                                {invite.eco_score !== null && invite.scored_project_id && (
+                                  <Link
+                                    href={`/matches/breakdown?a=${invite.partner_id}&b=${user?.id ?? ""}&score=${invite.eco_score}&project=${invite.scored_project_id}`}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-500 hover:bg-indigo-500/20 transition-colors"
+                                  >
+                                    View compatibility
+                                  </Link>
+                                )}
+                                <div className="flex gap-2 ml-auto">
+                                  <button
+                                    type="button"
+                                    disabled={isResponding}
+                                    onClick={() => void handlePortfolioInviteRespond(invite.id, "declined")}
+                                    className="rounded-lg border border-(--color-hairline) px-3 py-1.5 text-xs font-semibold text-(--color-muted) transition hover:border-rose-400/40 hover:text-rose-500 disabled:opacity-50"
+                                  >
+                                    Decline
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isResponding}
+                                    onClick={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
+                                    className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                                  >
+                                    {isResponding ? "…" : "Accept"}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           );
@@ -857,6 +842,55 @@ export default function MatchesPage() {
                 )}
               </button>
             </div>
+
+            {/* ── Investor view controls ── */}
+            {investorTab === "projects" && !isLoading && (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  {top5Projects.length > 0 && (
+                    <div className="flex rounded-xl border border-(--color-hairline) overflow-hidden text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setView("all")}
+                        className={`px-4 py-2 transition-colors ${view === "all" ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
+                      >
+                        All projects
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setView("top5")}
+                        className={`px-4 py-2 transition-colors ${view === "top5" ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
+                      >
+                        Top 5 matches
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={generatingTop5}
+                  onClick={() => void handleGetTop5()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/10 px-4 py-2 text-sm font-semibold text-(--color-primary) hover:bg-(--color-primary)/20 disabled:opacity-60 transition-colors"
+                >
+                  {generatingTop5 ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      {top5Total > 0 ? `Scoring ${top5Progress}/${top5Total}…` : "Scoring…"}
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                      </svg>
+                      Get top 5 matches
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* ── Projects tab ── */}
             {investorTab === "projects" && (
@@ -941,7 +975,14 @@ export default function MatchesPage() {
                                 ) : founder ? (
                                   <div className="space-y-3">
                                     <div>
-                                      <p className="font-semibold text-(--color-ink)">{founder.business_name || founder.full_name || "Unnamed founder"}</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedFounder(founder)}
+                                        className="font-semibold text-(--color-ink) hover:text-(--color-primary) hover:underline text-left transition-colors"
+                                      >
+                                        {founder.full_name || "Unnamed founder"}
+                                      </button>
+                                      {founder.business_name && <p className="text-xs text-(--color-muted)">{founder.business_name}</p>}
                                       {founder.role_title && <p className="text-xs text-(--color-muted)">{founder.role_title}</p>}
                                     </div>
                                     <div className="flex flex-wrap gap-3 text-xs text-(--color-muted)">
@@ -966,7 +1007,7 @@ export default function MatchesPage() {
                                   onRequest={handleRequestIntro}
                                   size="md"
                                 />
-                                <Link href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${score.fit_score}`} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors">
+                                <Link href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${score.fit_score}&project=${p.id}`} className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors">
                                   View compatibility breakdown
                                 </Link>
                                 <Link href={`/projects/${p.id}/investor`} className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors">
@@ -986,67 +1027,134 @@ export default function MatchesPage() {
                   {projects.map((p) => {
                     const existingScore = scoreMap.get(p.id);
                     const isScoringThis = scoring.has(p.id);
+                    const isExpanded = expandedId === p.id;
+                    const founder = founderProfiles.get(p.owner_id) ?? null;
+                    const founderLoading = loadingFounders.has(p.owner_id);
+                    let fundraisingStage: string | null = null;
+                    try {
+                      const parsed = JSON.parse(founder?.asks_summary ?? "");
+                      if (parsed?._v === 2) fundraisingStage = parsed.fundraising_stage ?? null;
+                    } catch { /* ignore */ }
 
                     return (
-                      <div key={p.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6 hover:shadow-md transition-shadow">
-                        <Link href={`/projects/${p.id}`} className="block">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <h2 className="text-lg font-semibold text-(--color-ink)">{p.name}</h2>
-                              {p.description && <p className="mt-1 text-sm text-(--color-body) line-clamp-2">{p.description}</p>}
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {p.stage && <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{p.stage}</span>}
-                                {p.sector && <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{p.sector}</span>}
+                      <div key={p.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden hover:shadow-md transition-shadow">
+                        <button type="button" onClick={() => handleToggleExpand(p)} className="w-full text-left p-5">
+                          <div className="flex items-center gap-4">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-(--color-ink) truncate">{p.name}</p>
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {p.stage && <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">{p.stage}</span>}
+                                {p.sector && <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{p.sector}</span>}
+                                {fundraisingStage && <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">{fundraisingStage}</span>}
                               </div>
                             </div>
-                            <span className="shrink-0 text-sm text-(--color-muted)">{new Date(p.created_at).toLocaleDateString()}</span>
-                          </div>
-                        </Link>
-                        <div className="mt-4 flex items-center justify-between border-t border-(--color-hairline) pt-3">
-                          <div className="flex items-center gap-3">
-                            {existingScore ? (
-                              <div className="flex items-center gap-3">
-                                <PieScore score={existingScore.fit_score} />
-                                {existingScore.summary && <span className="text-xs font-medium text-(--color-primary) hidden sm:inline line-clamp-1">{existingScore.summary}</span>}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-(--color-muted)">Not yet scored</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ConnectButton
-                              projectId={p.id}
-                              ownerId={p.owner_id}
-                              userId={user?.id ?? ""}
-                              matchStatusByPartnerId={matchStatusByPartnerId}
-                              introRequests={introRequests}
-                              onRequest={handleRequestIntro}
-                            />
-                            <button
-                              type="button"
-                              disabled={isScoringThis}
-                              onClick={() => handleScoreProject(p.id)}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-3 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
-                            >
-                              {isScoringThis ? (
+                            <div className="flex shrink-0 items-center gap-3">
+                              {existingScore ? (
                                 <>
-                                  <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                  </svg>
-                                  AI is scoring…
+                                  <div className="text-right">
+                                    <p className={`text-xl font-bold ${scoreColorClass(existingScore.fit_score)}`}>{existingScore.fit_score}%</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
+                                  </div>
+                                  <PieScore score={existingScore.fit_score} />
                                 </>
                               ) : (
-                                <>
-                                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
-                                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                                  </svg>
-                                  {existingScore ? "Rescore" : "Score this project"}
-                                </>
+                                <span className="text-xs text-(--color-muted)">Not yet scored</span>
                               )}
-                            </button>
+                              <svg className={`h-4 w-4 text-(--color-muted) transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
                           </div>
-                        </div>
+                          {existingScore?.summary && <p className="mt-2 text-xs text-(--color-primary) line-clamp-1">{existingScore.summary}</p>}
+                        </button>
+
+                        {isExpanded && (
+                          <div className="border-t border-(--color-hairline) bg-(--color-surface-soft) p-5 space-y-5">
+                            <div>
+                              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Project details</p>
+                              {p.description && <p className="text-sm text-(--color-body) leading-relaxed">{p.description}</p>}
+                              <div className="mt-3 flex flex-wrap gap-4">
+                                {p.stage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Stage</p><p className="text-sm font-medium text-(--color-ink)">{p.stage}</p></div>}
+                                {p.sector && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p><p className="text-sm font-medium text-(--color-ink)">{p.sector}</p></div>}
+                                {fundraisingStage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p><p className="text-sm font-medium text-(--color-ink)">{fundraisingStage}</p></div>}
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4">
+                              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Founder profile</p>
+                              {founderLoading ? (
+                                <div className="h-16 animate-pulse rounded-lg bg-(--color-surface-soft)" />
+                              ) : founder ? (
+                                <div className="space-y-3">
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedFounder(founder)}
+                                      className="font-semibold text-(--color-ink) hover:text-(--color-primary) hover:underline text-left transition-colors"
+                                    >
+                                      {founder.full_name || "Unnamed founder"}
+                                    </button>
+                                    {founder.business_name && <p className="text-xs text-(--color-muted)">{founder.business_name}</p>}
+                                    {founder.role_title && <p className="text-xs text-(--color-muted)">{founder.role_title}</p>}
+                                  </div>
+                                  <div className="flex flex-wrap gap-3 text-xs text-(--color-muted)">
+                                    {founder.city && <span>📍 {founder.city}</span>}
+                                    {founder.sector && <span>🏭 {founder.sector}</span>}
+                                    {founder.years_in_operation && <span>🕐 {founder.years_in_operation} in operation</span>}
+                                    {founder.employee_band && <span>👥 {founder.employee_band} employees</span>}
+                                  </div>
+                                  {founder.short_bio && <p className="text-sm text-(--color-body) leading-relaxed">{founder.short_bio}</p>}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-(--color-muted)">Founder details unavailable.</p>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <ConnectButton
+                                projectId={p.id}
+                                ownerId={p.owner_id}
+                                userId={user?.id ?? ""}
+                                matchStatusByPartnerId={matchStatusByPartnerId}
+                                introRequests={introRequests}
+                                onRequest={handleRequestIntro}
+                                size="md"
+                              />
+                              {existingScore && (
+                                <Link
+                                  href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${existingScore.fit_score}&project=${p.id}`}
+                                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors"
+                                >
+                                  View compatibility breakdown
+                                </Link>
+                              )}
+                              <Link href={`/projects/${p.id}/investor`} className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-canvas) transition-colors">
+                                View full project →
+                              </Link>
+                              <button
+                                type="button"
+                                disabled={isScoringThis}
+                                onClick={(e) => { e.stopPropagation(); void handleScoreProject(p.id); }}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-3 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                              >
+                                {isScoringThis ? (
+                                  <>
+                                    <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    AI is scoring…
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
+                                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                                    </svg>
+                                    {existingScore ? "Rescore" : "Score this project"}
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1101,6 +1209,10 @@ export default function MatchesPage() {
           </section>
         )}
       </div>
+
+      {selectedFounder && (
+        <FounderProfileModal founder={selectedFounder} onClose={() => setSelectedFounder(null)} />
+      )}
     </div>
   );
 }
@@ -1149,6 +1261,239 @@ function ConnectButton({
     >
       {reqState === "requesting" ? "Sending…" : "Add as Qualified"}
     </button>
+  );
+}
+
+// ─── Founder profile modal ────────────────────────────────────────────────────
+
+function FounderProfileModal({
+  founder: f,
+  onClose,
+}: {
+  founder: FounderProfile;
+  onClose: () => void;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  type ExtraFields = {
+    linkedin_url: string | null;
+    verification_status: string | null;
+    member_role: string | null;
+    ask_categories: string[] | null;
+    offer_categories: string[] | null;
+    annual_revenue_estimate: string | null;
+    stage: string | null;
+  };
+  const [extra, setExtra] = useState<ExtraFields | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("linkedin_url, verification_status, member_role, ask_categories, offer_categories, annual_revenue_estimate, stage")
+        .eq("id", f.id)
+        .single();
+      if (data) setExtra(data as ExtraFields);
+    })();
+  }, [supabase, f.id]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const handleBackdrop = useCallback(
+    (e: React.MouseEvent) => { if (e.target === backdropRef.current) onClose(); },
+    [onClose],
+  );
+
+  let v2: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(f.asks_summary ?? "");
+    if (parsed?._v === 2) v2 = parsed;
+  } catch { /* */ }
+
+  const fundraisingStage = (v2?.fundraising_stage as string | null) ?? null;
+  const productStage = v2?.product_stage as string | null ?? null;
+  const targetRaiseMin = v2?.target_raise_min as string | null ?? null;
+  const targetRaiseMax = v2?.target_raise_max as string | null ?? null;
+  const targetRegions = (v2?.target_regions as string[] | null) ?? [];
+  const targetIndustries = (v2?.target_industries as string[] | null) ?? [];
+
+  const initials = (f.full_name ?? "?").split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
+
+  const roleBadgeLabel = extra?.member_role === "startup" ? "Founder" : extra?.member_role === "investor" ? "Investor" : null;
+
+  return (
+    <div
+      ref={backdropRef}
+      onClick={handleBackdrop}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8 backdrop-blur-sm"
+    >
+      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-(--color-hairline) bg-(--color-canvas) shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-(--color-hairline) bg-(--color-surface-soft) text-(--color-muted) hover:bg-(--color-hairline) transition-colors"
+          aria-label="Close"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="p-6 space-y-5">
+          {/* Header */}
+          <div className="flex items-start gap-4 pr-8">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-(--color-primary)/10 text-lg font-bold text-(--color-primary)">
+              {initials || "?"}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-(--color-ink)">{f.full_name || "—"}</h2>
+              {f.business_name && <p className="text-sm text-(--color-body)">{f.business_name}</p>}
+              {f.role_title && <p className="text-xs text-(--color-muted)">{f.role_title}</p>}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {roleBadgeLabel && (
+                  <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-primary)">
+                    {roleBadgeLabel}
+                  </span>
+                )}
+                {extra?.verification_status === "verified" && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">✓ Verified</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick facts */}
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+            {f.city && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Location</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{f.city}</p>
+              </div>
+            )}
+            {f.sector && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{f.sector}</p>
+              </div>
+            )}
+            {f.years_in_operation && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Years operating</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{f.years_in_operation}</p>
+              </div>
+            )}
+            {f.employee_band && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Team size</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{f.employee_band}</p>
+              </div>
+            )}
+            {extra?.annual_revenue_estimate && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Revenue</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{extra.annual_revenue_estimate}</p>
+              </div>
+            )}
+            {fundraisingStage && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{fundraisingStage}</p>
+              </div>
+            )}
+            {productStage && (
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Product stage</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">{productStage}</p>
+              </div>
+            )}
+            {(targetRaiseMin || targetRaiseMax) && (
+              <div className="col-span-2 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Target raise</p>
+                <p className="mt-0.5 font-medium text-(--color-ink)">
+                  {targetRaiseMin && targetRaiseMax
+                    ? `$${Number(targetRaiseMin).toLocaleString()} – $${Number(targetRaiseMax).toLocaleString()}`
+                    : targetRaiseMin
+                      ? `From $${Number(targetRaiseMin).toLocaleString()}`
+                      : `Up to $${Number(targetRaiseMax).toLocaleString()}`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Bio */}
+          {f.short_bio && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">About</p>
+              <p className="text-sm text-(--color-body) leading-relaxed">{f.short_bio}</p>
+            </div>
+          )}
+
+          {/* Target regions / industries */}
+          {targetRegions.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target regions</p>
+              <div className="flex flex-wrap gap-1.5">
+                {targetRegions.map((r) => (
+                  <span key={r} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{r}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {targetIndustries.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target industries</p>
+              <div className="flex flex-wrap gap-1.5">
+                {targetIndustries.map((i) => (
+                  <span key={i} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{i}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ask / Offer categories */}
+          {(extra?.ask_categories ?? []).length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Asking for</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(extra!.ask_categories ?? []).map((tag) => (
+                  <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-primary)">{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {(extra?.offer_categories ?? []).length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Offering</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(extra!.offer_categories ?? []).map((tag) => (
+                  <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-accent-gold)">{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* LinkedIn */}
+          {extra?.linkedin_url && (
+            <a
+              href={extra.linkedin_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-(--color-primary) hover:underline"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+              </svg>
+              LinkedIn profile
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

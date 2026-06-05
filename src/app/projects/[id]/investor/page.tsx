@@ -231,7 +231,7 @@ export default function InvestorProjectOverviewPage() {
             <p className="text-sm text-(--color-body) leading-relaxed">{score.summary}</p>
             {score.rationale && Object.keys(score.rationale).length > 0 && (
               <dl className="mt-3 grid gap-y-1 gap-x-4 sm:grid-cols-2 text-xs">
-                {Object.entries(score.rationale).map(([k, v]) => (
+                {Object.entries(score.rationale).filter(([k]) => !k.startsWith("_cs_")).map(([k, v]) => (
                   <div key={k} className="flex gap-2">
                     <dt className="capitalize text-(--color-muted) shrink-0">{k.replace(/_/g, " ")}:</dt>
                     <dd className="text-(--color-body)">{v}</dd>
@@ -412,7 +412,7 @@ export default function InvestorProjectOverviewPage() {
         <section className="flex flex-wrap gap-3">
           {founder && (
             <Link
-              href={`/matches/breakdown?a=${user?.id ?? ""}&b=${project.owner_id}&score=${score?.fit_score ?? 70}`}
+              href={`/matches/breakdown?a=${user?.id ?? ""}&b=${project.owner_id}&score=${score?.fit_score ?? 70}&project=${project.id}`}
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 px-5 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-500/20 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

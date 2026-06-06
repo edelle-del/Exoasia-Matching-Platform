@@ -6,6 +6,7 @@ export type PortfolioInvite = {
   id: string;
   partner_id: string;
   partner_name: string;
+  partner_full_name: string | null;
   partner_role: string | null;
   partner_role_title: string | null;
   partner_sector: string | null;
@@ -101,6 +102,7 @@ export async function GET() {
         id: r.id,
         partner_id: r.partner_id,
         partner_name: partner?.business_name || partner?.full_name || "Ecosystem partner",
+        partner_full_name: partner?.full_name ?? null,
         partner_role: partner?.member_role ?? null,
         partner_role_title: partner?.role_title ?? null,
         partner_sector: partner?.sector ?? null,

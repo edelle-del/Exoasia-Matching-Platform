@@ -531,9 +531,12 @@ export default function MatchesPage() {
               </div>
 
               {isLoading ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {[...Array(2)].map((_, i) => (
-                    <div key={i} className="h-44 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
+                    <div key={i} className="space-y-3">
+                      <div className="h-10 animate-pulse rounded-xl bg-(--color-surface-soft)" />
+                      <div className="h-24 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
+                    </div>
                   ))}
                 </div>
               ) : projects.length === 0 ? (
@@ -545,52 +548,36 @@ export default function MatchesPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-8">
                   {projects.map((project) => {
                     const scores = projectScores.filter((s) => s.project_id === project.id);
                     const bestScore = scores.length > 0 ? scores[0].fit_score : null;
                     const isGeneratingThis = generating.has(project.id);
                     const alreadyGenerated = generatedProjects.has(project.id);
-                    const isExpanded = expandedProjects.has(project.id);
-                    const toggleExpand = () => setExpandedProjects((prev) => {
-                      const next = new Set(prev);
-                      next.has(project.id) ? next.delete(project.id) : next.add(project.id);
-                      return next;
-                    });
+                    const visibleScores = hasActiveSub ? scores : scores.slice(0, 2);
+                    const hiddenCount = hasActiveSub ? 0 : Math.max(0, scores.length - 2);
 
                     return (
-                      <div key={project.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas)">
-                        {/* Compact header row */}
-                        <div className="flex items-center gap-3 px-5 py-4">
-                          <div className="min-w-0 flex-1">
+                      <div key={project.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden">
+                        {/* Project card header */}
+                        <div className="flex items-center justify-between gap-3 px-5 py-5">
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-sm font-semibold text-(--color-ink)">{project.name}</h3>
+                              <h3 className="text-base font-semibold text-(--color-ink)">{project.name}</h3>
                               {project.stage && (
-                                <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{project.stage}</span>
+                                <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">{project.stage}</span>
                               )}
                               {project.sector && (
-                                <span className="rounded-full border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{project.sector}</span>
+                                <span className="rounded-full bg-(--color-surface-soft) border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{project.sector}</span>
                               )}
                             </div>
-                            <p className="mt-0.5 text-xs text-(--color-muted)">
+                            <p className="mt-1 text-xs text-(--color-muted)">
                               {scores.length > 0
                                 ? `${scores.length} investor match${scores.length !== 1 ? "es" : ""}${bestScore !== null ? ` · ${bestScore}% best fit` : ""}`
                                 : "No investor matches yet"}
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            {scores.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={toggleExpand}
-                                className="inline-flex items-center gap-1 rounded-lg border border-(--color-hairline) px-2.5 py-1.5 text-xs font-medium text-(--color-muted) hover:border-(--color-primary)/40 hover:text-(--color-ink) transition-colors"
-                              >
-                                {isExpanded ? "Hide" : `Show matches (${scores.length})`}
-                                <svg className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-                            )}
                             <button
                               type="button"
                               disabled={isGeneratingThis}
@@ -613,69 +600,131 @@ export default function MatchesPage() {
                           </div>
                         </div>
 
-                        {/* Expandable investor rows */}
-                        {isExpanded && scores.length > 0 && (
-                          <div className="border-t border-(--color-hairline) px-5 py-3 space-y-2">
-                            {scores.map((score, scoreIdx) => {
-                              const scoreLocked = !hasActiveSub && scoreIdx >= 2;
-                              const requestKey = `${project.id}:${score.investor_profile_id}`;
-                              const reqState = introRequests.get(requestKey);
-                              const isDone = existingMatchPartnerIds.has(score.investor_profile_id) || reqState === "done";
+                        {/* Investor match rows — nested inside the project card */}
+                        <div className="border-t border-(--color-hairline) bg-(--color-surface-soft)">
+                          {scores.length === 0 ? (
+                            <div className="px-5 py-6 text-center">
+                              <p className="text-sm text-(--color-muted)">No investor matches yet — click Find investors to generate matches.</p>
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-(--color-hairline)">
+                              {visibleScores.map((score) => {
+                                const isExpandedScore = expandedId === score.id;
+                                const investor = founderProfiles.get(score.investor_profile_id) ?? null;
+                                const investorLoading = loadingFounders.has(score.investor_profile_id);
+                                const requestKey = `${project.id}:${score.investor_profile_id}`;
+                                const reqState = introRequests.get(requestKey);
+                                const isDone = existingMatchPartnerIds.has(score.investor_profile_id) || reqState === "done";
+                                let targetStages: string[] = [];
+                                let targetIndustries: string[] = [];
+                                try {
+                                  const parsed = JSON.parse(investor?.asks_summary ?? "");
+                                  if (parsed?._v === 2) {
+                                    targetStages = (parsed.target_stages as string[] | null) ?? [];
+                                    targetIndustries = (parsed.target_industries as string[] | null) ?? [];
+                                  }
+                                } catch { /* ignore */ }
 
-                              return (
-                                <div key={score.id} className="relative">
-                                  <div className={`flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-3 py-2 ${scoreLocked ? "blur-sm pointer-events-none select-none" : ""}`}>
-                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-(--color-canvas) text-[10px] font-bold text-(--color-ink)">
-                                      {scoreLocked ? "?" : score.investor_name.charAt(0)}
-                                    </div>
-                                    <p className="flex-1 truncate text-xs text-(--color-ink)">
-                                      {scoreLocked ? "Upgrade to unlock" : score.investor_name}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                      <PieScore score={score.fit_score} size={32} />
-                                      <Link
-                                        href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}&project=${project.id}`}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-(--color-canvas) text-(--color-muted) hover:text-(--color-primary)"
-                                        aria-label="View compatibility"
-                                      >
-                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                return (
+                                  <div key={score.id}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setExpandedId((prev) => (prev === score.id ? null : score.id));
+                                        void fetchFounderProfile(score.investor_profile_id);
+                                      }}
+                                      className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-(--color-canvas)/60 transition-colors"
+                                    >
+                                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-(--color-canvas) text-[10px] font-bold text-(--color-ink)">
+                                        {score.investor_name.charAt(0)}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-(--color-ink) truncate">{score.investor_name}</p>
+                                        {investor && (investor.sector || investor.city) && (
+                                          <p className="text-[11px] text-(--color-muted) truncate">
+                                            {[investor.sector, investor.city].filter(Boolean).join(" · ")}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex shrink-0 items-center gap-2">
+                                        {score.fit_score != null ? (
+                                          <>
+                                            <span className={`text-sm font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</span>
+                                            <PieScore score={score.fit_score} size={28} />
+                                          </>
+                                        ) : (
+                                          <span className="text-xs text-(--color-muted)">—</span>
+                                        )}
+                                        <svg className={`h-3.5 w-3.5 text-(--color-muted) transition-transform ${isExpandedScore ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                         </svg>
-                                      </Link>
-                                      {!isDone && (
-                                        <button
-                                          type="button"
-                                          onClick={() => void handleRequestIntro(project.id, score.investor_profile_id)}
-                                          disabled={reqState === "requesting"}
-                                          className="rounded-md bg-(--color-primary)/30 px-2 py-0.5 text-[10px] font-bold text-(--color-primary) hover:bg-(--color-primary)/50 disabled:opacity-50"
-                                        >
-                                          {reqState === "requesting" ? "…" : "Request Connection"}
-                                        </button>
-                                      )}
-                                    </div>
+                                      </div>
+                                    </button>
+
+                                    {isExpandedScore && (
+                                      <div className="border-t border-(--color-hairline) bg-(--color-canvas) px-5 py-4 space-y-4">
+                                        <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-4">
+                                          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Investor profile</p>
+                                          {investorLoading ? (
+                                            <div className="h-16 animate-pulse rounded-lg bg-(--color-canvas)" />
+                                          ) : investor ? (
+                                            <div className="space-y-3">
+                                              <div>
+                                                <p className="font-semibold text-(--color-ink)">{investor.full_name || score.investor_name}</p>
+                                                {investor.business_name && <p className="text-xs text-(--color-muted)">{investor.business_name}</p>}
+                                                {investor.role_title && <p className="text-xs text-(--color-muted)">{investor.role_title}</p>}
+                                              </div>
+                                              <div className="flex flex-wrap gap-3 text-xs text-(--color-muted)">
+                                                {investor.city && <span>📍 {investor.city}</span>}
+                                                {investor.sector && <span>🏭 {investor.sector}</span>}
+                                                {investor.years_in_operation && <span>🕐 {investor.years_in_operation} experience</span>}
+                                                {targetStages.length > 0 && <span>🎯 {targetStages.join(", ")}</span>}
+                                                {targetIndustries.length > 0 && <span>🏢 {targetIndustries.slice(0, 3).join(", ")}</span>}
+                                              </div>
+                                              {investor.short_bio && <p className="text-sm text-(--color-body) leading-relaxed">{investor.short_bio}</p>}
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm text-(--color-muted)">Investor details unavailable.</p>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                          {!isDone ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => void handleRequestIntro(project.id, score.investor_profile_id)}
+                                              disabled={reqState === "requesting"}
+                                              className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-colors"
+                                            >
+                                              {reqState === "requesting" ? "Requesting…" : "Request Connection"}
+                                            </button>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-600">Connected</span>
+                                          )}
+                                          <Link
+                                            href={`/matches/breakdown?a=${user?.id ?? ""}&b=${score.investor_profile_id}&score=${score.fit_score}&project=${project.id}`}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors"
+                                          >
+                                            View compatibility breakdown
+                                          </Link>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
-                                  {scoreLocked && (
-                                    <div className="absolute inset-0 flex items-center justify-center rounded-xl">
-                                      <span className="flex items-center gap-1.5 rounded-full border border-(--color-hairline) bg-(--color-canvas) px-3 py-1 text-xs font-semibold text-(--color-ink) shadow-sm">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3 text-(--color-muted)">
-                                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                        </svg>
-                                        Upgrade to unlock
-                                      </span>
-                                    </div>
-                                  )}
+                                );
+                              })}
+
+                              {hiddenCount > 0 && (
+                                <div className="px-5 py-4 text-center">
+                                  <p className="text-sm font-semibold text-(--color-ink)">{hiddenCount} more investor{hiddenCount !== 1 ? "s" : ""} matched</p>
+                                  <p className="mt-0.5 text-xs text-(--color-muted)">Upgrade to see all your matches.</p>
+                                  <Link href="/payments" className="mt-3 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-colors">
+                                    Upgrade to unlock
+                                  </Link>
                                 </div>
-                              );
-                            })}
-                            {!hasActiveSub && scores.length > 2 && (
-                              <p className="pt-1 text-center text-xs text-(--color-muted)">
-                                {scores.length - 2} more hidden.{" "}
-                                <Link href="/payments" className="font-semibold text-(--color-primary) hover:underline">Upgrade to unlock</Link>
-                              </p>
-                            )}
-                          </div>
-                        )}
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1583,10 +1632,10 @@ function CollabInviteCard({
     ? `/matches/breakdown?a=${invite.partner_id}&b=${userId}&score=${invite.eco_score}&project=${invite.scored_project_id}`
     : `/matches/breakdown?a=${invite.partner_id}&b=${userId}`;
 
-  const roleLabel =
-    invite.partner_role === "investor" ? "Investor"
-    : invite.partner_role === "startup" ? "Founder"
-    : invite.partner_role === "ecosystem_partner" ? "Ecosystem Partner"
+  const roleConfig =
+    invite.partner_role === "investor"         ? { label: "Investor",          style: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30" }
+    : invite.partner_role === "startup"        ? { label: "Founder",           style: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" }
+    : invite.partner_role === "ecosystem_partner" ? { label: "Ecosystem Partner", style: "bg-violet-500/15 text-violet-500 border-violet-500/30" }
     : null;
 
   return (
@@ -1603,15 +1652,18 @@ function CollabInviteCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold text-(--color-ink)">{invite.partner_name}</p>
-            {roleLabel && (
-              <span className="rounded-full bg-(--color-surface-soft) border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">
-                {roleLabel}
+            {roleConfig && (
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${roleConfig.style}`}>
+                {roleConfig.label}
               </span>
             )}
             {invite.partner_verification_status === "verified" && (
               <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-500">✓ Verified</span>
             )}
           </div>
+          {invite.partner_full_name && invite.partner_full_name !== invite.partner_name && (
+            <p className="mt-0.5 text-xs text-(--color-muted)">{invite.partner_full_name}</p>
+          )}
           {(invite.partner_sector || invite.partner_city) && (
             <p className="mt-0.5 text-xs text-(--color-muted)">
               {[invite.partner_sector, invite.partner_city].filter(Boolean).join(" · ")}
@@ -1643,14 +1695,26 @@ function CollabInviteCard({
       {isExpanded && (
         <div className="border-t border-(--color-hairline) bg-(--color-surface-soft) p-4 space-y-4">
 
+          {/* Name / role */}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              {invite.partner_full_name && (
+                <p className="text-sm font-semibold text-(--color-ink)">{invite.partner_full_name}</p>
+              )}
+              {invite.partner_role_title && (
+                <p className="text-xs text-(--color-muted)">{invite.partner_role_title}</p>
+              )}
+            </div>
+            {roleConfig && (
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold ${roleConfig.style}`}>
+                {roleConfig.label}
+              </span>
+            )}
+          </div>
+
           {/* Bio */}
           {invite.partner_bio && (
             <p className="text-sm text-(--color-body) leading-relaxed">{invite.partner_bio}</p>
-          )}
-
-          {/* Role title */}
-          {invite.partner_role_title && (
-            <p className="text-xs text-(--color-muted)">{invite.partner_role_title}</p>
           )}
 
           {/* AI summary */}

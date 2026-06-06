@@ -549,7 +549,7 @@ export function DealBoardSnapshotCard({
 
 export type NotificationItem = {
   id: string;
-  kind: string;
+  kind: "match" | "invite" | "member";
   type: "match" | "accepted" | "intro" | "declined";
   title: string;
   body: string;

@@ -25,7 +25,8 @@ type Profile = {
 
 type ParamStatus = "matched" | "partial" | "mismatch";
 type Param = { name: string; myVal: string; theirVal: string; status: ParamStatus };
-type Category = { id: string; label: string; score: number; color: string; params: Param[]; isEstimated: boolean };
+type ContextItem = { name: string; value: string };
+type Category = { id: string; label: string; score: number; color: string; params: Param[]; isEstimated: boolean; context?: ContextItem[] };
 
 // ─── Canvas radar ─────────────────────────────────────────────────────────────
 
@@ -317,14 +318,9 @@ function computeCategories(
       theirVal: myIsInvestor ? fundraisingStage || "Not specified" : targetStages.slice(0, 3).join(", ") || "Flexible",
       status: ps(stageFit && targetStages.length > 0, stageFit || targetStages.length === 0),
     },
-    {
-      name: "Product stage",
-      myVal:    myIsInvestor ? "—" : productStage || "Not specified",
-      theirVal: myIsInvestor ? productStage || "Not specified" : "—",
-      status: ps(false, !!productStage),
-    },
   ];
   const stageScore = aiScores.stage_fit ?? scoreFromEvidence(stageParams);
+  const stageContext: ContextItem[] = productStage ? [{ name: "Product stage", value: productStage }] : [];
 
   // ── 3. Investment Thesis / Ask–Offer Fit (High weight) ───────────────────
   const myAsks     = mine?.ask_categories   ?? [];
@@ -410,6 +406,7 @@ function computeCategories(
       score: stageScore, color: "#10B981",
       params: stageParams,
       isEstimated: aiScores.stage_fit == null,
+      context: stageContext,
     },
     {
       id: "thesis", label: "Investment Thesis",
@@ -797,6 +794,17 @@ export default function BreakdownPage() {
                                 <p className="text-xs text-[#8B8BA7] break-words">{p.theirVal}</p>
                               </div>
                             ))}
+                            {cat.context && cat.context.length > 0 && (
+                              <div className="border-t border-[#2A2A3E] pt-3 space-y-2">
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-[#4A4A6A]">Context — not scored</p>
+                                {cat.context.map((c) => (
+                                  <div key={c.name} className="flex items-center justify-between gap-2">
+                                    <p className="text-[11px] font-medium text-[#8B8BA7]">{c.name}</p>
+                                    <span className="rounded-full bg-[#1A1A26] border border-[#2A2A3E] px-2 py-0.5 text-[10px] text-[#8B8BA7]">{c.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
   try {
@@ -28,6 +29,18 @@ export async function GET() {
       .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`)
       .order("updated_at", { ascending: false })
       .limit(50);
+
+    // Fetch new members who joined in the last 30 days (excluding current user)
+    const admin = createAdminClient();
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: newMembers } = await admin
+      .from("profiles")
+      .select("id, full_name, business_name, member_role, created_at")
+      .neq("id", user.id)
+      .not("full_name", "is", null)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
     // Fetch pending cofounder invites sent by this user
     const { data: invites } = await supabase
@@ -96,7 +109,27 @@ export async function GET() {
       };
     });
 
-    const all = [...matchNotifications, ...inviteNotifications].sort(
+    type NewMemberRow = NonNullable<typeof newMembers>[number];
+
+    const newMemberNotifications = (newMembers ?? []).map((m: NewMemberRow) => {
+      const name = m.full_name || m.business_name || "A new member";
+      const roleLabel =
+        m.member_role === "investor" ? "investor"
+        : m.member_role === "startup" ? "founder"
+        : m.member_role === "ecosystem_partner" ? "ecosystem partner"
+        : "member";
+      return {
+        id: `member-${m.id}`,
+        kind: "member" as const,
+        type: "match" as const,
+        title: "New member joined",
+        body: `${name} joined as a ${roleLabel}`,
+        href: "/community",
+        date: m.created_at as string,
+      };
+    });
+
+    const all = [...matchNotifications, ...inviteNotifications, ...newMemberNotifications].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 

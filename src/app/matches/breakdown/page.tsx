@@ -462,6 +462,8 @@ export default function BreakdownPage() {
   const [fitScore,      setFitScore]      = useState(initialScore);
   const [projectStage,  setProjectStage]  = useState<string | null>(null);
   const [aiCatScores,   setAiCatScores]   = useState<AICategoryScores>({});
+  const [aiSummary,    setAiSummary]    = useState<string | null>(null);
+  const [aiRationale,  setAiRationale]  = useState<Record<string, string>>({});
   const [isRescoring,  setIsRescoring]  = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
 
@@ -485,7 +487,7 @@ export default function BreakdownPage() {
         projectId
           ? supabase
               .from("project_match_scores")
-              .select("rationale")
+              .select("summary, rationale")
               .eq("project_id", projectId)
               .or(`investor_profile_id.eq.${profileAId},investor_profile_id.eq.${profileBId}`)
               .maybeSingle()
@@ -498,7 +500,8 @@ export default function BreakdownPage() {
       setProjectStage(proj?.stage ?? null);
 
       // Extract AI category scores stored as _cs_* keys in the rationale JSONB column.
-      const rat = ((scoreRes as { data: unknown }).data as { rationale?: Record<string, unknown> } | null)?.rationale ?? {};
+      const scoreData = ((scoreRes as { data: unknown }).data as { summary?: string; rationale?: Record<string, unknown> } | null);
+      const rat = scoreData?.rationale ?? {};
       const toNum = (v: unknown) => typeof v === "number" ? v : typeof v === "string" ? Number(v) || undefined : undefined;
       setAiCatScores({
         sector_vertical:   toNum(rat._cs_sector_vertical),
@@ -506,6 +509,12 @@ export default function BreakdownPage() {
         investment_thesis: toNum(rat._cs_investment_thesis),
         geographic_fit:    toNum(rat._cs_geographic_fit),
       });
+      setAiSummary(scoreData?.summary ?? null);
+      const ratText: Record<string, string> = {};
+      for (const [k, v] of Object.entries(rat)) {
+        if (!k.startsWith("_cs_") && typeof v === "string") ratText[k] = v;
+      }
+      setAiRationale(ratText);
       setIsLoading(false);
     })();
   }, [supabase, user?.id, profileAId, profileBId, projectId]);
@@ -580,15 +589,16 @@ export default function BreakdownPage() {
           data.score?.fit_score ??
           data.scores?.find((s) => s.investor_profile_id === profileBId || s.investor_profile_id === profileAId)?.fit_score;
 
-        // Re-fetch AI category scores from project_match_scores (investor/startup only).
+        // Re-fetch AI scores + summary from project_match_scores (investor/startup only).
         if (newScore != null && projectId) {
           const { data: fresh } = await supabase
             .from("project_match_scores")
-            .select("rationale")
+            .select("summary, rationale")
             .eq("project_id", projectId)
             .or(`investor_profile_id.eq.${profileAId},investor_profile_id.eq.${profileBId}`)
             .maybeSingle();
-          const rat = (fresh as { rationale?: Record<string, unknown> } | null)?.rationale ?? {};
+          const freshData = fresh as { summary?: string; rationale?: Record<string, unknown> } | null;
+          const rat = freshData?.rationale ?? {};
           const toNum = (v: unknown) => typeof v === "number" ? v : typeof v === "string" ? Number(v) || undefined : undefined;
           setAiCatScores({
             sector_vertical:   toNum(rat._cs_sector_vertical),
@@ -596,6 +606,12 @@ export default function BreakdownPage() {
             investment_thesis: toNum(rat._cs_investment_thesis),
             geographic_fit:    toNum(rat._cs_geographic_fit),
           });
+          setAiSummary(freshData?.summary ?? null);
+          const ratText: Record<string, string> = {};
+          for (const [k, v] of Object.entries(rat)) {
+            if (!k.startsWith("_cs_") && typeof v === "string") ratText[k] = v;
+          }
+          setAiRationale(ratText);
         }
       }
 
@@ -618,7 +634,7 @@ export default function BreakdownPage() {
     <div className="min-h-screen bg-[#0A0A0F] text-[#F4F4FF]">
 
       {/* Header */}
-      <section className="border-b border-[#2A2A3E] bg-[#12121A] px-[5%] py-8">
+      <section className="border-b border-[#2A2A3E] bg-[#12121A] px-4 sm:px-6 py-8">
         <div className="mx-auto max-w-5xl">
           <div className="flex items-center justify-between gap-4">
             <Link href="/matches" className="text-sm text-indigo-400 hover:underline">
@@ -667,7 +683,7 @@ export default function BreakdownPage() {
                   <span className="mx-2 text-[#2A2A3E]">×</span>
                   <span className="text-[#F4F4FF] font-medium">{theirName}</span>
                   <span className="ml-3 rounded-full border border-indigo-500/30 bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300">
-                    AI Match
+                    Exoasia Intelligence Match
                   </span>
                 </p>
               )}
@@ -692,7 +708,7 @@ export default function BreakdownPage() {
                     {matchedCount} matched · {partialCount} partial · {mismatchCount} gap{mismatchCount !== 1 ? "s" : ""}
                   </p>
                   {evidenceConflict && (
-                    <p className="mt-1 text-[10px] text-amber-400">Evidence shows gaps — rescore for AI dimension analysis</p>
+                    <p className="mt-1 text-[10px] text-amber-400">Evidence shows gaps — rescore for Exoasia Intelligence dimension analysis</p>
                   )}
                 </div>
               </div>
@@ -701,7 +717,7 @@ export default function BreakdownPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-5xl px-[5%] py-10 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 space-y-8">
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
@@ -710,12 +726,34 @@ export default function BreakdownPage() {
           </div>
         ) : (
           <>
+            {/* AI match summary */}
+            {(aiSummary || Object.keys(aiRationale).length > 0) && (
+              <div className="rounded-2xl bg-[#12121A] border border-[#2A2A3E] p-5">
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-indigo-400">
+                  Exoasia Intelligence Match Summary
+                </p>
+                {aiSummary && (
+                  <p className="text-sm text-[#C4C4D4] leading-relaxed">{aiSummary}</p>
+                )}
+                {Object.keys(aiRationale).length > 0 && (
+                  <dl className="mt-3 grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2">
+                    {Object.entries(aiRationale).map(([k, v]) => (
+                      <div key={k} className="flex gap-2">
+                        <dt className="shrink-0 capitalize text-[#8B8BA7]">{k.replace(/_/g, " ")}:</dt>
+                        <dd className="text-[#C4C4D4]">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            )}
+
             {/* 5-axis radar + accordion */}
             <div className="grid lg:grid-cols-5 gap-6">
               {/* Radar */}
               <div className="lg:col-span-2 rounded-2xl bg-[#12121A] border border-[#2A2A3E] p-6 flex flex-col items-center">
-                <p className="self-start text-xs font-bold text-[#F4F4FF]">AI Dimension Scores</p>
-                <p className="self-start text-[11px] text-[#8B8BA7] mt-0.5 mb-6">Per-dimension fit assessed by AI — rescore to update</p>
+                <p className="self-start text-xs font-bold text-[#F4F4FF]">Exoasia Intelligence Dimension Scores</p>
+                <p className="self-start text-[11px] text-[#8B8BA7] mt-0.5 mb-6">Per-dimension fit assessed by Exoasia Intelligence — rescore to update</p>
                 <canvas ref={canvasRef} width={260} height={260} />
                 <div className="mt-5 w-full space-y-2.5">
                   {categories.map((cat) => (
@@ -816,21 +854,23 @@ export default function BreakdownPage() {
 
             {/* AI match note */}
             <div className="rounded-2xl bg-[#12121A] border border-[#2A2A3E] p-5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7] mb-2">AI Scoring Note</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7] mb-2">Exoasia Intelligence Scoring Note</p>
               {allEstimated ? (
                 <p className="text-sm text-[#C4C4D4] leading-relaxed">
-                  The <span className="font-bold text-[#F4F4FF]">{ringScore}%</span> ring score is estimated — it is the average of four evidence-based dimension scores, not an AI judgment.
-                  Each dimension score is derived by directly matching profile fields (sector, stage, geography, thesis).
-                  The <span className="text-[#8B8BA7]">Evidence</span> rows show the profile data used to produce each estimate.
-                  Use the Rescore button to replace these estimates with the AI&apos;s overall fit score and per-dimension scores.
+                  {"The "}
+                  <span className="font-bold text-[#F4F4FF]">{ringScore}%</span>
+                  {" ring score is estimated — it is the average of four evidence-based dimension scores, not an Exoasia Intelligence judgment. Each dimension score is derived by directly matching profile fields (sector, stage, geography, thesis). The "}
+                  <span className="text-[#8B8BA7]">Evidence</span>
+                  {" rows show the profile data used to produce each estimate. Use the Rescore button to replace these estimates with the Exoasia Intelligence overall fit score and per-dimension scores."}
                 </p>
               ) : (
                 <p className="text-sm text-[#C4C4D4] leading-relaxed">
-                  The <span className="font-bold text-[#F4F4FF]">{fitScore}%</span> overall score is the AI&apos;s holistic judgment — it is not the sum or average of the dimension scores.
-                  Each AI-assessed dimension score is the AI&apos;s independent evaluation of that aspect alone.
-                  The <span className="text-[#8B8BA7]">Evidence</span> rows show the profile data the AI scored against — they do not calculate it.
-                  A dimension&apos;s score may differ from what the evidence rows suggest: the AI weighs additional context such as profile completeness, semantic sector overlap, and cross-dimension signals that the simplified evidence rows don&apos;t capture.
-                  {someEstimated && <> Dimensions marked <span className="font-bold text-[#F4F4FF]">est.</span> are estimated from evidence and will be replaced with AI scores on rescore.</>}
+                  {"The "}
+                  <span className="font-bold text-[#F4F4FF]">{fitScore}%</span>
+                  {" overall score is Exoasia Intelligence's holistic judgment — it is not the sum or average of the dimension scores. Each Exoasia Intelligence-assessed dimension score is an independent evaluation of that aspect alone. The "}
+                  <span className="text-[#8B8BA7]">Evidence</span>
+                  {" rows show the profile data Exoasia Intelligence scored against — they do not calculate it. A dimension's score may differ from what the evidence rows suggest: Exoasia Intelligence weighs additional context such as profile completeness, semantic sector overlap, and cross-dimension signals that the simplified evidence rows don't capture."}
+                  {someEstimated && <>{" Dimensions marked "}<span className="font-bold text-[#F4F4FF]">est.</span>{" are estimated from evidence and will be replaced with Exoasia Intelligence scores on rescore."}</>}
                 </p>
               )}
             </div>

@@ -25,7 +25,7 @@ const inviteSteps = [
 export default function GetInvitedPage() {
   return (
     <div className="min-h-screen bg-[var(--color-canvas)]">
-      <section className="border-b border-[var(--color-hairline)] bg-[var(--color-surface-soft)] px-[5%] py-12">
+      <section className="border-b border-[var(--color-hairline)] bg-[var(--color-surface-soft)] px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[1280px]">
           <Link
             href="/"
@@ -43,7 +43,7 @@ export default function GetInvitedPage() {
         </div>
       </section>
 
-      <div className="px-[5%] py-12">
+      <div className="px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[900px] space-y-6">
           {inviteSteps.map((step, index) => (
             <div

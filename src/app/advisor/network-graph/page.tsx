@@ -368,7 +368,7 @@ export default function NetworkGraphPage() {
   }, [companies, loading, matches]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+    <div className="min-h-screen bg-[var(--color-canvas)] px-4 sm:px-6 py-12">
       <div className="mx-auto w-full max-w-7xl space-y-8">
         <section className="rounded-[20px] border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">

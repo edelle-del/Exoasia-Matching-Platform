@@ -46,7 +46,7 @@ export default function ManualMatchPage() {
 
   if (role !== "advisor" && role !== "staff" && role !== "admin") {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-3xl">
           <p className="text-sm text-[var(--color-body)]">
             You are not authorized to access this page.
@@ -102,7 +102,7 @@ export default function ManualMatchPage() {
   };
 
   return (
-    <div className="min-h-screen px-[5%] py-12">
+    <div className="min-h-screen px-4 sm:px-6 py-12">
       <div className="mx-auto max-w-3xl rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
         <h1 className="text-2xl font-700 text-[var(--color-ink)]">
           Advisor — Create Manual Match

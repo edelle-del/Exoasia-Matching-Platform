@@ -125,7 +125,7 @@ export default function MatchDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-4xl rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 text-sm text-[var(--color-muted)]">
           Loading match…
         </div>
@@ -135,7 +135,7 @@ export default function MatchDetailPage() {
 
   if (!match) {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-4xl space-y-4">
           <p className="text-sm text-red-600">{message || "Match not found."}</p>
           <Link href="/dashboard" className="text-sm text-[var(--color-primary)] hover:underline">
@@ -147,7 +147,7 @@ export default function MatchDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+    <div className="min-h-screen bg-[var(--color-canvas)] px-4 sm:px-6 py-12">
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Header */}

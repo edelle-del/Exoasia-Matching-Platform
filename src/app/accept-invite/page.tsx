@@ -210,7 +210,7 @@ export default function AcceptInvitePage() {
   // ── Success screen ────────────────────────────────────────────────────────
   if (accepted) {
     return (
-      <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+      <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[600px] rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-8 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-6 w-6 text-green-600">
@@ -232,7 +232,7 @@ export default function AcceptInvitePage() {
   // ── Legacy: admin-provisioned signed-in invited account (no token) ─────────
   if (signedIn && isInvitedAccount && !inviteInfo) {
     return (
-      <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+      <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[600px] rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-8">
           <p className="text-xs font-600 uppercase tracking-[0.14em] text-(--color-muted)">Platform Invitation</p>
           <h1 className="mt-3 text-2xl font-700 text-(--color-ink)">Set up your account</h1>
@@ -245,7 +245,7 @@ export default function AcceptInvitePage() {
 
   // ── Main render ───────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_340px]">
 
         {/* ── Left panel ── */}

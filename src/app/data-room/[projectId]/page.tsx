@@ -98,7 +98,7 @@ export default function ProjectDataRoomPage({
   return (
     <div className="min-h-screen bg-(--color-canvas)">
       {/* Header */}
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
         <div className="mx-auto max-w-3xl">
           <Link href="/data-room" className="text-sm text-(--color-primary) hover:underline">
             ← Data room
@@ -117,7 +117,7 @@ export default function ProjectDataRoomPage({
         </div>
       </section>
 
-      <div className="mx-auto max-w-3xl px-[5%] py-10 space-y-8">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10 space-y-8">
         {/* Drive link form */}
         <section className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-6">
           <div className="flex items-center gap-3 mb-4">

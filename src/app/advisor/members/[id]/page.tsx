@@ -153,7 +153,7 @@ export default function AdvisorMemberDetailPage() {
 
   if (role !== "advisor" && role !== "staff" && role !== "admin") {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <p className="text-sm text-(--color-body)">Not authorized.</p>
         <Link href="/dashboard" className="text-(--color-primary) hover:underline">
           Back to dashboard
@@ -211,7 +211,7 @@ export default function AdvisorMemberDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-5xl">
           <Link
             href="/advisor/members"
@@ -227,7 +227,7 @@ export default function AdvisorMemberDetailPage() {
 
   if (!data?.profile) {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-5xl">
           <Link
             href="/advisor/members"
@@ -247,7 +247,7 @@ export default function AdvisorMemberDetailPage() {
     profile.stage;
 
   return (
-    <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
       <div className="mx-auto w-full max-w-5xl space-y-6">
 
         {/* Back */}

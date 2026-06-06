@@ -1843,7 +1843,7 @@ export default function OnboardingForm() {
             </div>
           </div>
         )}
-        <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+        <div className="min-h-screen bg-[var(--color-canvas)] px-4 sm:px-6 py-12">
           <div className="mx-auto max-w-[520px]">
             <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8 shadow-sm">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted)]">
@@ -1953,7 +1953,7 @@ export default function OnboardingForm() {
 
   if (step === "startup") {
     return (
-      <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+      <div className="min-h-screen bg-[var(--color-canvas)] px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
             Step 2 of 2
@@ -2007,7 +2007,7 @@ export default function OnboardingForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+    <div className="min-h-screen bg-[var(--color-canvas)] px-4 sm:px-6 py-12">
       <div className="mx-auto max-w-[900px] rounded-lg border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
         {!isAdminView && form.member_role === "startup" && (
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">

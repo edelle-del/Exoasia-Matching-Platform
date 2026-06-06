@@ -307,7 +307,7 @@ export default function EcosystemPage() {
 
   if (forbidden) {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-3xl space-y-4">
           <p className="text-sm text-[#8B8BA7]">This page is only available to Ecosystem Partners.</p>
           <Link href="/dashboard" className="text-violet-400 hover:underline">Back to dashboard</Link>
@@ -333,7 +333,7 @@ export default function EcosystemPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-[5%] py-10">
+    <div className="min-h-screen bg-[#0A0A0F] px-4 sm:px-6 py-10">
       <div className="mx-auto w-full max-w-7xl space-y-6">
 
         {/* Page header */}

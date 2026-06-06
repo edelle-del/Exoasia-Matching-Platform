@@ -64,7 +64,7 @@ export default function StageFourPage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">What you unlock</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -82,7 +82,7 @@ export default function StageFourPage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Execution standards</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8">
@@ -95,7 +95,7 @@ export default function StageFourPage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">Gate check</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -133,7 +133,7 @@ export default function StageFourPage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">Gated portal</p>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -155,7 +155,7 @@ export default function StageFourPage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Legal positioning</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 text-[12px] text-[var(--color-text-secondary)]">

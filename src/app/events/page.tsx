@@ -158,8 +158,8 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
-        <div className="mx-auto max-w-4xl flex items-end justify-between gap-4">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
+        <div className="mx-auto w-full max-w-7xl flex items-end justify-between gap-4">
           <div>
             <Link href="/dashboard" className="text-sm text-(--color-primary) hover:underline">
               ← Back to dashboard
@@ -182,7 +182,7 @@ export default function EventsPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-4xl space-y-10 px-[5%] py-10">
+      <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 py-10">
 
         {/* Add Event Form (advisors only) */}
         {isAdvisor && showAddForm && (
@@ -308,7 +308,7 @@ export default function EventsPage() {
           {upcoming.length === 0 ? (
             <EmptyState text="No upcoming events scheduled." />
           ) : (
-            <div className="flex gap-4 overflow-x-auto pb-3 -mx-[5%] px-[5%] snap-x snap-mandatory">
+            <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 sm:-mx-6 px-4 sm:px-6 snap-x snap-mandatory">
             {upcoming.map((event) => {
               const badge = TYPE_BADGE[event.type] ?? { label: event.type, cls: "bg-(--color-surface-soft) text-(--color-muted)" };
               const isRsvping = rsvping === event.id;
@@ -428,7 +428,7 @@ export default function EventsPage() {
         {past.length > 0 && (
           <section>
             <h2 className="text-xs font-bold uppercase tracking-widest text-(--color-muted) mb-3">Past Events</h2>
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-[5%] px-[5%] snap-x snap-mandatory">
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 snap-x snap-mandatory">
             {past.map((event) => (
               <article
                 key={event.id}

@@ -90,6 +90,10 @@
 
 /* ── Base ─────────────────────────────────────────────── */
 
+html {
+  font-size: 17px;
+}
+
 .ring-progress {
   transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }

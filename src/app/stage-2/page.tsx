@@ -76,7 +76,7 @@ export default function StageTwoPage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto grid w-full max-w-[1280px] gap-6 md:grid-cols-2">
           <div className="gn-card">
             <h3 className="text-[16px] font-semibold uppercase tracking-[0.05em]">
@@ -101,7 +101,7 @@ export default function StageTwoPage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Entry requirements</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8">
@@ -128,7 +128,7 @@ export default function StageTwoPage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">What Stage 2 unlocks</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -146,7 +146,7 @@ export default function StageTwoPage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto grid w-full max-w-[1280px] gap-6 md:grid-cols-2">
           <div className="gn-card">
             <h3 className="text-[16px] font-semibold uppercase tracking-[0.05em]">
@@ -171,7 +171,7 @@ export default function StageTwoPage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Stage 2 cadence</p>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -195,7 +195,7 @@ export default function StageTwoPage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Standards</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8">
@@ -208,7 +208,7 @@ export default function StageTwoPage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">Leadership structure</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">

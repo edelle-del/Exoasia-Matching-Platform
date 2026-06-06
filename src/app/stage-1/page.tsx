@@ -134,7 +134,7 @@ export default function StageOnePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">You do not need more contacts</p>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -149,7 +149,7 @@ export default function StageOnePage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">Who belongs here</p>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -167,7 +167,7 @@ export default function StageOnePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">How the network works</p>
           <div className="mt-10 space-y-4">
@@ -188,7 +188,7 @@ export default function StageOnePage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">What makes this different</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
@@ -203,7 +203,7 @@ export default function StageOnePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">The experience</p>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -231,7 +231,7 @@ export default function StageOnePage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">Your role</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -249,7 +249,7 @@ export default function StageOnePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Stage 1 benefits</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-8">

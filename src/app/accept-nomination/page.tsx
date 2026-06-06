@@ -99,7 +99,7 @@ export default function AcceptNominationPage() {
 
   if (nomination) {
     return (
-      <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+      <div className="min-h-screen bg-[var(--color-canvas)] px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[600px] space-y-6">
           <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
@@ -140,7 +140,7 @@ export default function AcceptNominationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)] px-[5%] py-12">
+    <div className="min-h-screen bg-[var(--color-canvas)] px-4 sm:px-6 py-12">
       <div className="mx-auto max-w-[480px] space-y-6">
         <div className="rounded-2xl border border-[var(--color-hairline)] bg-[var(--color-canvas)] p-8">
           <p className="text-xs font-600 uppercase tracking-[0.14em] text-[var(--color-muted)]">

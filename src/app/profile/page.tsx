@@ -420,7 +420,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
         <div className="mx-auto max-w-7xl">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -453,7 +453,7 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-8 px-[5%] py-10">
+      <div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 py-10">
         <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
           <h2 className="text-lg font-semibold text-(--color-ink)">
             Business summary

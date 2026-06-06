@@ -139,7 +139,7 @@ export default function InvestorProjectOverviewPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+      <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-4xl space-y-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-32 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
@@ -151,7 +151,7 @@ export default function InvestorProjectOverviewPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+      <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-4xl text-center">
           <p className="text-base font-semibold text-(--color-ink)">Project not found</p>
           <Link href="/matches" className="mt-3 inline-block text-sm text-(--color-primary) hover:underline">
@@ -165,7 +165,7 @@ export default function InvestorProjectOverviewPage() {
   return (
     <div className="min-h-screen bg-(--color-canvas)">
       {/* Header */}
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
         <div className="mx-auto max-w-4xl">
           <Link href="/matches" className="text-sm text-(--color-primary) hover:underline">
             ← Back to projects
@@ -220,27 +220,7 @@ export default function InvestorProjectOverviewPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-4xl space-y-6 px-[5%] py-10">
-
-        {/* AI summary */}
-        {score?.summary && (
-          <section className="rounded-2xl border border-(--color-primary)/20 bg-(--color-primary)/5 p-5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-primary) mb-2">
-              AI match summary
-            </p>
-            <p className="text-sm text-(--color-body) leading-relaxed">{score.summary}</p>
-            {score.rationale && Object.keys(score.rationale).length > 0 && (
-              <dl className="mt-3 grid gap-y-1 gap-x-4 sm:grid-cols-2 text-xs">
-                {Object.entries(score.rationale).filter(([k]) => !k.startsWith("_cs_")).map(([k, v]) => (
-                  <div key={k} className="flex gap-2">
-                    <dt className="capitalize text-(--color-muted) shrink-0">{k.replace(/_/g, " ")}:</dt>
-                    <dd className="text-(--color-body)">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </section>
-        )}
+      <div className="mx-auto max-w-4xl space-y-6 px-4 sm:px-6 py-10">
 
         {/* Project details */}
         <section className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">

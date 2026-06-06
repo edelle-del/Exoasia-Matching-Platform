@@ -105,7 +105,7 @@ export default function TopHeader() {
   return (
     <>
       {isSigningOut && <FullPageLoader message="Signing out…" />}
-      <aside className="fa-sidebar group/sidebar fixed left-3 top-3 z-40 flex h-[calc(100vh-24px)] w-14 flex-col rounded-2xl shadow-xl transition-all duration-300 hover:w-56">
+      <aside className="fa-sidebar group/sidebar fixed top-0 left-0 z-40 flex h-screen w-14 flex-col shadow-xl transition-all duration-300 hover:w-56">
         {/* Logo */}
         <div className="flex items-center gap-3 px-3 py-5">
           <Link href="/" className="flex shrink-0 items-center gap-3">

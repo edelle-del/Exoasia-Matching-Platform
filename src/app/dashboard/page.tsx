@@ -15,7 +15,7 @@ import {
   type ProjectPipelineStats,
 } from "@/lib/app-data";
 import {
-  PartnerPortfolioCard,
+  PartnerDealOverviewCard,
   DealBoardSnapshotCard,
   NotificationsCard,
   type NotificationItem,
@@ -98,6 +98,14 @@ export default function DashboardPage() {
     Record<string, number>
   >({});
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [partnerStats, setPartnerStats] = useState<{
+    total_companies: number;
+    total_projects: number;
+    active_matches: number;
+    intro_count: number;
+    stale_count: number;
+    stage_counts: Record<string, number>;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -141,6 +149,14 @@ export default function DashboardPage() {
           counts[label] = (counts[label] ?? 0) + 1;
         }
         setDealStageCounts(counts);
+
+        if (next.profile?.member_role === "ecosystem_partner") {
+          const pRes = await fetch("/api/ecosystem/portfolio");
+          if (active && pRes.ok) {
+            const pData = await pRes.json();
+            setPartnerStats(pData.stats ?? null);
+          }
+        }
       }
       setIsLoading(false);
     };
@@ -243,7 +259,7 @@ export default function DashboardPage() {
 
   if (isAdvisorView) {
     return (
-      <div className="min-h-screen bg-[#F7F7F7] px-[5%] py-12">
+      <div className="min-h-screen bg-[#F7F7F7] px-4 sm:px-6 py-12">
         <div className="mx-auto w-full max-w-7xl space-y-8">
           <SystemPulseHeader
             displayName={displayName}
@@ -334,7 +350,7 @@ export default function DashboardPage() {
   const isEcosystemPartner = currentRole === "ecosystem_partner";
 
   return (
-    <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
       <div className="mx-auto w-full max-w-7xl space-y-8">
         {/* Row 0: Greeting (profile strength inline next to name) */}
         <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-8">
@@ -435,8 +451,18 @@ export default function DashboardPage() {
           />
         </section>
 
-        {/* Partner portfolio (ecosystem partners only) */}
-        {isEcosystemPartner && <PartnerPortfolioCard />}
+        {/* Partner deal board overview (ecosystem partners only) */}
+        {isEcosystemPartner && (
+          <PartnerDealOverviewCard
+            totalCollabs={partnerStats?.total_companies ?? 0}
+            totalProjects={partnerStats?.total_projects ?? 0}
+            activeMatches={partnerStats?.active_matches ?? 0}
+            introCount={partnerStats?.intro_count ?? 0}
+            staleCount={partnerStats?.stale_count ?? 0}
+            stageCounts={partnerStats?.stage_counts ?? {}}
+            isLoading={isLoading || (isEcosystemPartner && partnerStats === null)}
+          />
+        )}
       </div>
     </div>
   );

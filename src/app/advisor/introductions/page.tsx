@@ -45,7 +45,7 @@ export default function AdvisorIntroductionsPage() {
 
   if (role !== "advisor" && role !== "staff" && role !== "admin") {
     return (
-      <div className="min-h-screen px-[5%] py-12">
+      <div className="min-h-screen px-4 sm:px-6 py-12">
         <p className="text-sm text-(--color-body)">Not authorized.</p>
         <Link href="/dashboard" className="text-(--color-primary) hover:underline">
           Back to dashboard
@@ -91,7 +91,7 @@ export default function AdvisorIntroductionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-(--color-canvas) px-[5%] py-12">
+    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
       <div className="mx-auto w-full max-w-3xl space-y-8">
 
         {/* Header */}

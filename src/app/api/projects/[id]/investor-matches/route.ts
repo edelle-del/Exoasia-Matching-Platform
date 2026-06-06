@@ -68,6 +68,7 @@ export async function GET(
         rationale: s.rationale,
         generated_at: s.generated_at,
         investor_name: profile?.business_name || profile?.full_name || "Investor",
+        investor_full_name: profile?.full_name ?? null,
         investor_sector: profile?.sector ?? null,
         investor_city: profile?.city ?? null,
         investor_bio: profile?.short_bio ?? null,

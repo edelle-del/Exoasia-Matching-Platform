@@ -87,7 +87,7 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
         <div className="mx-auto max-w-7xl">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
             FOUNDERS ARENA
@@ -101,7 +101,7 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-6 px-[5%] py-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 py-8">
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
           <input

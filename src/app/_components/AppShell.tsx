@@ -14,9 +14,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-full">
+    <div className="flex min-h-screen">
       <TopHeader />
-      <div className="flex flex-1 flex-col pl-20">{children}</div>
+      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden pl-14">{children}</div>
     </div>
   );
 }

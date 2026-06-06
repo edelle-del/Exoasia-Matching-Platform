@@ -91,7 +91,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
         <div className="mx-auto max-w-3xl">
           <Link
             href="/dashboard"
@@ -108,7 +108,7 @@ export default function NotificationsPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-3xl px-[5%] py-10">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
         {loading ? (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (

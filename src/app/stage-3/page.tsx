@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const howItWorks = [
   {
-    title: "AI scoring",
+    title: "Exoasia Intelligence scoring",
     detail: "Compatibility scoring across sector, ASK and OFFER, and timing.",
   },
   {
@@ -91,7 +91,7 @@ export default function StageThreePage() {
             </div>
           </div>
           <p className="mt-6 max-w-2xl text-[20px] leading-relaxed text-[var(--color-text-secondary)]">
-            Matching is now live. AI signals surface candidates, advisors
+            Matching is now live. Exoasia Intelligence signals surface candidates, advisors
             decide, and consent controls every introduction.
           </p>
           {role && ["advisor", "staff", "admin"].includes(role) && (
@@ -104,7 +104,7 @@ export default function StageThreePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">How it works</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -122,7 +122,7 @@ export default function StageThreePage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">Activation pathways</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -147,7 +147,7 @@ export default function StageThreePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Member dashboard actions</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8">
@@ -160,7 +160,7 @@ export default function StageThreePage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Operating standards</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8">
@@ -173,7 +173,7 @@ export default function StageThreePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">Legal positioning</p>
           <div className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 text-[12px] text-[var(--color-text-secondary)]">
@@ -188,7 +188,7 @@ export default function StageThreePage() {
         </div>
       </section>
 
-      <section className="bg-[var(--color-bg-surface)] px-[5%] py-32">
+      <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[900px]">
           <p className="gn-overline">FAQ</p>
           <div className="mt-8 space-y-4">
@@ -209,7 +209,7 @@ export default function StageThreePage() {
         </div>
       </section>
 
-      <section className="px-[5%] py-32">
+      <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[600px]">
           <p className="gn-overline">Speed to Seed application</p>
           <form

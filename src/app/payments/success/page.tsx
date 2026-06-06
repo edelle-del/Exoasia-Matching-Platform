@@ -9,7 +9,7 @@ function SuccessContent() {
   const sessionId = params.get("session_id");
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)] flex items-center justify-center px-[5%]">
+    <div className="min-h-screen bg-[var(--color-canvas)] flex items-center justify-center px-4 sm:px-6">
       <div className="mx-auto max-w-md text-center">
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mx-auto">
           <svg

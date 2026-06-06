@@ -122,7 +122,7 @@ export default function DealBoardPage() {
 
   return (
     <div className="min-h-screen bg-(--color-surface-soft)">
-      <section className="border-b border-(--color-hairline) bg-(--color-canvas) px-[5%] py-10">
+      <section className="border-b border-(--color-hairline) bg-(--color-canvas) px-4 sm:px-6 py-10">
         <div className="mx-auto max-w-7xl">
           <Link
             href="/dashboard"
@@ -136,7 +136,7 @@ export default function DealBoardPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-5 px-[5%] py-10">
+      <div className="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 py-10">
         {grouped.map((column) => (
           <section
             key={column.stage}

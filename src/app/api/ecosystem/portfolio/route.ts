@@ -46,6 +46,8 @@ export type PortfolioResponse = {
     active_matches: number;
     pending: number;
     stale_count: number;
+    intro_count: number;
+    stage_counts: Record<string, number>;
   };
 };
 
@@ -162,7 +164,7 @@ export async function GET() {
     if (!portfolioRows || portfolioRows.length === 0) {
       return NextResponse.json({
         companies: [],
-        stats: { total_companies: 0, total_projects: 0, total_matches: 0, active_matches: 0, pending: 0, stale_count: 0 },
+        stats: { total_companies: 0, total_projects: 0, total_matches: 0, active_matches: 0, pending: 0, stale_count: 0, intro_count: 0, stage_counts: {} },
       } satisfies PortfolioResponse);
     }
 
@@ -329,6 +331,21 @@ export async function GET() {
     const activeMatches   = allMatchesFlat.filter((m) => ["accepted", "introduced"].includes(m.status));
     const pendingMatches  = allMatchesFlat.filter((m) => ["pending", "approved"].includes(m.status));
     const staleCount      = allMatchesFlat.filter((m) => m.is_stale).length;
+    const introCount      = (allMatches ?? []).filter((m) => m.status === "introduced").length;
+
+    const DB_TO_LABEL: Record<string, string> = {
+      discover:    "Qualified",
+      intro:       "Intro & Scoping",
+      proposal:    "Proposal",
+      negotiation: "Negotiation",
+      won:         "Closed Won",
+      lost:        "On Hold",
+    };
+    const stageCounts: Record<string, number> = {};
+    for (const card of allDealCards ?? []) {
+      const label = DB_TO_LABEL[card.stage] ?? card.stage;
+      stageCounts[label] = (stageCounts[label] ?? 0) + 1;
+    }
 
     const stats = {
       total_companies: companies.length,
@@ -337,6 +354,8 @@ export async function GET() {
       active_matches:  activeMatches.length,
       pending:         pendingMatches.length,
       stale_count:     staleCount,
+      intro_count:     introCount,
+      stage_counts:    stageCounts,
     };
 
     return NextResponse.json({ companies, stats } satisfies PortfolioResponse);

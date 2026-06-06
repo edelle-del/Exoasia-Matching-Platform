@@ -124,7 +124,7 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-[5%] py-10">
+      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
         <div className="mx-auto max-w-2xl">
           <Link href="/profile" className="text-sm text-(--color-primary) hover:underline">
             ← Back to profile
@@ -134,7 +134,7 @@ export default function AccountSettingsPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-2xl space-y-6 px-[5%] py-10">
+      <div className="mx-auto max-w-2xl space-y-6 px-4 sm:px-6 py-10">
 
         {/* Email */}
         <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">

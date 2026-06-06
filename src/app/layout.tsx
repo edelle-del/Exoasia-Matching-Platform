@@ -34,11 +34,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${montserrat.variable} ${jetbrainsMono.variable} h-full antialiased scroll-smooth`}
+      className={`${montserrat.variable} ${jetbrainsMono.variable} h-full antialiased scroll-smooth overflow-x-hidden`}
       suppressHydrationWarning
     >
       <body
-        className="min-h-full bg-[var(--color-canvas)] text-[var(--color-ink)] font-sans"
+        className="min-h-full bg-[var(--color-canvas)] text-[var(--color-ink)] font-sans overflow-x-hidden"
         suppressHydrationWarning
       >
         <Providers>

@@ -456,7 +456,7 @@ export default function MatchDeepDivePage() {
     <div className="min-h-screen bg-[#0A0A0F] text-[#F4F4FF]">
 
       {/* Header */}
-      <section className="border-b border-[#2A2A3E] bg-[#12121A] px-[5%] py-8">
+      <section className="border-b border-[#2A2A3E] bg-[#12121A] px-4 sm:px-6 py-8">
         <div className="mx-auto max-w-5xl">
           <Link href="/matches" className="text-sm text-indigo-400 hover:underline">
             ← Back to analytics
@@ -533,7 +533,7 @@ export default function MatchDeepDivePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-5xl px-[5%] py-10 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 space-y-8">
 
         {isLoading ? (
           <div className="space-y-4">

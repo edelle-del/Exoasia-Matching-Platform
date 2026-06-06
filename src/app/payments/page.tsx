@@ -56,7 +56,7 @@ export default function PaymentsPage() {
   return (
     <div className="min-h-screen bg-[var(--color-canvas)]">
       {/* Header */}
-      <section className="border-b border-[var(--color-hairline)] bg-[var(--color-surface-soft)] px-[5%] py-12">
+      <section className="border-b border-[var(--color-hairline)] bg-[var(--color-surface-soft)] px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[1280px]">
           <Link
             href="/dashboard"
@@ -74,7 +74,7 @@ export default function PaymentsPage() {
       </section>
 
       {/* Main Content */}
-      <div className="px-[5%] py-12">
+      <div className="px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-[1280px]">
           {/* Current Subscription */}
           <section className="mb-12">

@@ -382,6 +382,135 @@ export function PartnerPortfolioCard() {
   );
 }
 
+// ─── PartnerDealOverviewCard ─────────────────────────────────────────────────
+
+const PIPELINE_STAGES_CONFIG: { label: string; shortLabel: string; dotClass: string; textClass: string }[] = [
+  { label: "Qualified",       shortLabel: "Qualified",   dotClass: "bg-indigo-400",  textClass: "text-indigo-400" },
+  { label: "Intro & Scoping", shortLabel: "Intro",       dotClass: "bg-blue-400",    textClass: "text-blue-400" },
+  { label: "Proposal",        shortLabel: "Proposal",    dotClass: "bg-violet-400",  textClass: "text-violet-400" },
+  { label: "Negotiation",     shortLabel: "Negotiation", dotClass: "bg-amber-400",   textClass: "text-amber-400" },
+  { label: "Closed Won",      shortLabel: "Won",         dotClass: "bg-emerald-400", textClass: "text-emerald-400" },
+  { label: "On Hold",         shortLabel: "On Hold",     dotClass: "bg-slate-400",   textClass: "text-slate-400" },
+];
+
+type PartnerDealOverviewCardProps = {
+  totalCollabs: number;
+  totalProjects: number;
+  activeMatches: number;
+  introCount: number;
+  staleCount: number;
+  stageCounts: Record<string, number>;
+  isLoading?: boolean;
+};
+
+export function PartnerDealOverviewCard({
+  totalCollabs,
+  totalProjects,
+  activeMatches,
+  introCount,
+  staleCount,
+  stageCounts,
+  isLoading,
+}: PartnerDealOverviewCardProps) {
+  const kpis = [
+    { label: "Collabs",   value: totalCollabs,  color: "text-violet-400" },
+    { label: "Projects",  value: totalProjects, color: "text-indigo-400" },
+    { label: "Intros",    value: introCount,    color: "text-blue-400" },
+    { label: "Active",    value: activeMatches, color: "text-emerald-400" },
+    { label: "Stale",     value: staleCount,    color: staleCount > 0 ? "text-amber-400" : "text-[#4A4A6A]" },
+  ];
+
+  return (
+    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            Deal Board Overview
+          </p>
+          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
+            Your portfolio activity
+          </p>
+        </div>
+        <Link
+          href="/ecosystem"
+          className="text-xs font-semibold text-violet-400 hover:underline"
+        >
+          Open →
+        </Link>
+      </div>
+
+      {/* KPI tiles */}
+      <div className="mb-5 grid grid-cols-5 gap-2">
+        {kpis.map(({ label, value, color }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center"
+          >
+            <p
+              className={`text-2xl font-extrabold tabular-nums ${
+                isLoading ? "text-[#4A4A6A]" : color
+              }`}
+            >
+              {isLoading ? "…" : value > 0 ? value : "—"}
+            </p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+              {label}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Stage pipeline chips */}
+      <div className="mb-5">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+          Stage pipeline
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {PIPELINE_STAGES_CONFIG.map((s) => {
+            const count = stageCounts[s.label] ?? 0;
+            return (
+              <span
+                key={s.label}
+                className="flex items-center gap-1.5 rounded-full border border-[#2A2A3E] bg-[#1A1A26] px-3 py-1"
+              >
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full ${s.dotClass}`}
+                />
+                <span className="text-xs font-semibold text-[#C4C4D4]">
+                  {s.shortLabel}
+                </span>
+                <span
+                  className={`text-xs font-extrabold tabular-nums ${count > 0 ? s.textClass : "text-[#4A4A6A]"}`}
+                >
+                  {isLoading ? "…" : count}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      <Link
+        href="/ecosystem"
+        className="mt-auto flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 transition-colors hover:border-violet-500/50"
+      >
+        <p className="text-xs font-medium text-violet-300">
+          View your full ecosystem
+        </p>
+        <svg
+          className="h-4 w-4 shrink-0 text-violet-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
 // ─── DealBoardSnapshotCard ───────────────────────────────────────────────────
 
 const DEAL_STAGES: { label: string; shortLabel: string; fill: string }[] = [

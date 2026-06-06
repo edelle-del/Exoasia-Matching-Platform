@@ -29,7 +29,7 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-(--color-canvas) px-[5%] py-20">
+      <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-20">
         <div className="mx-auto max-w-[480px] space-y-4 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-6 w-6 text-green-600">
@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--color-canvas) px-[5%] py-20">
+    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-20">
       <div className="mx-auto max-w-[480px] space-y-6">
         <div>
           <h1 className="text-3xl font-700 text-(--color-ink)">Set new password</h1>

@@ -17,7 +17,7 @@ export default function BottomNav({
 }: BottomNavProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-hairline)] bg-[var(--color-nav-bg)] backdrop-blur-sm">
-      <div className="mx-auto flex h-[72px] w-full max-w-[1280px] items-center justify-between px-[5%]">
+      <div className="mx-auto flex h-[72px] w-full max-w-[1280px] items-center justify-between px-4 sm:px-6">
         <div className="flex-1" />
         <div className="flex items-center gap-2">
           {stages.map((stage) => (

@@ -524,7 +524,8 @@ export default function BreakdownPage() {
   // ring is logically consistent with what the categories show. Showing the AI's holistic fitScore
   // alongside evidence-only category scores produces an unexplainable contradiction (e.g. ring 75%,
   // categories 25/0/0/25).
-  const allEstimated  = categories.every((c) => c.isEstimated);
+  const allEstimated   = categories.every((c) => c.isEstimated);
+  const someEstimated  = categories.some((c) => c.isEstimated);
   const ringScore     = allEstimated
     ? Math.round(categories.reduce((sum, c) => sum + c.score, 0) / categories.length)
     : fitScore;
@@ -533,6 +534,7 @@ export default function BreakdownPage() {
   const matchedCount  = categories.flatMap((c) => c.params).filter((p) => p.status === "matched").length;
   const partialCount  = categories.flatMap((c) => c.params).filter((p) => p.status === "partial").length;
   const mismatchCount = categories.flatMap((c) => c.params).filter((p) => p.status === "mismatch").length;
+  const evidenceConflict = allEstimated && mismatchCount > 0;
 
   // If gaps outnumber matches in the evidence, cap at "Developing Match" regardless of score.
   const overallLabel = mismatchCount > matchedCount
@@ -687,15 +689,13 @@ export default function BreakdownPage() {
                   </text>
                 </svg>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-                    {allEstimated ? "Evidence Score" : "Overall Fit"}
-                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Overall Fit</p>
                   <p className="mt-1 text-sm font-bold text-[#F4F4FF]">{overallLabel}</p>
                   <p className="text-[11px] text-[#8B8BA7]">
                     {matchedCount} matched · {partialCount} partial · {mismatchCount} gap{mismatchCount !== 1 ? "s" : ""}
                   </p>
-                  {allEstimated && fitScore !== ringScore && (
-                    <p className="mt-1 text-[10px] text-[#4A4A6A]">AI score: {fitScore}% · rescore for breakdown</p>
+                  {evidenceConflict && (
+                    <p className="mt-1 text-[10px] text-amber-400">Evidence shows gaps — rescore for AI dimension analysis</p>
                   )}
                 </div>
               </div>
@@ -809,12 +809,22 @@ export default function BreakdownPage() {
             {/* AI match note */}
             <div className="rounded-2xl bg-[#12121A] border border-[#2A2A3E] p-5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7] mb-2">AI Scoring Note</p>
-              <p className="text-sm text-[#C4C4D4] leading-relaxed">
-                The <span className="font-bold text-[#F4F4FF]">{fitScore}%</span> overall score is the AI's holistic judgment — it is not the sum or average of the dimension scores.
-                Each dimension score (e.g. Stage Fit: 45%) is the AI's independent assessment of that specific aspect alone.
-                The <span className="text-[#8B8BA7]">Evidence</span> rows beneath each dimension show the actual profile data points that support or explain the AI's score — they do not calculate it.
-                Dimension scores only reflect real AI judgment after a rescore; older matches show estimated values.
-              </p>
+              {allEstimated ? (
+                <p className="text-sm text-[#C4C4D4] leading-relaxed">
+                  The <span className="font-bold text-[#F4F4FF]">{ringScore}%</span> ring score is estimated — it is the average of four evidence-based dimension scores, not an AI judgment.
+                  Each dimension score is derived by directly matching profile fields (sector, stage, geography, thesis).
+                  The <span className="text-[#8B8BA7]">Evidence</span> rows show the profile data used to produce each estimate.
+                  Use the Rescore button to replace these estimates with the AI&apos;s overall fit score and per-dimension scores.
+                </p>
+              ) : (
+                <p className="text-sm text-[#C4C4D4] leading-relaxed">
+                  The <span className="font-bold text-[#F4F4FF]">{fitScore}%</span> overall score is the AI&apos;s holistic judgment — it is not the sum or average of the dimension scores.
+                  Each AI-assessed dimension score is the AI&apos;s independent evaluation of that aspect alone.
+                  The <span className="text-[#8B8BA7]">Evidence</span> rows show the profile data the AI scored against — they do not calculate it.
+                  A dimension&apos;s score may differ from what the evidence rows suggest: the AI weighs additional context such as profile completeness, semantic sector overlap, and cross-dimension signals that the simplified evidence rows don&apos;t capture.
+                  {someEstimated && <> Dimensions marked <span className="font-bold text-[#F4F4FF]">est.</span> are estimated from evidence and will be replaced with AI scores on rescore.</>}
+                </p>
+              )}
             </div>
           </>
         )}

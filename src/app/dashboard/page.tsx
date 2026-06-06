@@ -411,7 +411,7 @@ export default function DashboardPage() {
             }
           />
         </div>
-        {!isInvestor && (
+        {!isInvestor && !isEcosystemPartner && (
           <div className="flex justify-end">
             <Link
               href="/matches"

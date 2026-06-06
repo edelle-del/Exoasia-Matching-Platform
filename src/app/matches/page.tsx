@@ -422,6 +422,7 @@ export default function MatchesPage() {
 
   const isStartup = memberRole === "startup";
   const isInvestor = memberRole === "investor";
+  const isEcosystemPartner = memberRole === "ecosystem_partner";
 
   // Maps partner ID → match status so buttons can show accurate state
   const matchStatusByPartnerId = useMemo(
@@ -1195,7 +1196,7 @@ export default function MatchesPage() {
         )}
 
         {/* ── Fallback ───────────────────────────────────────────────────────── */}
-        {!isStartup && !isInvestor && !isLoading && (
+        {!isStartup && !isInvestor && !isEcosystemPartner && !isLoading && (
           <section>
             <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Your Intros</h2>
             {matches.length === 0 ? (

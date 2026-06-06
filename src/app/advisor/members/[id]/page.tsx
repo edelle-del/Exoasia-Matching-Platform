@@ -576,10 +576,11 @@ export default function AdvisorMemberDetailPage() {
 
           <div className="mt-5 grid gap-5 sm:grid-cols-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-(--color-muted)">
+              <label htmlFor="edit-stage" className="block text-xs font-semibold uppercase tracking-[0.1em] text-(--color-muted)">
                 Stage
               </label>
               <select
+                id="edit-stage"
                 className="gn-input mt-2"
                 value={editStage}
                 onChange={(e) => setEditStage(e.target.value)}
@@ -593,10 +594,11 @@ export default function AdvisorMemberDetailPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-(--color-muted)">
+              <label htmlFor="edit-verification" className="block text-xs font-semibold uppercase tracking-[0.1em] text-(--color-muted)">
                 Verification
               </label>
               <select
+                id="edit-verification"
                 className="gn-input mt-2"
                 value={editVerification}
                 onChange={(e) => setEditVerification(e.target.value)}
@@ -608,10 +610,11 @@ export default function AdvisorMemberDetailPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-(--color-muted)">
+              <label htmlFor="edit-account-status" className="block text-xs font-semibold uppercase tracking-[0.1em] text-(--color-muted)">
                 Account status
               </label>
               <select
+                id="edit-account-status"
                 className="gn-input mt-2"
                 value={editAccountStatus}
                 onChange={(e) => setEditAccountStatus(e.target.value)}

@@ -18,12 +18,17 @@ export default function PieScore({
   const clamped = Math.max(0, Math.min(100, Math.round(score)));
   const offset = circumference * (1 - clamped / 100);
 
+  const sizeClass = s <= 24 ? "w-6 h-6"
+    : s <= 28 ? "w-7 h-7"
+    : s <= 32 ? "w-8 h-8"
+    : s <= 40 ? "w-10 h-10"
+    : "w-12 h-12";
+
   return (
     <div
       role="img"
       aria-label={`Score ${clamped} percent`}
-      className={`group inline-flex items-center justify-center relative`}
-      style={{ width: s, height: s }}
+      className={`group inline-flex items-center justify-center relative ${sizeClass}`}
     >
       <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
         <title>{`${clamped}%`}</title>

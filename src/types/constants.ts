@@ -50,6 +50,10 @@ export const CREDIT_CONFIG = {
   FREE_TIER: {
     credits: 5,
   },
+  WELCOME_BONUS: {
+    credits: 10,
+    reason: "Welcome bonus — account created",
+  },
   ENTRY_COST: 1, // Each match acceptance costs 1 credit
 };
 

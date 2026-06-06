@@ -72,3 +72,30 @@ export type VentureReadinessReport = {
   conclusion: Conclusion;
   sections: DimensionSections;
 };
+
+export type RawVentureReadinessReport = {
+  source?: string;
+  project?: {
+    name?: string;
+    stage?: string;
+    sector?: string;
+    created_at?: string;
+    description?: string;
+  };
+  summary?: {
+    snapshot?: string;
+    strengths?: string[];
+    conclusion?: string;
+    priorities?: string[];
+  };
+  ai_report?: {
+    sections?: Array<{
+      title?: string;
+      findings?: string[];
+      recommendations?: string[];
+    }>;
+    generated_at?: string | null;
+  };
+  generated_at?: string | null;
+  assessment_id?: string | null;
+};

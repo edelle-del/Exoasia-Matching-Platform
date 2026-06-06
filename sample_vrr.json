@@ -1,0 +1,240 @@
+{
+  "source": "venture-confidence-report",
+  "project": {
+    "name": "sample1233",
+    "stage": "Ideation",
+    "sector": "Mobility & Physical AI",
+    "created_at": "2026-06-06T13:09:51.799Z",
+    "description": "sample1233"
+  },
+  "summary": {
+    "snapshot": "Assessment snapshot — Technology: 3.2, Business: 4.0, Investment: 4.1, Team: 3.1.",
+    "strengths": [
+      "The market exhibits a clear shift toward new consumer behaviors, indicating that the proposed idea aligns with emerging demand patterns and can capture early adopters.",
+      "Population growth in the target region expands the addressable market, providing a larger customer base that can sustain long‑term revenue growth.",
+      "Technological advancements identified as potentially disruptive are being leveraged by the venture, turning a threat into a competitive advantage through early adoption."
+    ],
+    "conclusion": "Recommended next steps: Conduct a focused market‑segmentation study to pinpoint the fastest‑adopting user groups, enabling targeted marketing that accelerates traction and market share. ; Develop a technology roadmap that integrates upcoming disruptive innovations, ensuring the product remains ahead of the curve and mitigates obsolescence risk. ; Scale customer discovery interviews to quantify the size of the new behavior cohort, providing data to attract investors and justify larger go‑to‑market spend. ; Quantify the economic impact of the problem on end users through a detailed cost‑of‑inaction analysis, which will strengthen the value proposition and investor pitch. ; Partner with relevant policy bodies to secure incentives, thereby reducing customer acquisition costs and enhancing credibility within the ecosystem.",
+    "priorities": [
+      "Conduct a focused market‑segmentation study to pinpoint the fastest‑adopting user groups, enabling targeted marketing that accelerates traction and market share.",
+      "Develop a technology roadmap that integrates upcoming disruptive innovations, ensuring the product remains ahead of the curve and mitigates obsolescence risk.",
+      "Scale customer discovery interviews to quantify the size of the new behavior cohort, providing data to attract investors and justify larger go‑to‑market spend.",
+      "Quantify the economic impact of the problem on end users through a detailed cost‑of‑inaction analysis, which will strengthen the value proposition and investor pitch.",
+      "Partner with relevant policy bodies to secure incentives, thereby reducing customer acquisition costs and enhancing credibility within the ecosystem."
+    ]
+  },
+  "owner_id": "6f96ce99-c351-47c0-9ca8-4f0eec19c0b1",
+  "ai_report": {
+    "model": null,
+    "cached": false,
+    "sections": [
+      {
+        "title": "IDEAS WORTH PURSUING",
+        "findings": [
+          "The market exhibits a clear shift toward new consumer behaviors, indicating that the proposed idea aligns with emerging demand patterns and can capture early adopters.",
+          "Population growth in the target region expands the addressable market, providing a larger customer base that can sustain long‑term revenue growth.",
+          "Technological advancements identified as potentially disruptive are being leveraged by the venture, turning a threat into a competitive advantage through early adoption.",
+          "Positive validation from potential customers confirms that the idea resonates with real needs, reducing uncertainty around product‑market fit."
+        ],
+        "recommendations": [
+          "Conduct a focused market‑segmentation study to pinpoint the fastest‑adopting user groups, enabling targeted marketing that accelerates traction and market share.",
+          "Develop a technology roadmap that integrates upcoming disruptive innovations, ensuring the product remains ahead of the curve and mitigates obsolescence risk.",
+          "Scale customer discovery interviews to quantify the size of the new behavior cohort, providing data to attract investors and justify larger go‑to‑market spend."
+        ]
+      },
+      {
+        "title": "PROBLEM",
+        "findings": [
+          "Evidence confirms the problem is both significant and widespread, affecting a large portion of the target demographic and creating a sizable pain point.",
+          "A major challenge identified by stakeholders remains unsolved, indicating a gap that competitors have not yet addressed effectively.",
+          "External incentives, such as regulatory support or subsidies, amplify the urgency of solving the problem, increasing the venture’s relevance to policymakers.",
+          "The problem is exacerbated by a negative global situation, turning a macro‑level crisis into a localized business opportunity for the startup."
+        ],
+        "recommendations": [
+          "Quantify the economic impact of the problem on end users through a detailed cost‑of‑inaction analysis, which will strengthen the value proposition and investor pitch.",
+          "Partner with relevant policy bodies to secure incentives, thereby reducing customer acquisition costs and enhancing credibility within the ecosystem.",
+          "Create a problem‑impact dashboard that tracks key metrics in real time, allowing the team to demonstrate progress and adapt solutions as conditions evolve."
+        ]
+      },
+      {
+        "title": "SOLUTION",
+        "findings": [
+          "The solution directly addresses the identified problem and is validated by positive feedback from potential customers, indicating high perceived usefulness.",
+          "It leverages current technological trends while remaining adaptable to future disruptions, ensuring longevity and relevance in a fast‑changing market.",
+          "Customer dreams and social goals have been incorporated into the design, fostering emotional alignment that can boost adoption and loyalty."
+        ],
+        "recommendations": [
+          "Prototype the solution with a pilot group representing the core user persona, then iterate based on measurable usage data to refine product‑market fit.",
+          "Document a clear value‑delivery framework that maps solution features to specific customer dreams, facilitating persuasive storytelling in sales and fundraising.",
+          "Establish a technology partnership that grants early access to emerging tools, guaranteeing the solution stays ahead of potential industry disruptions."
+        ]
+      },
+      {
+        "title": "TEAM",
+        "findings": [
+          "The founding team demonstrates deep understanding of both the social goal of customers and the technical landscape, positioning them to execute effectively.",
+          "All members have contributed to securing positive validation from the market, reflecting strong alignment and credibility with target users.",
+          "The team’s awareness of potential industry entrants from unexpected sources shows proactive risk awareness and strategic foresight."
+        ],
+        "recommendations": [
+          "Formalize a talent acquisition plan that targets complementary skill sets, ensuring the team can scale execution capacity without diluting core expertise.",
+          "Implement a continuous learning program focused on emerging technologies, keeping the team agile and prepared for future industry shifts.",
+          "Create an advisory board with experts in regulatory incentives and market dynamics to provide strategic guidance and open high‑value networks."
+        ]
+      },
+      {
+        "title": "SCALABILITY",
+        "findings": [
+          "While the core model shows strong scalability potential, the 86% score suggests certain operational or market constraints could limit rapid expansion.",
+          "Population growth and new societal behaviors provide a natural lever for scaling, yet infrastructure readiness must be assessed to avoid bottlenecks.",
+          "Potential disruptive technologies could either accelerate scaling if integrated early or hinder it if ignored, highlighting a critical dependency."
+        ],
+        "recommendations": [
+          "Map the end‑to‑end value chain to identify scalability choke points, then prioritize automation or partnership solutions that can lift capacity quickly.",
+          "Develop a phased geographic expansion plan that aligns with regional population trends, ensuring resources are allocated where demand is rising fastest.",
+          "Invest in a modular technology architecture that can incorporate upcoming disruptive innovations without major re‑engineering, safeguarding long‑term scalability."
+        ]
+      },
+      {
+        "title": "BM VIABILITY",
+        "findings": [
+          "The business model demonstrates full viability with clear revenue streams, cost structures, and alignment to market incentives, supporting sustainable profitability.",
+          "Customer validation confirms willingness to pay, reducing the risk of revenue shortfalls and strengthening cash‑flow forecasts.",
+          "The model leverages societal incentives, such as subsidies or tax breaks, which can improve margin performance and competitive positioning."
+        ],
+        "recommendations": [
+          "Construct a detailed financial model that includes scenario analysis for incentive changes, enabling proactive adjustments to maintain profitability under varying conditions.",
+          "Launch a pricing experiment with early adopters to fine‑tune price elasticity, maximizing revenue while preserving perceived value.",
+          "Negotiate strategic partnerships that embed the business model into existing distribution channels, accelerating market penetration and reducing customer acquisition costs."
+        ]
+      },
+      {
+        "title": "RISK MITIGATION",
+        "findings": [
+          "All identified risks have been addressed with concrete mitigation strategies, reflecting a comprehensive understanding of potential obstacles.",
+          "Awareness of new entrants from unexpected sources demonstrates vigilance and readiness to adapt competitive tactics swiftly.",
+          "The team has identified both external (technological disruption) and internal (operational) risks, and has outlined proactive measures to reduce their impact."
+        ],
+        "recommendations": [
+          "Establish a rolling risk register that is reviewed quarterly, ensuring emerging threats are captured early and mitigation actions are updated accordingly.",
+          "Create contingency contracts with alternative suppliers or technology providers, reducing dependency on single points of failure and preserving supply chain resilience.",
+          "Run tabletop simulations of worst‑case scenarios, such as sudden regulatory shifts, to test response plans and improve organizational preparedness."
+        ]
+      }
+    ],
+    "generated_at": null
+  },
+  "readiness": {
+    "brl": "4.0",
+    "irl": "4.1",
+    "trl": "3.2",
+    "terl": "3.1",
+    "radar": [
+      {
+        "label": "IDEAS WORTH PURSUING",
+        "score": 100
+      },
+      {
+        "label": "PROBLEM",
+        "score": 100
+      },
+      {
+        "label": "SOLUTION",
+        "score": 100
+      },
+      {
+        "label": "TEAM",
+        "score": 100
+      },
+      {
+        "label": "SCALABILITY",
+        "score": 86
+      },
+      {
+        "label": "BM VIABILITY",
+        "score": 100
+      },
+      {
+        "label": "RISK MITIGATION",
+        "score": 100
+      }
+    ],
+    "scores": {
+      "team": {
+        "score": 1,
+        "total": 10,
+        "answered": 10
+      },
+      "problem": {
+        "score": 1,
+        "total": 18,
+        "answered": 18
+      },
+      "solution": {
+        "score": 1,
+        "total": 33,
+        "answered": 33
+      },
+      "scalability": {
+        "score": 0.8571428571428571,
+        "total": 7,
+        "answered": 6
+      },
+      "bm_viability": {
+        "score": 1,
+        "total": 14,
+        "answered": 14
+      },
+      "risk_mitigation": {
+        "score": 1,
+        "total": 17,
+        "answered": 17
+      },
+      "ideas_worth_pursuing": {
+        "score": 1,
+        "total": 15,
+        "answered": 15
+      }
+    },
+    "overall": {
+      "1": {
+        "score": 1,
+        "total": 15,
+        "answered": 15
+      },
+      "2": {
+        "score": 1,
+        "total": 18,
+        "answered": 18
+      },
+      "3": {
+        "score": 1,
+        "total": 33,
+        "answered": 33
+      },
+      "4": {
+        "score": 1,
+        "total": 10,
+        "answered": 10
+      },
+      "5": {
+        "score": 0.8571428571428571,
+        "total": 7,
+        "answered": 6
+      },
+      "6": {
+        "score": 1,
+        "total": 14,
+        "answered": 14
+      },
+      "7": {
+        "score": 1,
+        "total": 17,
+        "answered": 17
+      }
+    },
+    "questionnaire_score_percent": 99
+  },
+  "generated_at": "2026-06-06T14:32:36.066Z",
+  "assessment_id": "56"
+}

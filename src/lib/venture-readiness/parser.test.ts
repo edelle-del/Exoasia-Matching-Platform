@@ -10,6 +10,7 @@ import {
   parseConclusion,
   parseDimensionSection,
   parseVentureReadinessText,
+  normalizeVentureReadinessReport,
 } from "./parser";
 
 // ─── Shared fixtures ──────────────────────────────────────────────────────────
@@ -747,6 +748,69 @@ Recommended next steps: A ; B ; C
       "Secure early adopter commitments",
       "File provisional patents where applicable",
       "Create a go-to-market roadmap",
+    ]);
+  });
+});
+
+describe("normalizeVentureReadinessReport", () => {
+  const SAMPLE_VRR_RAW = {
+    source: "venture-confidence-report",
+    project: {
+      name: "sample1233",
+      stage: "Ideation",
+      sector: "Mobility & Physical AI",
+      created_at: "2026-06-06T13:09:51.799Z",
+      description: "sample1233",
+    },
+    summary: {
+      snapshot:
+        "Assessment snapshot — Technology: 3.2, Business: 4.0, Investment: 4.1, Team: 3.1.",
+      strengths: ["Strength 1", "Strength 2"],
+      conclusion: "Recommended next steps: Do A ; Do B ; Do C.",
+      priorities: ["Action 1", "Action 2"],
+    },
+    ai_report: {
+      sections: [
+        {
+          title: "IDEAS WORTH PURSUING",
+          findings: ["Idea finding"],
+          recommendations: ["Idea recommendation"],
+        },
+        {
+          title: "PROBLEM",
+          findings: ["Problem finding"],
+          recommendations: ["Problem recommendation"],
+        },
+      ],
+    },
+    generated_at: "2026-06-06T14:32:36.066Z",
+  };
+
+  it("converts a new raw VRR schema into a normalized report", () => {
+    const result = normalizeVentureReadinessReport(SAMPLE_VRR_RAW);
+    expect(result).not.toBeNull();
+    expect(result?.report_date).toBe("2026-06-06T14:32:36.066Z");
+    expect(result?.profile.project_name).toBe("sample1233");
+    expect(result?.profile.sector).toBe("Mobility & Physical AI");
+    expect(result?.executive_summary.assessment.technology).toBe(3.2);
+    expect(result?.executive_summary.key_strengths).toEqual([
+      "Strength 1",
+      "Strength 2",
+    ]);
+    expect(result?.executive_summary.priority_actions).toEqual([
+      "Action 1",
+      "Action 2",
+    ]);
+    expect(result?.conclusion.recommended_next_steps).toEqual([
+      "Do A",
+      "Do B",
+      "Do C.",
+    ]);
+    expect(result?.sections.ideas_worth_pursuing.findings).toEqual([
+      "Idea finding",
+    ]);
+    expect(result?.sections.problem.recommendations).toEqual([
+      "Problem recommendation",
     ]);
   });
 });

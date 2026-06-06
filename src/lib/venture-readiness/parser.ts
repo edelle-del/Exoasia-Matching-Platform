@@ -383,6 +383,172 @@ function parseDimensionSections(text: string): DimensionSections {
   };
 }
 
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof value === "string") {
+    return [value.trim()].filter(Boolean);
+  }
+  return [];
+}
+
+function normalizeConclusionText(text: string): string[] {
+  const normalized = text.replace(/\r/g, "\n").trim();
+  if (!normalized) return [];
+
+  const withoutPrefix = normalized.replace(
+    /^\s*Recommended next steps:\s*/i,
+    "",
+  );
+
+  const items = withoutPrefix
+    .split(/[\n;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return items.length > 0 ? items : [withoutPrefix.trim()];
+}
+
+function mapRawVrrSections(
+  sections:
+    | Array<{
+        title?: string;
+        findings?: unknown;
+        recommendations?: unknown;
+      }>
+    | undefined,
+): DimensionSections {
+  const empty: DimensionSection = { findings: [], recommendations: [] };
+  const mapped: Record<string, DimensionSection> = {
+    "IDEAS WORTH PURSUING": empty,
+    PROBLEM: empty,
+    SOLUTION: empty,
+    TEAM: empty,
+    SCALABILITY: empty,
+    "BM VIABILITY": empty,
+    "RISK MITIGATION": empty,
+  };
+
+  for (const section of sections ?? []) {
+    const title = section.title?.toUpperCase().trim();
+    if (!title || !(title in mapped)) continue;
+    mapped[title] = {
+      findings: toStringArray(section.findings),
+      recommendations: toStringArray(section.recommendations),
+    };
+  }
+
+  return {
+    ideas_worth_pursuing: mapped["IDEAS WORTH PURSUING"],
+    problem: mapped.PROBLEM,
+    solution: mapped.SOLUTION,
+    team: mapped.TEAM,
+    scalability: mapped.SCALABILITY,
+    bm_viability: mapped["BM VIABILITY"],
+    risk_mitigation: mapped["RISK MITIGATION"],
+  };
+}
+
+function isVentureReadinessReport(
+  value: unknown,
+): value is VentureReadinessReport {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "profile" in value &&
+    "executive_summary" in value &&
+    "conclusion" in value &&
+    "sections" in value
+  );
+}
+
+export function normalizeVentureReadinessReport(
+  report: unknown,
+): VentureReadinessReport | null {
+  if (!report || typeof report !== "object") return null;
+  if (isVentureReadinessReport(report)) return report;
+
+  const raw = report as {
+    project?: Record<string, unknown>;
+    summary?: Record<string, unknown>;
+    ai_report?: Record<string, unknown>;
+    generated_at?: unknown;
+  };
+
+  const project = raw.project ?? {};
+  const summary = raw.summary ?? {};
+  const aiReport = raw.ai_report ?? {};
+
+  const profile = {
+    venture: typeof project.name === "string" ? project.name : null,
+    project_name: typeof project.name === "string" ? project.name : null,
+    website: null,
+    industry: null,
+    location: null,
+    description:
+      typeof project.description === "string" ? project.description : null,
+    first_name: null,
+    last_name: null,
+    business_name: null,
+    phone: null,
+    role_title: null,
+    city: null,
+    sector: typeof project.sector === "string" ? project.sector : null,
+    short_bio: null,
+    linkedin: null,
+    employee_band: null,
+    annual_revenue: null,
+    role: null,
+    years_in_operation: null,
+    referral_source: null,
+    referral_name: null,
+    target_regions: [],
+    primary_industries: [],
+    fundraising_stage: typeof project.stage === "string" ? project.stage : null,
+    product_stage: typeof project.stage === "string" ? project.stage : null,
+    co_founders: null,
+    technical_founder: null,
+    pitch_deck: null,
+    target_raise_min: null,
+    target_raise_max: null,
+    pdpa: null,
+    additional_info: null,
+  };
+
+  const snapshot = typeof summary.snapshot === "string" ? summary.snapshot : "";
+  const parsedSummary = parseExecutiveSummary(snapshot);
+
+  const executiveSummary = {
+    assessment: parsedSummary.assessment,
+    key_strengths: toStringArray(summary.strengths).length
+      ? toStringArray(summary.strengths)
+      : parsedSummary.key_strengths,
+    priority_actions: toStringArray(summary.priorities).length
+      ? toStringArray(summary.priorities)
+      : parsedSummary.priority_actions,
+  };
+
+  return {
+    report_date:
+      typeof raw.generated_at === "string"
+        ? raw.generated_at
+        : typeof project.created_at === "string"
+          ? project.created_at
+          : null,
+    profile,
+    executive_summary: executiveSummary,
+    conclusion: {
+      recommended_next_steps: normalizeConclusionText(
+        typeof summary.conclusion === "string" ? summary.conclusion : "",
+      ),
+    },
+    sections: mapRawVrrSections(
+      Array.isArray(aiReport.sections) ? aiReport.sections : undefined,
+    ),
+  };
+}
+
 /**
  * Parse a full Venture Confidence Report from extracted PDF text.
  */

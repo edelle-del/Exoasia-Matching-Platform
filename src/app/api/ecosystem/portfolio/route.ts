@@ -80,15 +80,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "startup_id is required" }, { status: 400 });
     }
 
-    // Verify the target is a startup
+    // Verify the target exists
     const { data: targetProfile } = await admin
       .from("profiles")
-      .select("id, member_role")
+      .select("id")
       .eq("id", startup_id)
       .single();
 
-    if (!targetProfile || targetProfile.member_role !== "startup") {
-      return NextResponse.json({ error: "Startup not found" }, { status: 404 });
+    if (!targetProfile) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
     const { error: insertError } = await admin

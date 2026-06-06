@@ -33,14 +33,14 @@ export function NominateModal({ onClose, onSuccess }: Props) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Portfolio</p>
-            <h2 className="mt-0.5 text-lg font-bold text-[#F4F4FF]">Invite a Startup</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Collaboration</p>
+            <h2 className="mt-0.5 text-lg font-bold text-[#F4F4FF]">Invite to Collab</h2>
             <p className="mt-1 text-xs text-[#8B8BA7]">
               {option === "choose"
-                ? "Is the startup already on the platform?"
+                ? "Is this person already on the platform?"
                 : option === "existing"
-                  ? "Search for a startup already on the platform."
-                  : "Send an invite link to a founder not yet on the platform."}
+                  ? "Search for a member already on the platform."
+                  : "Send an invite link to someone not yet on the platform."}
             </p>
           </div>
           <button
@@ -97,7 +97,7 @@ function ChooseStep({ onSelect, onClose }: { onSelect: (o: "existing" | "new") =
         </div>
         <div>
           <p className="text-sm font-semibold text-[#F4F4FF]">Already on the platform</p>
-          <p className="mt-0.5 text-xs text-[#8B8BA7]">Search and add an existing startup directly to your portfolio.</p>
+          <p className="mt-0.5 text-xs text-[#8B8BA7]">Search and invite an existing member to collab.</p>
         </div>
       </button>
 
@@ -113,7 +113,7 @@ function ChooseStep({ onSelect, onClose }: { onSelect: (o: "existing" | "new") =
         </div>
         <div>
           <p className="text-sm font-semibold text-[#F4F4FF]">Not yet on the platform</p>
-          <p className="mt-0.5 text-xs text-[#8B8BA7]">Send an invite link to a founder by email.</p>
+          <p className="mt-0.5 text-xs text-[#8B8BA7]">Send an invite link to anyone by email.</p>
         </div>
       </button>
 
@@ -166,7 +166,7 @@ function ExistingUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess
         body: JSON.stringify({ startup_id: selected.id }),
       });
       const data = (await res.json()) as { error?: string };
-      if (!res.ok) { setError(data.error ?? "Failed to add."); setAdding(false); return; }
+      if (!res.ok) { setError(data.error ?? "Failed to send invite."); setAdding(false); return; }
       setDone(true);
       setTimeout(onSuccess, 1500);
     } catch {
@@ -183,8 +183,8 @@ function ExistingUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-sm font-semibold text-[#F4F4FF]">Invitation sent!</p>
-        <p className="text-xs text-[#8B8BA7]">{selected?.name} will receive a request to join your portfolio.</p>
+        <p className="text-sm font-semibold text-[#F4F4FF]">Collab invite sent!</p>
+        <p className="text-xs text-[#8B8BA7]">{selected?.name} will receive a collaboration invite.</p>
       </div>
     );
   }
@@ -197,7 +197,7 @@ function ExistingUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess
           autoFocus
           value={query}
           onChange={(e) => void handleSearch(e.target.value)}
-          placeholder="Search by startup or founder name…"
+          placeholder="Search by name or business name…"
           className="w-full rounded-xl border border-[#2A2A3E] bg-[#1A1A26] px-3 py-2.5 text-sm text-[#F4F4FF] placeholder-[#4A4A6A] outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500/40"
         />
         {searching && <p className="mt-1 text-xs text-[#8B8BA7]">Searching…</p>}
@@ -259,7 +259,7 @@ function ExistingUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess
           onClick={() => void handleAdd()}
           className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {adding ? "Sending…" : "Send invitation"}
+          {adding ? "Sending…" : "Send invite"}
         </button>
       </div>
     </div>
@@ -304,7 +304,7 @@ function NewUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess: () 
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-sm font-semibold text-[#F4F4FF]">Invite sent!</p>
+        <p className="text-sm font-semibold text-[#F4F4FF]">Collab invite sent!</p>
         <p className="text-xs text-[#8B8BA7]">{email} will receive an invite link valid for 14 days.</p>
       </div>
     );
@@ -314,7 +314,7 @@ function NewUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess: () 
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
       <div>
         <label htmlFor="invite-email" className="block text-xs font-semibold text-[#F4F4FF]">
-          Startup email <span className="text-rose-400">*</span>
+          Email address <span className="text-rose-400">*</span>
         </label>
         <input
           id="invite-email"
@@ -323,7 +323,7 @@ function NewUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess: () 
           autoFocus
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="founder@startup.com"
+          placeholder="email@example.com"
           className="mt-1.5 w-full rounded-xl border border-[#2A2A3E] bg-[#1A1A26] px-3 py-2.5 text-sm text-[#F4F4FF] placeholder-[#4A4A6A] outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500/40"
         />
       </div>
@@ -335,7 +335,7 @@ function NewUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess: () 
           id="invite-message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Tell them why you're inviting them…"
+          placeholder="Tell them why you'd like to collab…"
           rows={3}
           className="mt-1.5 w-full resize-none rounded-xl border border-[#2A2A3E] bg-[#1A1A26] px-3 py-2.5 text-sm text-[#F4F4FF] placeholder-[#4A4A6A] outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500/40"
         />

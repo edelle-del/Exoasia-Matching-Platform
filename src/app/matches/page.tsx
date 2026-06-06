@@ -120,6 +120,7 @@ export default function MatchesPage() {
   const [introRequests, setIntroRequests] = useState<Map<string, "requesting" | "done">>(new Map());
   const [portfolioInvites, setPortfolioInvites] = useState<PortfolioInvite[]>([]);
   const [respondingInviteId, setRespondingInviteId] = useState<string | null>(null);
+  const [expandedInviteId, setExpandedInviteId] = useState<string | null>(null);
 
   // Projects state (shared startup + investor)
   const [projects, setProjects] = useState<(ProjectRecord & { owner_name?: string })[]>([]);
@@ -178,14 +179,14 @@ export default function MatchesPage() {
         }),
       );
 
+      // ── Collab invites (all roles) ───────────────────────────────────────────
+      const invitesRes = await fetch("/api/ecosystem/portfolio-invites").then((r) => r.json());
+      setPortfolioInvites((invitesRes as { invites?: PortfolioInvite[] }).invites ?? []);
+
       // ── Startup ──────────────────────────────────────────────────────────────
       if (role === "startup") {
-        const [userProjects, invitesRes] = await Promise.all([
-          fetchUserProjects(supabase, user.id),
-          fetch("/api/ecosystem/portfolio-invites").then((r) => r.json()),
-        ]);
+        const userProjects = await fetchUserProjects(supabase, user.id);
         setProjects(userProjects);
-        setPortfolioInvites((invitesRes as { invites?: PortfolioInvite[] }).invites ?? []);
 
         if (userProjects.length > 0) {
           const { data: scores } = await supabase
@@ -226,8 +227,6 @@ export default function MatchesPage() {
           results.forEach((r) => { if (r.has) generated.add(r.id); });
           setGeneratedProjects(generated);
         }
-      } else {
-        setPortfolioInvites([]);
       }
 
       // ── Investor ─────────────────────────────────────────────────────────────
@@ -698,7 +697,7 @@ export default function MatchesPage() {
                   <div className="rounded-2xl border border-(--color-hairline) border-dashed bg-(--color-surface-soft) p-10 text-center">
                     <p className="text-sm font-semibold text-(--color-ink)">No pending requests</p>
                     <p className="mt-1 text-xs text-(--color-muted)">
-                      When an investor marks your project as Qualified, or an ecosystem partner invites you to their portfolio, requests will appear here.
+                      When an investor marks your project as Qualified, or an ecosystem partner sends you a collab invite, requests will appear here.
                     </p>
                   </div>
                 ) : (
@@ -706,83 +705,20 @@ export default function MatchesPage() {
                     {portfolioInvites.length > 0 && (
                       <div className="space-y-2.5">
                         <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                          Portfolio invitations
+                          Collab invitations
                         </h2>
-                        {portfolioInvites.map((invite) => {
-                          const isResponding = respondingInviteId === invite.id;
-                          return (
-                            <div
-                              key={invite.id}
-                              className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4 space-y-3"
-                            >
-                              {/* Partner header */}
-                              <div className="flex items-start gap-3">
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-xs font-bold text-violet-400">
-                                  {invite.partner_name.charAt(0)}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-semibold text-(--color-ink)">{invite.partner_name}</p>
-                                  {(invite.partner_sector || invite.partner_city) && (
-                                    <p className="text-xs text-(--color-muted)">
-                                      {[invite.partner_sector, invite.partner_city].filter(Boolean).join(" · ")}
-                                    </p>
-                                  )}
-                                  <p className="mt-0.5 text-[10px] text-(--color-muted)">
-                                    Invited {new Date(invite.nominated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                                  </p>
-                                </div>
-                                {invite.eco_score !== null && (
-                                  <div className="shrink-0 text-right">
-                                    <p className={`text-lg font-bold tabular-nums ${invite.eco_score >= 75 ? "text-emerald-400" : invite.eco_score >= 50 ? "text-amber-400" : "text-rose-400"}`}>
-                                      {invite.eco_score}%
-                                    </p>
-                                    <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Mandate fit</p>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Partner bio */}
-                              {invite.partner_bio && (
-                                <p className="text-xs text-(--color-muted) leading-relaxed line-clamp-2">{invite.partner_bio}</p>
-                              )}
-
-                              {/* AI summary */}
-                              {invite.eco_summary && (
-                                <p className="text-xs text-violet-400 italic line-clamp-2">{invite.eco_summary}</p>
-                              )}
-
-                              {/* Actions */}
-                              <div className="flex flex-wrap items-center gap-2 pt-1">
-                                {invite.eco_score !== null && invite.scored_project_id && (
-                                  <Link
-                                    href={`/matches/breakdown?a=${invite.partner_id}&b=${user?.id ?? ""}&score=${invite.eco_score}&project=${invite.scored_project_id}`}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-500 hover:bg-indigo-500/20 transition-colors"
-                                  >
-                                    View compatibility
-                                  </Link>
-                                )}
-                                <div className="flex gap-2 ml-auto">
-                                  <button
-                                    type="button"
-                                    disabled={isResponding}
-                                    onClick={() => void handlePortfolioInviteRespond(invite.id, "declined")}
-                                    className="rounded-lg border border-(--color-hairline) px-3 py-1.5 text-xs font-semibold text-(--color-muted) transition hover:border-rose-400/40 hover:text-rose-500 disabled:opacity-50"
-                                  >
-                                    Decline
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={isResponding}
-                                    onClick={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
-                                    className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                                  >
-                                    {isResponding ? "…" : "Accept"}
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {portfolioInvites.map((invite) => (
+                          <CollabInviteCard
+                            key={invite.id}
+                            invite={invite}
+                            userId={user?.id ?? ""}
+                            isExpanded={expandedInviteId === invite.id}
+                            onToggle={() => setExpandedInviteId((prev) => prev === invite.id ? null : invite.id)}
+                            isResponding={respondingInviteId === invite.id}
+                            onAccept={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
+                            onDecline={() => void handlePortfolioInviteRespond(invite.id, "declined")}
+                          />
+                        ))}
                       </div>
                     )}
 
@@ -1173,22 +1109,48 @@ export default function MatchesPage() {
                       <div key={i} className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
                     ))}
                   </div>
-                ) : pendingMatches.length === 0 ? (
+                ) : pendingMatches.length === 0 && portfolioInvites.length === 0 ? (
                   <div className="rounded-2xl border border-(--color-hairline) border-dashed bg-(--color-surface-soft) p-10 text-center">
                     <p className="text-sm font-semibold text-(--color-ink)">No pending requests</p>
                     <p className="mt-1 text-xs text-(--color-muted)">
-                      When a startup requests a connection with you, it will appear here.
+                      When a startup requests a connection with you, or an ecosystem partner sends you a collab invite, it will appear here.
                     </p>
                   </div>
                 ) : (
-                  <MatchList
-                    matches={pendingMatches}
-                    userId={user?.id ?? ""}
-                    userRole={memberRole}
-                    onRespond={handleRespond}
-                    respondingId={respondingMatchId}
-                    subscriptionActive={true}
-                  />
+                  <div className="space-y-6">
+                    {portfolioInvites.length > 0 && (
+                      <div className="space-y-2.5">
+                        <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Collab invitations</h2>
+                        {portfolioInvites.map((invite) => (
+                          <CollabInviteCard
+                            key={invite.id}
+                            invite={invite}
+                            userId={user?.id ?? ""}
+                            isExpanded={expandedInviteId === invite.id}
+                            onToggle={() => setExpandedInviteId((prev) => prev === invite.id ? null : invite.id)}
+                            isResponding={respondingInviteId === invite.id}
+                            onAccept={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
+                            onDecline={() => void handlePortfolioInviteRespond(invite.id, "declined")}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {pendingMatches.length > 0 && (
+                      <div className="space-y-2.5">
+                        {portfolioInvites.length > 0 && (
+                          <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Intro requests</h2>
+                        )}
+                        <MatchList
+                          matches={pendingMatches}
+                          userId={user?.id ?? ""}
+                          userRole={memberRole}
+                          onRespond={handleRespond}
+                          respondingId={respondingMatchId}
+                          subscriptionActive={true}
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
               </section>
             )}
@@ -1594,6 +1556,181 @@ function MatchList({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── CollabInviteCard ─────────────────────────────────────────────────────────
+
+function CollabInviteCard({
+  invite,
+  userId,
+  isExpanded,
+  onToggle,
+  isResponding,
+  onAccept,
+  onDecline,
+}: {
+  invite: PortfolioInvite;
+  userId: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+  isResponding: boolean;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const breakdownHref = invite.eco_score !== null && invite.scored_project_id
+    ? `/matches/breakdown?a=${invite.partner_id}&b=${userId}&score=${invite.eco_score}&project=${invite.scored_project_id}`
+    : `/matches/breakdown?a=${invite.partner_id}&b=${userId}`;
+
+  const roleLabel =
+    invite.partner_role === "investor" ? "Investor"
+    : invite.partner_role === "startup" ? "Founder"
+    : invite.partner_role === "ecosystem_partner" ? "Ecosystem Partner"
+    : null;
+
+  return (
+    <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden">
+      {/* Clickable header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-start gap-3 p-4 text-left hover:bg-(--color-surface-soft) transition-colors"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-xs font-bold text-violet-400">
+          {invite.partner_name.charAt(0)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-(--color-ink)">{invite.partner_name}</p>
+            {roleLabel && (
+              <span className="rounded-full bg-(--color-surface-soft) border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">
+                {roleLabel}
+              </span>
+            )}
+            {invite.partner_verification_status === "verified" && (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-500">✓ Verified</span>
+            )}
+          </div>
+          {(invite.partner_sector || invite.partner_city) && (
+            <p className="mt-0.5 text-xs text-(--color-muted)">
+              {[invite.partner_sector, invite.partner_city].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          <p className="mt-0.5 text-[10px] text-(--color-muted)">
+            Invited {new Date(invite.nominated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          {invite.eco_score !== null && (
+            <div className="text-right">
+              <p className={`text-base font-bold tabular-nums ${invite.eco_score >= 75 ? "text-emerald-500" : invite.eco_score >= 50 ? "text-amber-400" : "text-rose-400"}`}>
+                {invite.eco_score}%
+              </p>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Fit</p>
+            </div>
+          )}
+          <svg
+            className={`h-4 w-4 text-(--color-muted) transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* Expanded profile + actions */}
+      {isExpanded && (
+        <div className="border-t border-(--color-hairline) bg-(--color-surface-soft) p-4 space-y-4">
+
+          {/* Bio */}
+          {invite.partner_bio && (
+            <p className="text-sm text-(--color-body) leading-relaxed">{invite.partner_bio}</p>
+          )}
+
+          {/* Role title */}
+          {invite.partner_role_title && (
+            <p className="text-xs text-(--color-muted)">{invite.partner_role_title}</p>
+          )}
+
+          {/* AI summary */}
+          {invite.eco_summary && (
+            <p className="text-xs text-violet-500 italic">{invite.eco_summary}</p>
+          )}
+
+          {/* Asks / Offers */}
+          {(invite.partner_ask_categories.length > 0 || invite.partner_offer_categories.length > 0) && (
+            <div className="grid grid-cols-2 gap-3">
+              {invite.partner_ask_categories.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted) mb-1.5">Asks</p>
+                  <div className="flex flex-wrap gap-1">
+                    {invite.partner_ask_categories.map((a) => (
+                      <span key={a} className="rounded-full bg-(--color-canvas) border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-body)">{a}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {invite.partner_offer_categories.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted) mb-1.5">Offers</p>
+                  <div className="flex flex-wrap gap-1">
+                    {invite.partner_offer_categories.map((o) => (
+                      <span key={o} className="rounded-full bg-(--color-canvas) border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-body)">{o}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* LinkedIn */}
+          {invite.partner_linkedin_url && (
+            <a
+              href={invite.partner_linkedin_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-(--color-primary) hover:underline"
+            >
+              <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              LinkedIn
+            </a>
+          )}
+
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Link
+              href={breakdownHref}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-500 hover:bg-indigo-500/20 transition-colors"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Compatibility Breakdown
+            </Link>
+            <div className="flex gap-2 ml-auto">
+              <button
+                type="button"
+                disabled={isResponding}
+                onClick={onDecline}
+                className="rounded-lg border border-(--color-hairline) px-3 py-1.5 text-xs font-semibold text-(--color-muted) transition hover:border-rose-400/40 hover:text-rose-500 disabled:opacity-50"
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                disabled={isResponding}
+                onClick={onAccept}
+                className="rounded-lg bg-(--color-primary) px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {isResponding ? "…" : "Accept"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

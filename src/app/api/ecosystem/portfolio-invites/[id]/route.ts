@@ -22,7 +22,7 @@ export async function PATCH(
       .eq("id", user.id)
       .single();
 
-    if (profile?.member_role !== "startup") {
+    if (!profile) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

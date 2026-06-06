@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
     const { data, error } = await admin
       .from("profiles")
       .select("id, full_name, business_name, sector")
-      .eq("member_role", "startup")
       .or(`full_name.ilike.%${q}%,business_name.ilike.%${q}%`)
       .limit(10);
 
@@ -29,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     const startups = (data ?? []).map((p) => ({
       id: p.id,
-      name: p.business_name || p.full_name || "Unnamed startup",
+      name: p.business_name || p.full_name || "Unnamed member",
       sector: p.sector ?? null,
     }));
 

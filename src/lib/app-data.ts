@@ -555,15 +555,38 @@ export async function fetchUserProjects(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<ProjectRecord[]> {
-  const { data, error } = await supabase
+  const [{ data: owned }, { data: cofounderLinks }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, owner_id, name, description, stage, sector, is_active, created_at, updated_at")
+      .eq("owner_id", userId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("cofounder_links")
+      .select("project_id")
+      .eq("cofounder_profile_id", userId),
+  ]);
+
+  const cofounderProjectIds = (cofounderLinks ?? [])
+    .map((l: { project_id: string | null }) => l.project_id)
+    .filter(Boolean) as string[];
+
+  if (cofounderProjectIds.length === 0) return (owned ?? []) as ProjectRecord[];
+
+  const { data: coOwned } = await supabase
     .from("projects")
     .select("id, owner_id, name, description, stage, sector, is_active, created_at, updated_at")
-    .eq("owner_id", userId)
+    .in("id", cofounderProjectIds)
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 
-  if (error) return [];
-  return (data ?? []) as ProjectRecord[];
+  const seen = new Set<string>();
+  const all: ProjectRecord[] = [];
+  for (const p of [...(owned ?? []), ...(coOwned ?? [])]) {
+    if (!seen.has(p.id)) { seen.add(p.id); all.push(p as ProjectRecord); }
+  }
+  return all;
 }
 
 export async function fetchAllStartupProjects(

@@ -16,6 +16,7 @@ export const MEMBER_PATH_PREFIXES = [
   "/profile",
   "/account-settings",
   "/notifications",
+  "/requests",
   "/matches",
   "/deal-board",
   "/documents",

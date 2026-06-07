@@ -678,7 +678,7 @@ export function DealBoardSnapshotCard({
 
 export type NotificationItem = {
   id: string;
-  kind: "match" | "invite" | "member";
+  kind: "match" | "invite" | "member" | "request";
   type: "match" | "accepted" | "intro" | "declined";
   title: string;
   body: string;
@@ -711,7 +711,7 @@ type NotificationsCardProps = {
 };
 
 export function NotificationsCard({ notifications, isLoading }: NotificationsCardProps) {
-  const shown = notifications.slice(0, 5);
+  const shown = notifications.slice(0, 3);
 
   return (
     <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">

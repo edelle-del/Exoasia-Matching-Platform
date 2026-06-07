@@ -4,6 +4,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { InviteCofounderModal } from "@/app/projects/_components/InviteCofounderModal";
+import { CofounderProfileModal, type CofounderProfile } from "@/app/projects/_components/CofounderProfileModal";
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -45,7 +46,19 @@ type Cofounder = {
     full_name: string | null;
     business_name: string | null;
     email: string | null;
+    role_title: string | null;
+    short_bio: string | null;
+    sector: string | null;
+    city: string | null;
+    linkedin_url: string | null;
   } | null;
+};
+
+type PendingInvite = {
+  id: string;
+  uid_value: string;
+  created_at: string;
+  expires_at: string;
 };
 
 type InvestorMatch = {
@@ -334,8 +347,12 @@ export default function ProjectDetailPage({
 
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
 
-  // cofounder invite modal
+  // cofounder management
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
+  const [cancellingInviteId, setCancellingInviteId] = useState<string | null>(null);
+  const [profileModalCofounder, setProfileModalCofounder] = useState<CofounderProfile | null>(null);
 
   // investor view: their score for this project
   const [myScore, setMyScore] = useState<MyScore | null>(null);
@@ -399,6 +416,7 @@ export default function ProjectDetailPage({
         });
       }
       setCofounders(cofounderData.cofounders ?? []);
+      setPendingInvites(cofounderData.pendingInvites ?? []);
       setLoading(false);
     });
   }, [id]);
@@ -433,8 +451,9 @@ export default function ProjectDetailPage({
         if (score) setMyScore(score);
       });
 
-    // Load existing investor matches if user owns this project
-    if (project.owner_id === user.id) {
+    // Load existing investor matches if user owns or co-owns this project
+    const userIsTeamMember = project.owner_id === user.id || cofounders.some((c) => c.cofounder_profile_id === user.id);
+    if (userIsTeamMember) {
       setMatchesLoading(true);
       fetch(`/api/projects/${id}/investor-matches`)
         .then((r) => r.json())
@@ -486,7 +505,8 @@ export default function ProjectDetailPage({
   // Load data room access status for non-owners
   useEffect(() => {
     if (!user?.id || !project) return;
-    if (project.owner_id === user.id) {
+    const userIsTeamMember = project.owner_id === user.id || cofounders.some((c) => c.cofounder_profile_id === user.id);
+    if (userIsTeamMember) {
       setDataRoomStatus("none");
       return;
     }
@@ -836,6 +856,38 @@ export default function ProjectDetailPage({
   }
 
   const isOwner = user?.id === project.owner_id;
+  const isCofounder = !loading && cofounders.some((c) => c.cofounder_profile_id === user?.id);
+  const isTeamMember = isOwner || isCofounder;
+
+  async function handleRemoveCofounder(linkId: string) {
+    if (!confirm("Remove this co-founder from the project? This will revoke their access immediately.")) return;
+    setRemovingLinkId(linkId);
+    try {
+      await fetch(`/api/projects/${id}/cofounders`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ link_id: linkId }),
+      });
+      setCofounders((prev) => prev.filter((c) => c.id !== linkId));
+    } finally {
+      setRemovingLinkId(null);
+    }
+  }
+
+  async function handleCancelInvite(inviteId: string) {
+    if (!confirm("Cancel this pending invitation?")) return;
+    setCancellingInviteId(inviteId);
+    try {
+      await fetch(`/api/projects/${id}/cofounders`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invite_id: inviteId }),
+      });
+      setPendingInvites((prev) => prev.filter((inv) => inv.id !== inviteId));
+    } finally {
+      setCancellingInviteId(null);
+    }
+  }
 
   async function handleTakeAssessment() {
     setAssessmentTaking(true);
@@ -897,8 +949,8 @@ export default function ProjectDetailPage({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {/* Investor: score badge + button in header */}
-              {!isOwner && (
+              {/* Investor: score badge + button in header (hidden from team members) */}
+              {!isTeamMember && (
                 <div className="flex items-center gap-2">
                   {myScore && <PieScore score={myScore.fit_score} large />}
                   <button
@@ -1496,8 +1548,8 @@ export default function ProjectDetailPage({
         </section>
       )}
 
-      {/* ── Owner tabs (placed under VCA report) ── */}
-      {isOwner && (
+      {/* ── Team member tabs (owner + cofounder) ── */}
+      {isTeamMember && (
         <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">
           <div className="flex gap-0 border-b border-(--color-hairline)">
             {(["details", "matches"] as const).map((tab) => (
@@ -1525,8 +1577,8 @@ export default function ProjectDetailPage({
         </div>
       )}
 
-      {/* ── Project Details tab (always visible for non-owners) ── */}
-      {(!isOwner || activeTab === "details") && (
+      {/* ── Project Details tab (always visible for non-team-members) ── */}
+      {(!isTeamMember || activeTab === "details") && (
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
           {isOwner && !report && (
             <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
@@ -1579,7 +1631,7 @@ export default function ProjectDetailPage({
           )}
 
           {/* ── Data Room ── */}
-          {isOwner ? (
+          {isTeamMember ? (
             <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
                 Data Room
@@ -1691,7 +1743,7 @@ export default function ProjectDetailPage({
           )}
 
           {/* ── Investor: my score detail ── */}
-          {!isOwner && myScore && (
+          {!isTeamMember && myScore && (
             <div
               className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-(--color-primary)/30 bg-(--color-primary)/10" : myScore.fit_score >= 65 ? "border-blue-500/30 bg-blue-500/10" : myScore.fit_score >= 50 ? "border-amber-500/30 bg-amber-500/10" : "border-red-500/30 bg-red-500/10"}`}
             >
@@ -1818,33 +1870,92 @@ export default function ProjectDetailPage({
                 </p>
               )}
 
-              {/* ── Team / Cofounders ── */}
+              {/* ── Team section ── */}
+              {/* Owner: full management (accepted + pending + invite) */}
               {isOwner && (
                 <div className="rounded-xl border border-(--color-hairline) p-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-(--color-ink)">Team</h2>
-                    <span className="text-xs text-(--color-muted)">{cofounders.length} cofounder{cofounders.length !== 1 ? "s" : ""}</span>
+                    <span className="text-xs text-(--color-muted)">
+                      {cofounders.length} accepted · {pendingInvites.length} pending
+                    </span>
                   </div>
 
-                  {/* Existing cofounders */}
+                  {/* Accepted cofounders */}
                   {cofounders.length > 0 && (
                     <ul className="space-y-2">
-                      {cofounders.map((c) => (
-                        <li key={c.id} className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-(--color-ink)">
-                              {c.profile?.full_name || c.profile?.email || "Team member"}
-                            </p>
-                            {c.profile?.email && c.profile?.full_name && (
-                              <p className="text-xs text-(--color-muted)">{c.profile.email}</p>
-                            )}
-                          </div>
-                          <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">
-                            Cofounder
-                          </span>
-                        </li>
-                      ))}
+                      {cofounders.map((c) => {
+                        const name = c.profile?.full_name || c.profile?.business_name || "Team member";
+                        const initials = name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+                        return (
+                          <li key={c.id} className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-xs font-bold text-violet-300">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-(--color-ink) truncate">{name}</p>
+                                {c.profile?.role_title && (
+                                  <p className="text-xs text-(--color-muted) truncate">{c.profile.role_title}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                                Accepted
+                              </span>
+                              <button
+                                type="button"
+                                disabled={removingLinkId === c.id}
+                                onClick={() => void handleRemoveCofounder(c.id)}
+                                className="rounded-lg px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/10 disabled:opacity-50 transition"
+                              >
+                                {removingLinkId === c.id ? "…" : "Remove"}
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
+                  )}
+
+                  {/* Pending invites */}
+                  {pendingInvites.length > 0 && (
+                    <>
+                      {cofounders.length > 0 && <hr className="border-t border-(--color-hairline)" />}
+                      <ul className="space-y-2">
+                        {pendingInvites.map((inv) => (
+                          <li key={inv.id} className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--color-hairline) text-xs font-bold text-(--color-muted)">
+                                ?
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-(--color-ink) truncate">{inv.uid_value}</p>
+                                <p className="text-xs text-(--color-muted)">Invite sent</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
+                                Pending
+                              </span>
+                              <button
+                                type="button"
+                                disabled={cancellingInviteId === inv.id}
+                                onClick={() => void handleCancelInvite(inv.id)}
+                                className="rounded-lg px-2 py-1 text-xs font-medium text-(--color-muted) hover:bg-(--color-hairline) disabled:opacity-50 transition"
+                              >
+                                {cancellingInviteId === inv.id ? "…" : "Cancel"}
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  {cofounders.length === 0 && pendingInvites.length === 0 && (
+                    <p className="text-xs text-(--color-muted) text-center py-2">No co-founders yet.</p>
                   )}
 
                   {/* Invite button */}
@@ -1857,9 +1968,44 @@ export default function ProjectDetailPage({
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
-                      Invite Cofounder
+                      Invite Co-founder
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Non-team-member (investor): show accepted co-founders with clickable profile modal */}
+              {!isTeamMember && cofounders.length > 0 && (
+                <div className="rounded-xl border border-(--color-hairline) p-4 space-y-3">
+                  <h2 className="text-sm font-semibold text-(--color-ink)">Team</h2>
+                  <ul className="space-y-2">
+                    {cofounders.map((c) => {
+                      const name = c.profile?.full_name || c.profile?.business_name || "Team member";
+                      const initials = name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+                      return (
+                        <li key={c.id}>
+                          <button
+                            type="button"
+                            onClick={() => setProfileModalCofounder(c)}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition hover:bg-(--color-hairline)"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-xs font-bold text-violet-300">
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-(--color-ink) truncate">{name}</p>
+                              {c.profile?.role_title && (
+                                <p className="text-xs text-(--color-muted) truncate">{c.profile.role_title}</p>
+                              )}
+                            </div>
+                            <span className="ml-auto shrink-0 rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-400">
+                              Co-founder
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               )}
             </div>
@@ -1868,7 +2014,7 @@ export default function ProjectDetailPage({
       )}
 
       {/* ── Investor Matches tab ── */}
-      {isOwner && activeTab === "matches" && (
+      {isTeamMember && activeTab === "matches" && (
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 space-y-5">
           {/* Generate / regenerate header */}
           <div className="flex items-center justify-between">
@@ -2376,14 +2522,21 @@ export default function ProjectDetailPage({
           onClose={() => setInviteModalOpen(false)}
           onSuccess={() => {
             setInviteModalOpen(false);
-            void supabase
-              .from("cofounder_links")
-              .select("id, cofounder_profile_id, created_at, profile:profiles!cofounder_profile_id(full_name, business_name, email)")
-              .eq("project_id", id)
-              .then(({ data }) => {
-                if (data) setCofounders(data as unknown as Cofounder[]);
+            // Refresh both accepted cofounders and pending invites
+            void fetch(`/api/projects/${id}/cofounders`)
+              .then((r) => r.json())
+              .then((data) => {
+                if (data.cofounders) setCofounders(data.cofounders as unknown as Cofounder[]);
+                if (data.pendingInvites) setPendingInvites(data.pendingInvites);
               });
           }}
+        />
+      )}
+
+      {profileModalCofounder && (
+        <CofounderProfileModal
+          cofounder={profileModalCofounder}
+          onClose={() => setProfileModalCofounder(null)}
         />
       )}
     </div>

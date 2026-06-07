@@ -5,7 +5,7 @@ import Link from "next/link";
 
 type Notification = {
   id: string;
-  kind: "match" | "invite" | "member";
+  kind: "match" | "invite" | "member" | "request";
   type: "match" | "accepted" | "intro" | "declined";
   title: string;
   body: string;
@@ -52,6 +52,7 @@ const KIND_LABEL: Record<Notification["kind"], string> = {
   match: "Match",
   invite: "Invite",
   member: "New Member",
+  request: "Request",
 };
 
 export default function NotificationsPage() {

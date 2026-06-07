@@ -112,8 +112,6 @@ export default function MatchesPage() {
   const [memberRole, setMemberRole] = useState<string | null>(null);
   const [hasActiveSub, setHasActiveSub] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [startupTab, setStartupTab] = useState<"projects" | "requests">("projects");
-  const [investorTab, setInvestorTab] = useState<"projects" | "requests">("projects");
 
 
   // Matches state
@@ -493,39 +491,6 @@ export default function MatchesPage() {
         {/* ── STARTUP VIEW ───────────────────────────────────────────────────── */}
         {isStartup && (
           <>
-            {/* Tab bar */}
-            <div className="flex gap-1 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
-              <button
-                type="button"
-                onClick={() => setStartupTab("projects")}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                  startupTab === "projects"
-                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
-                    : "text-(--color-muted) hover:text-(--color-ink)"
-                }`}
-              >
-                Projects
-              </button>
-              <button
-                type="button"
-                onClick={() => setStartupTab("requests")}
-                className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                  startupTab === "requests"
-                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
-                    : "text-(--color-muted) hover:text-(--color-ink)"
-                }`}
-              >
-                Requests
-                {pendingCount > 0 && (
-                  <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-(--color-primary) text-[10px] font-bold text-white">
-                    {pendingCount}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* ── Projects tab ── */}
-            {startupTab === "projects" && (
             <section>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Your Projects</h2>
@@ -621,106 +586,14 @@ export default function MatchesPage() {
                 </div>
               )}
             </section>
-            )} {/* end projects tab */}
-
-            {/* ── Requests tab ── */}
-            {startupTab === "requests" && (
-              <section className="space-y-6">
-                {isLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
-                    ))}
-                  </div>
-                ) : pendingMatches.length === 0 && portfolioInvites.length === 0 ? (
-                  <div className="rounded-2xl border border-(--color-hairline) border-dashed bg-(--color-surface-soft) p-10 text-center">
-                    <p className="text-sm font-semibold text-(--color-ink)">No pending requests</p>
-                    <p className="mt-1 text-xs text-(--color-muted)">
-                      When an investor marks your project as Qualified, or an ecosystem partner sends you a collab invite, requests will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {portfolioInvites.length > 0 && (
-                      <div className="space-y-2.5">
-                        <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                          Collab invitations
-                        </h2>
-                        {portfolioInvites.map((invite) => (
-                          <CollabInviteCard
-                            key={invite.id}
-                            invite={invite}
-                            userId={user?.id ?? ""}
-                            isExpanded={expandedInviteId === invite.id}
-                            onToggle={() => setExpandedInviteId((prev) => prev === invite.id ? null : invite.id)}
-                            isResponding={respondingInviteId === invite.id}
-                            onAccept={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
-                            onDecline={() => void handlePortfolioInviteRespond(invite.id, "declined")}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {pendingMatches.length > 0 && (
-                      <div className="space-y-2.5">
-                        {portfolioInvites.length > 0 && (
-                          <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
-                            Intro requests
-                          </h2>
-                        )}
-                        <MatchList
-                          matches={pendingMatches}
-                          userId={user?.id ?? ""}
-                          userRole={memberRole}
-                          onRespond={handleRespond}
-                          respondingId={respondingMatchId}
-                          subscriptionActive={true}
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-              </section>
-            )}
           </>
         )}
 
         {/* ── INVESTOR VIEW ──────────────────────────────────────────────────── */}
         {isInvestor && (
           <>
-            {/* Tab bar */}
-            <div className="flex gap-1 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
-              <button
-                type="button"
-                onClick={() => setInvestorTab("projects")}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                  investorTab === "projects"
-                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
-                    : "text-(--color-muted) hover:text-(--color-ink)"
-                }`}
-              >
-                Projects
-              </button>
-              <button
-                type="button"
-                onClick={() => setInvestorTab("requests")}
-                className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                  investorTab === "requests"
-                    ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
-                    : "text-(--color-muted) hover:text-(--color-ink)"
-                }`}
-              >
-                Requests
-                {pendingCount > 0 && (
-                  <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-(--color-primary) text-[10px] font-bold text-white">
-                    {pendingCount}
-                  </span>
-                )}
-              </button>
-            </div>
-
             {/* ── Investor view controls ── */}
-            {investorTab === "projects" && !isLoading && (
+            {!isLoading && (
               <div className="flex items-center justify-between gap-3">
                 <div>
                   {top5Projects.length > 0 && (
@@ -768,8 +641,7 @@ export default function MatchesPage() {
               </div>
             )}
 
-            {/* ── Projects tab ── */}
-            {investorTab === "projects" && (
+            {/* ── Projects ── */}
             <section>
               <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
                 {view === "top5" ? "Top 5 Matches" : "All Projects"}
@@ -1037,62 +909,6 @@ export default function MatchesPage() {
                 </div>
               )}
             </section>
-            )} {/* end investor projects tab */}
-
-            {/* ── Requests tab ── */}
-            {investorTab === "requests" && (
-              <section>
-                {isLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="h-20 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
-                    ))}
-                  </div>
-                ) : pendingMatches.length === 0 && portfolioInvites.length === 0 ? (
-                  <div className="rounded-2xl border border-(--color-hairline) border-dashed bg-(--color-surface-soft) p-10 text-center">
-                    <p className="text-sm font-semibold text-(--color-ink)">No pending requests</p>
-                    <p className="mt-1 text-xs text-(--color-muted)">
-                      When a startup requests a connection with you, or an ecosystem partner sends you a collab invite, it will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {portfolioInvites.length > 0 && (
-                      <div className="space-y-2.5">
-                        <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Collab invitations</h2>
-                        {portfolioInvites.map((invite) => (
-                          <CollabInviteCard
-                            key={invite.id}
-                            invite={invite}
-                            userId={user?.id ?? ""}
-                            isExpanded={expandedInviteId === invite.id}
-                            onToggle={() => setExpandedInviteId((prev) => prev === invite.id ? null : invite.id)}
-                            isResponding={respondingInviteId === invite.id}
-                            onAccept={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
-                            onDecline={() => void handlePortfolioInviteRespond(invite.id, "declined")}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {pendingMatches.length > 0 && (
-                      <div className="space-y-2.5">
-                        {portfolioInvites.length > 0 && (
-                          <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Intro requests</h2>
-                        )}
-                        <MatchList
-                          matches={pendingMatches}
-                          userId={user?.id ?? ""}
-                          userRole={memberRole}
-                          onRespond={handleRespond}
-                          respondingId={respondingMatchId}
-                          subscriptionActive={true}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            )}
           </>
         )}
 

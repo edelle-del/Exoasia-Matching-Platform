@@ -136,6 +136,28 @@ body {
   color: var(--fa-magenta);
 }
 
+/* ── FA Gradient utilities ────────────────────────────── */
+
+.fa-gradient-primary {
+  background: linear-gradient(135deg, var(--fa-tangerine), var(--fa-hot-pink));
+}
+
+.fa-gradient-primary:hover {
+  background: linear-gradient(135deg, var(--fa-hot-pink), var(--fa-magenta));
+}
+
+.fa-gradient-featured {
+  background: linear-gradient(160deg, var(--fa-tangerine) 0%, var(--fa-hot-pink) 55%, var(--fa-magenta) 100%);
+}
+
+.fa-gradient-hero {
+  background: linear-gradient(135deg, var(--fa-navy), var(--fa-navy-mid));
+}
+
+.fa-gradient-cta {
+  background: linear-gradient(135deg, var(--fa-tangerine), var(--fa-hot-pink));
+}
+
 /* ── Cards ────────────────────────────────────────────── */
 
 .gn-hero {

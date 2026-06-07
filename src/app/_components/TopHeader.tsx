@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -12,6 +12,7 @@ const ICONS = {
   dashboard: "ri-dashboard-line",
   projects: "ri-folder-line",
   matches: "ri-heart-3-line",
+  requests: "ri-inbox-2-line",
   dealBoard: "ri-briefcase-line",
   documents: "ri-file-text-line",
   dataRoom: "ri-database-2-line",
@@ -77,6 +78,51 @@ function NavLink({
 
 const NAV_ITEM_CLASS =
   "group/link flex w-full items-center gap-0 rounded-xl px-[10px] py-2.5 text-sm font-semibold transition-all duration-300 group-hover/sidebar:gap-3 group-hover/sidebar:px-3";
+
+function RequestsNavItem() {
+  const pathname = usePathname();
+  const isActive = pathname.startsWith("/requests");
+  const [count, setCount] = useState(0);
+
+  const refresh = () => {
+    fetch("/api/requests")
+      .then((r) => r.json())
+      .then((d) => setCount(d.totalPending ?? 0))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Refetch whenever the user navigates away from /requests (they may have acted on some)
+  useEffect(() => {
+    if (!pathname.startsWith("/requests")) refresh();
+  }, [pathname]);
+
+  return (
+    <Link
+      href="/requests"
+      className={`group/link relative flex w-full items-center gap-0 rounded-xl px-[10px] py-2.5 text-sm font-semibold transition-all duration-300 group-hover/sidebar:gap-3 group-hover/sidebar:px-3 ${
+        isActive
+          ? "bg-[#FF6B1F] text-white shadow-sm"
+          : "text-white/60 hover:bg-white/10 hover:text-white"
+      }`}
+    >
+      <span className="relative shrink-0">
+        <Icon name={ICONS.requests} />
+        {count > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white leading-none">
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+      </span>
+      <Label>Requests</Label>
+    </Link>
+  );
+}
 
 export default function TopHeader() {
   const { signedIn, signOut, role, memberRole, user, isLoading } = useAuth();
@@ -171,6 +217,7 @@ export default function TopHeader() {
                 label="Matches"
                 icon={ICONS.matches}
               />
+              <RequestsNavItem />
               <NavLink
                 href="/data-room"
                 label="Data Room"

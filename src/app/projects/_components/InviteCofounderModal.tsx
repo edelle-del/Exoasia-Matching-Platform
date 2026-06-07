@@ -184,8 +184,8 @@ function ExistingMemberStep({
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-sm font-semibold text-[#F4F4FF]">Cofounder added!</p>
-        <p className="text-xs text-[#8B8BA7]">{selected?.name} has been added to your project team.</p>
+        <p className="text-sm font-semibold text-[#F4F4FF]">Invite sent!</p>
+        <p className="text-xs text-[#8B8BA7]">{selected?.name} will receive an invite to join as co-founder.</p>
       </div>
     );
   }

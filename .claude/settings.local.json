@@ -28,7 +28,8 @@
       "Bash(Select-Object Name)",
       "Bash(Get-ChildItem -Path . -Directory)",
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
-      "Bash(node scripts/seed-onboarding-test.mjs)"
+      "Bash(node scripts/seed-onboarding-test.mjs)",
+      "Bash(npm list *)"
     ]
   }
 }

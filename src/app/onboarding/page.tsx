@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { City, Country } from "country-state-city";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +57,7 @@ const hearAboutOptions = [
   "Other",
 ];
 const yearsOptions = ["Less than 1 year", "1-3 years", "3-5 years", "5+ years"];
+
 
 const REGIONS = [
   "Global",
@@ -485,6 +487,109 @@ function SearchableMultiSelect({
       )}
 
       {open && available.length === 0 && query.length > 0 && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-[var(--color-hairline)] bg-[#12121A] px-3 py-2.5 shadow-xl">
+          <p className="text-sm text-[var(--color-muted)]">
+            No results for &ldquo;{query}&rdquo;
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SearchableSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Search…",
+  disabled = false,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const filtered = options.filter((o) =>
+    o.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="relative">
+        <input
+          type="text"
+          value={open ? query : value}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setQuery("");
+          }}
+          placeholder={disabled ? "Select country first" : placeholder}
+          disabled={disabled}
+          className="gn-input pr-8"
+          autoComplete="off"
+        />
+        {value && (
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onChange("");
+              setQuery("");
+              setOpen(false);
+            }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-[var(--color-muted)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)] text-sm leading-none"
+            aria-label="Clear"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-[var(--color-hairline)] bg-[#12121A] py-1 shadow-xl">
+          {filtered.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(opt);
+                setOpen(false);
+                setQuery("");
+              }}
+              className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-surface-soft)] ${
+                opt === value
+                  ? "font-semibold text-[var(--color-primary)]"
+                  : "text-[var(--color-body)]"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && filtered.length === 0 && query.length > 0 && (
         <div className="absolute z-20 mt-1 w-full rounded-lg border border-[var(--color-hairline)] bg-[#12121A] px-3 py-2.5 shadow-xl">
           <p className="text-sm text-[var(--color-muted)]">
             No results for &ldquo;{query}&rdquo;
@@ -954,6 +1059,7 @@ export default function OnboardingForm() {
     last_name: "",
     business_name: "",
     role_title: "",
+    country: "",
     city: "",
     short_bio: "",
     how_heard_about: "",
@@ -1003,6 +1109,18 @@ export default function OnboardingForm() {
             spaceIdx >= 0 ? existingName.slice(spaceIdx + 1) : "";
           const extended = parseExtended(profile.asks_summary);
 
+          const rawCity = profile.city ?? "";
+          const lastComma = rawCity.lastIndexOf(", ");
+          let loadedCity = rawCity;
+          let loadedCountry = "";
+          if (lastComma !== -1) {
+            const possible = rawCity.slice(lastComma + 2);
+            if (Country.getAllCountries().some((c) => c.name === possible)) {
+              loadedCity = rawCity.slice(0, lastComma);
+              loadedCountry = possible;
+            }
+          }
+
           // Map stored referrals array back to individual form fields
           const storedRaw = (() => {
             try {
@@ -1020,7 +1138,8 @@ export default function OnboardingForm() {
             last_name: loadedLast || prev.last_name,
             business_name: profile.business_name ?? prev.business_name,
             role_title: profile.role_title ?? prev.role_title,
-            city: profile.city ?? prev.city,
+            country: loadedCountry || prev.country,
+            city: loadedCity || prev.city,
             short_bio: profile.short_bio ?? prev.short_bio,
             how_heard_about: profile.how_heard_about ?? prev.how_heard_about,
             referred_by: profile.referred_by ?? prev.referred_by,
@@ -1319,6 +1438,15 @@ export default function OnboardingForm() {
     }
   };
 
+  const allCountries = useMemo(() => Country.getAllCountries(), []);
+  const availableCities = useMemo(() => {
+    if (!form.country) return [];
+    const found = allCountries.find((c) => c.name === form.country);
+    if (!found) return [];
+    const cities = City.getCitiesOfCountry(found.isoCode) ?? [];
+    return Array.from(new Set(cities.map((c) => c.name))).sort();
+  }, [form.country, allCountries]);
+
   const showLpFields = form.investment_interests.some(
     (i) => i.includes("Funds") || i.includes("Fund Manager"),
   );
@@ -1378,6 +1506,7 @@ export default function OnboardingForm() {
     if (!form.employee_band) errs.push("Employee band is required.");
     if (!form.annual_revenue_estimate) errs.push("Annual revenue range is required.");
     if (!form.role_title.trim()) errs.push("Role / title is required.");
+    if (!form.country.trim()) errs.push("Country is required.");
     if (!form.city.trim()) errs.push("City is required.");
     if (!form.short_bio.trim()) errs.push("Short bio is required.");
     if (!form.linkedin_url.trim()) errs.push("LinkedIn profile URL is required.");
@@ -1509,7 +1638,9 @@ export default function OnboardingForm() {
         member_role: form.member_role || undefined,
         business_name: form.business_name.trim(),
         role_title: form.role_title.trim() || undefined,
-        city: form.city.trim() || undefined,
+        city: form.city.trim()
+          ? form.country ? `${form.city.trim()}, ${form.country}` : form.city.trim()
+          : undefined,
         short_bio: form.short_bio.trim() || undefined,
         linkedin_url: form.linkedin_url.trim() || undefined,
         how_heard_about: form.how_heard_about,
@@ -1606,7 +1737,9 @@ export default function OnboardingForm() {
           member_role: "startup",
           business_name: form.business_name.trim(),
           role_title: form.role_title.trim() || undefined,
-          city: form.city.trim() || undefined,
+          city: form.city.trim()
+            ? form.country ? `${form.city.trim()}, ${form.country}` : form.city.trim()
+            : undefined,
           short_bio: form.short_bio.trim() || undefined,
           linkedin_url: form.linkedin_url.trim() || undefined,
           how_heard_about: form.how_heard_about,
@@ -2200,20 +2333,40 @@ export default function OnboardingForm() {
             </div>
           </div>
 
+          <div>
+            <label
+              htmlFor="role_title"
+              className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
+            >
+              Role / title <Req />
+            </label>
+            <input
+              id="role_title"
+              className="gn-input mt-1"
+              value={form.role_title}
+              onChange={(e) => set("role_title", e.target.value)}
+            />
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label
-                htmlFor="role_title"
+                htmlFor="country"
                 className="flex items-center gap-2 text-sm font-600 text-[var(--color-ink)]"
               >
-                Role / title <Req />
+                Country <Req />
               </label>
-              <input
-                id="role_title"
-                className="gn-input mt-1"
-                value={form.role_title}
-                onChange={(e) => set("role_title", e.target.value)}
-              />
+              <div className="mt-1">
+                <SearchableSelect
+                  options={allCountries.map((c) => c.name)}
+                  value={form.country}
+                  onChange={(v) => {
+                    setForm((prev) => ({ ...prev, country: v, city: "" }));
+                    setErrors([]);
+                  }}
+                  placeholder="Search countries…"
+                />
+              </div>
             </div>
             <div>
               <label
@@ -2222,12 +2375,15 @@ export default function OnboardingForm() {
               >
                 City <Req />
               </label>
-              <input
-                id="city"
-                className="gn-input mt-1"
-                value={form.city}
-                onChange={(e) => set("city", e.target.value)}
-              />
+              <div className="mt-1">
+                <SearchableSelect
+                  options={availableCities}
+                  value={form.city}
+                  onChange={(v) => set("city", v)}
+                  placeholder="Search cities…"
+                  disabled={!form.country}
+                />
+              </div>
             </div>
           </div>
 

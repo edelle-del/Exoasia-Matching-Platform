@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Called by an unauthenticated user to set name + password and activate their account.
-// Accepts { email, otp, name, password } (OTP flow) or { token, name, password } (legacy).
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
-      email?: string;
-      otp?: string;
-      token?: string;
+      token: string;
       name: string;
       password: string;
     };
 
-    const { name, password } = body;
+    const { token, name, password } = body;
 
+    if (!token) {
+      return NextResponse.json({ error: "token is required." }, { status: 400 });
+    }
     if (!name?.trim() || !password) {
       return NextResponse.json({ error: "Name and password are required." }, { status: 400 });
     }
@@ -24,39 +24,11 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
 
-    // ── Resolve invite by OTP (new) or token (legacy) ──────────────────────────
-    let invite: {
-      id: string;
-      inviter_id: string;
-      uid_type: string;
-      uid_value: string;
-      status: string;
-      expires_at: string;
-      project_id: string | null;
-    } | null = null;
-
-    if (body.email && body.otp) {
-      if (!/^\d{6}$/.test(body.otp.trim())) {
-        return NextResponse.json({ error: "Invalid verification code." }, { status: 400 });
-      }
-      const { data } = await admin
-        .from("cofounder_invites")
-        .select("id, inviter_id, uid_type, uid_value, status, expires_at, project_id")
-        .eq("uid_value", body.email.trim().toLowerCase())
-        .eq("otp", body.otp.trim())
-        .eq("uid_type", "email")
-        .single();
-      invite = data ?? null;
-    } else if (body.token) {
-      const { data } = await admin
-        .from("cofounder_invites")
-        .select("id, inviter_id, uid_type, uid_value, status, expires_at, project_id")
-        .eq("token", body.token)
-        .single();
-      invite = data ?? null;
-    } else {
-      return NextResponse.json({ error: "email + otp or token is required." }, { status: 400 });
-    }
+    const { data: invite } = await admin
+      .from("cofounder_invites")
+      .select("id, inviter_id, uid_type, uid_value, status, expires_at, project_id")
+      .eq("token", token)
+      .single();
 
     if (!invite) {
       return NextResponse.json({ error: "Invalid verification code." }, { status: 404 });

@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { InviteCofounderModal } from "@/app/projects/_components/InviteCofounderModal";
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -332,6 +333,9 @@ export default function ProjectDetailPage({
   const [error, setError] = useState("");
 
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
+
+  // cofounder invite modal
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   // investor view: their score for this project
   const [myScore, setMyScore] = useState<MyScore | null>(null);
@@ -1816,38 +1820,23 @@ export default function ProjectDetailPage({
 
               {/* ── Team / Cofounders ── */}
               {isOwner && (
-                <div className="rounded-xl border border-(--color-hairline) p-4">
-                  <h2 className="text-sm font-semibold text-(--color-ink)">
-                    Team
-                  </h2>
-                  {cofounders.length === 0 ? (
-                    <p className="mt-2 text-sm text-(--color-muted)">
-                      No cofounders linked yet. Invite them from your{" "}
-                      <a
-                        href="/profile"
-                        className="text-(--color-primary) hover:underline"
-                      >
-                        profile page
-                      </a>
-                      .
-                    </p>
-                  ) : (
-                    <ul className="mt-3 space-y-2">
+                <div className="rounded-xl border border-(--color-hairline) p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-(--color-ink)">Team</h2>
+                    <span className="text-xs text-(--color-muted)">{cofounders.length} cofounder{cofounders.length !== 1 ? "s" : ""}</span>
+                  </div>
+
+                  {/* Existing cofounders */}
+                  {cofounders.length > 0 && (
+                    <ul className="space-y-2">
                       {cofounders.map((c) => (
-                        <li
-                          key={c.id}
-                          className="flex items-center justify-between"
-                        >
+                        <li key={c.id} className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium text-(--color-ink)">
-                              {c.profile?.full_name ||
-                                c.profile?.email ||
-                                "Team member"}
+                              {c.profile?.full_name || c.profile?.email || "Team member"}
                             </p>
-                            {c.profile?.business_name && (
-                              <p className="text-xs text-(--color-muted)">
-                                {c.profile.business_name}
-                              </p>
+                            {c.profile?.email && c.profile?.full_name && (
+                              <p className="text-xs text-(--color-muted)">{c.profile.email}</p>
                             )}
                           </div>
                           <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">
@@ -1857,6 +1846,20 @@ export default function ProjectDetailPage({
                       ))}
                     </ul>
                   )}
+
+                  {/* Invite button */}
+                  <div className="border-t border-(--color-hairline) pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setInviteModalOpen(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      Invite Cofounder
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -2365,6 +2368,23 @@ export default function ProjectDetailPage({
             </div>
           )}
         </div>
+      )}
+
+      {inviteModalOpen && (
+        <InviteCofounderModal
+          projectId={id}
+          onClose={() => setInviteModalOpen(false)}
+          onSuccess={() => {
+            setInviteModalOpen(false);
+            void supabase
+              .from("cofounder_links")
+              .select("id, cofounder_profile_id, created_at, profile:profiles!cofounder_profile_id(full_name, business_name, email)")
+              .eq("project_id", id)
+              .then(({ data }) => {
+                if (data) setCofounders(data as unknown as Cofounder[]);
+              });
+          }}
+        />
       )}
     </div>
   );

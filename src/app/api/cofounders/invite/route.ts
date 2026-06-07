@@ -34,8 +34,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
     const { data, error } = await supabase
       .from("cofounder_invites")
       .insert({
@@ -43,9 +41,8 @@ export async function POST(request: Request) {
         uid_type,
         uid_value: uid_value.trim(),
         project_id: project_id ?? null,
-        otp,
       })
-      .select("id, token, otp, uid_type, uid_value, status, created_at, expires_at, project_id")
+      .select("id, token, uid_type, uid_value, status, created_at, expires_at, project_id")
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -72,14 +69,11 @@ export async function POST(request: Request) {
           inviterProfile?.full_name || inviterProfile?.business_name || "A founder";
         const projectName = (projectData as { name?: string } | null)?.name || null;
 
-        // invite_otp, invite_location, invite_browser are available in the Supabase
-        // "Invite user" email template as {{ index .Data "invite_otp" }} etc.
         await admin.auth.admin.inviteUserByEmail(uid_value.trim(), {
           redirectTo: acceptUrl,
           data: {
             account_status: "invited",
             invite_inviter_name: inviterName,
-            invite_otp: data.otp,
             ...(projectName ? { invite_project_name: projectName } : {}),
             ...(client_context?.location ? { invite_location: client_context.location } : {}),
             ...(client_context?.browser  ? { invite_browser:  client_context.browser  } : {}),

@@ -12,18 +12,52 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    const PROJECT_FIELDS =
+      "id, owner_id, name, description, stage, sector, is_active, created_at, updated_at";
+
+    // Projects the user owns
+    const { data: ownedProjects, error } = await supabase
       .from("projects")
-      .select(
-        "id, owner_id, name, description, stage, sector, is_active, created_at, updated_at",
-      )
+      .select(PROJECT_FIELDS)
       .eq("owner_id", user.id)
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
     if (error)
       return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ projects: data ?? [] });
+
+    // Projects the user was invited to as a cofounder
+    const { data: cofounderLinks } = await supabase
+      .from("cofounder_links")
+      .select("project_id")
+      .eq("cofounder_profile_id", user.id)
+      .not("project_id", "is", null);
+
+    const cofounderProjectIds = (cofounderLinks ?? [])
+      .map((l) => l.project_id as string)
+      .filter(Boolean);
+
+    let cofounderProjects: typeof ownedProjects = [];
+    if (cofounderProjectIds.length > 0) {
+      const { data: cfp } = await supabase
+        .from("projects")
+        .select(PROJECT_FIELDS)
+        .in("id", cofounderProjectIds)
+        .eq("is_active", true);
+      cofounderProjects = cfp ?? [];
+    }
+
+    // Merge, deduplicate, sort by created_at descending
+    const ownedIds = new Set((ownedProjects ?? []).map((p) => p.id));
+    const merged = [
+      ...(ownedProjects ?? []),
+      ...cofounderProjects.filter((p) => !ownedIds.has(p.id)),
+    ].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+
+    return NextResponse.json({ projects: merged });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

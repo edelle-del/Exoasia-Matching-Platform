@@ -25,7 +25,7 @@ export default function CommunityPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterSector, setFilterSector] = useState("all");
-  const [filterCity, setFilterCity] = useState("all");
+  const [filterCountry, setFilterCountry] = useState("all");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
   const [filterVerification, setFilterVerification] = useState("all");
@@ -47,10 +47,18 @@ export default function CommunityPage() {
     [members],
   );
 
-  const cities = useMemo(
+  const countries = useMemo(
     () =>
       Array.from(
-        new Set(members.map((m) => m.city).filter(Boolean)),
+        new Set(
+          members
+            .map((m) => {
+              if (!m.city) return null;
+              const idx = m.city.lastIndexOf(", ");
+              return idx !== -1 ? m.city.slice(idx + 2) : null;
+            })
+            .filter(Boolean),
+        ),
       ).sort() as string[],
     [members],
   );
@@ -65,7 +73,11 @@ export default function CommunityPage() {
         if (!haystack.includes(q)) return false;
       }
       if (filterSector !== "all" && m.sector !== filterSector) return false;
-      if (filterCity !== "all" && m.city !== filterCity) return false;
+      if (filterCountry !== "all") {
+        const idx = m.city?.lastIndexOf(", ") ?? -1;
+        const memberCountry = idx !== -1 ? m.city!.slice(idx + 2) : "";
+        if (memberCountry !== filterCountry) return false;
+      }
       if (filterRole !== "all" && m.member_role !== filterRole) return false;
       if (filterStage !== "all" && m.fundraising_stage !== filterStage) return false;
       if (
@@ -79,7 +91,7 @@ export default function CommunityPage() {
     members,
     search,
     filterSector,
-    filterCity,
+    filterCountry,
     filterRole,
     filterStage,
     filterVerification,
@@ -121,12 +133,12 @@ export default function CommunityPage() {
             ]}
           />
           <FilterSelect
-            value={filterCity}
-            onChange={setFilterCity}
-            label="City"
+            value={filterCountry}
+            onChange={setFilterCountry}
+            label="Country"
             options={[
-              { value: "all", label: "All cities" },
-              ...cities.map((c) => ({ value: c, label: c })),
+              { value: "all", label: "All countries" },
+              ...countries.map((c) => ({ value: c, label: c })),
             ]}
           />
           <FilterSelect

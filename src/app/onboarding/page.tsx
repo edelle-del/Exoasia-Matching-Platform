@@ -1171,7 +1171,10 @@ export default function OnboardingForm() {
             referral_3_name: refs[2]?.name ?? "",
             referral_3_contact: refs[2]?.contact ?? "",
           }));
-          if (profile.member_role) setStep("profile");
+          if (profile.member_role) {
+            setStep("profile");
+            if (profile.member_role === "startup") setIsReturningStartup(true);
+          }
           setProfileLoaded(true);
           return;
         }
@@ -1222,6 +1225,7 @@ export default function OnboardingForm() {
   };
 
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [isReturningStartup, setIsReturningStartup] = useState(false);
   const [pendingRole, setPendingRole] = useState<
     "investor" | "startup" | "ecosystem_partner" | null
   >(null);
@@ -1671,13 +1675,13 @@ export default function OnboardingForm() {
 
       await supabase.auth.refreshSession();
       setSuccess("Profile saved.");
-      if (form.member_role === "startup") {
+      if (form.member_role === "startup" && !isReturningStartup) {
         setTimeout(() => {
           setSuccess("");
           setStep("startup");
         }, 600);
       } else {
-        setTimeout(() => router.push("/dashboard"), 900);
+        setTimeout(() => router.push("/profile"), 900);
       }
     } catch (err: unknown) {
       setErrors([err instanceof Error ? err.message : "Save failed."]);

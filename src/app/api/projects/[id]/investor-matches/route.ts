@@ -21,15 +21,27 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify ownership
+    // Verify ownership or cofounder membership
     const { data: project } = await supabase
       .from("projects")
       .select("owner_id")
       .eq("id", projectId)
       .single();
 
-    if (!project || project.owner_id !== user.id) {
+    if (!project) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (project.owner_id !== user.id) {
+      const { data: link } = await supabase
+        .from("cofounder_links")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("cofounder_profile_id", user.id)
+        .single();
+      if (!link) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     const admin = createAdminClient();

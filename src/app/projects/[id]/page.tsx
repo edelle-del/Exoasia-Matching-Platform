@@ -14,7 +14,11 @@ import {
 } from "recharts";
 import { useAuth } from "@/app/providers";
 import { createClient } from "@/lib/supabase/client";
-import type { VentureReadinessReport } from "@/lib/venture-readiness/types";
+import { normalizeVentureReadinessReport } from "@/lib/venture-readiness/parser";
+import type {
+  RawVentureReadinessReport,
+  VentureReadinessReport,
+} from "@/lib/venture-readiness/types";
 
 type Project = {
   id: string;
@@ -23,7 +27,10 @@ type Project = {
   description: string | null;
   stage: string | null;
   sector: string | null;
-  venture_readiness_report: VentureReadinessReport | null;
+  venture_readiness_report:
+    | VentureReadinessReport
+    | RawVentureReadinessReport
+    | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -152,17 +159,29 @@ function ScoreRing({ score }: { score: number }) {
   const color = score >= 80 ? "#10B981" : score >= 65 ? "#6366F1" : "#F59E0B";
   return (
     <svg width={80} height={80} viewBox="0 0 80 80">
-      <circle cx={40} cy={40} r={r} fill="none" stroke="#E5E7EB" strokeWidth={6} />
       <circle
-        cx={40} cy={40} r={r} fill="none"
-        stroke={color} strokeWidth={6}
+        cx={40}
+        cy={40}
+        r={r}
+        fill="none"
+        stroke="#E5E7EB"
+        strokeWidth={6}
+      />
+      <circle
+        cx={40}
+        cy={40}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={6}
         strokeLinecap="round"
         strokeDasharray={circ}
         strokeDashoffset={offset}
         transform="rotate(-90 40 40)"
       />
       <text
-        x={40} y={45}
+        x={40}
+        y={45}
         textAnchor="middle"
         fontSize={14}
         fontWeight={700}
@@ -323,11 +342,17 @@ export default function ProjectDetailPage({
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [matchesGenerated, setMatchesGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [expandedInvestorId, setExpandedInvestorId] = useState<string | null>(null);
-  const [introRequests, setIntroRequests] = useState<Map<string, "requesting" | "done" | "cancelling">>(new Map());
-  const [introMatchIds, setIntroMatchIds] = useState<Map<string, string>>(new Map()); // investorId → matchId
+  const [expandedInvestorId, setExpandedInvestorId] = useState<string | null>(
+    null,
+  );
+  const [introRequests, setIntroRequests] = useState<
+    Map<string, "requesting" | "done" | "cancelling">
+  >(new Map());
+  const [introMatchIds, setIntroMatchIds] = useState<Map<string, string>>(
+    new Map(),
+  ); // investorId → matchId
   const [activeTab, setActiveTab] = useState<"details" | "matches">(
-    searchParams.get("tab") === "matches" ? "matches" : "details"
+    searchParams.get("tab") === "matches" ? "matches" : "details",
   );
   const [reportExpanded, setReportExpanded] = useState(false);
   const [reportTab, setReportTab] = useState<
@@ -673,22 +698,33 @@ export default function ProjectDetailPage({
   };
 
   const handleRequestIntro = async (investorProfileId: string) => {
-    setIntroRequests((prev) => new Map(prev).set(investorProfileId, "requesting"));
+    setIntroRequests((prev) =>
+      new Map(prev).set(investorProfileId, "requesting"),
+    );
     try {
       const res = await fetch("/api/matches/request-intro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: id, investor_profile_id: investorProfileId }),
+        body: JSON.stringify({
+          project_id: id,
+          investor_profile_id: investorProfileId,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
-        setIntroRequests((prev) => new Map(prev).set(investorProfileId, "done"));
+        setIntroRequests((prev) =>
+          new Map(prev).set(investorProfileId, "done"),
+        );
         if (data?.match?.id) {
-          setIntroMatchIds((prev) => new Map(prev).set(investorProfileId, data.match.id));
+          setIntroMatchIds((prev) =>
+            new Map(prev).set(investorProfileId, data.match.id),
+          );
         }
       } else {
         const data = await res.json().catch(() => ({}));
-        window.alert(data?.error ?? "Failed to send intro request. Please try again.");
+        window.alert(
+          data?.error ?? "Failed to send intro request. Please try again.",
+        );
         setIntroRequests((prev) => {
           const next = new Map(prev);
           next.delete(investorProfileId);
@@ -708,7 +744,9 @@ export default function ProjectDetailPage({
   const handleCancelIntro = async (investorProfileId: string) => {
     const matchId = introMatchIds.get(investorProfileId);
     if (!matchId) return;
-    setIntroRequests((prev) => new Map(prev).set(investorProfileId, "cancelling"));
+    setIntroRequests((prev) =>
+      new Map(prev).set(investorProfileId, "cancelling"),
+    );
     try {
       const res = await fetch(`/api/matches/${matchId}`, {
         method: "PATCH",
@@ -727,7 +765,9 @@ export default function ProjectDetailPage({
           return next;
         });
       } else {
-        setIntroRequests((prev) => new Map(prev).set(investorProfileId, "done"));
+        setIntroRequests((prev) =>
+          new Map(prev).set(investorProfileId, "done"),
+        );
       }
     } catch {
       setIntroRequests((prev) => new Map(prev).set(investorProfileId, "done"));
@@ -741,7 +781,13 @@ export default function ProjectDetailPage({
         ? 10
         : 2;
 
-  const report = project?.venture_readiness_report;
+  const report = useMemo(
+    () =>
+      project?.venture_readiness_report
+        ? normalizeVentureReadinessReport(project.venture_readiness_report)
+        : null,
+    [project?.venture_readiness_report],
+  );
   const reportProfile = report?.profile;
   const reportSummary = report?.executive_summary;
   const reportConclusion = report?.conclusion;
@@ -1023,7 +1069,6 @@ export default function ProjectDetailPage({
                     {(
                       [
                         ["summary", "Summary"],
-                        ["profile", "Project Profile"],
                         ["conclusion", "Conclusion"],
                         ["details", "Detailed Sections"],
                       ] as const
@@ -1653,7 +1698,9 @@ export default function ProjectDetailPage({
                 <PieScore score={myScore.fit_score} large />
               </div>
               <p className="mt-3 text-xs text-(--color-muted)">
-                Generated {new Date(myScore.generated_at).toLocaleDateString()} · Exoasia Intelligence summary available on the compatibility breakdown
+                Generated {new Date(myScore.generated_at).toLocaleDateString()}{" "}
+                · Exoasia Intelligence summary available on the compatibility
+                breakdown
               </p>
             </div>
           )}
@@ -1895,7 +1942,8 @@ export default function ProjectDetailPage({
             <div className="space-y-3">
               {investorMatches.map((m, idx) => {
                 const locked = idx >= visibleMatchLimit;
-                const isExpanded = !locked && expandedInvestorId === m.investor_profile_id;
+                const isExpanded =
+                  !locked && expandedInvestorId === m.investor_profile_id;
 
                 let investorType: string | null = null;
                 let targetStages: string[] = [];
@@ -1907,7 +1955,9 @@ export default function ProjectDetailPage({
                     targetStages = v2.target_stages ?? [];
                     entityClass = v2.entity_class ?? [];
                   }
-                } catch { /* */ }
+                } catch {
+                  /* */
+                }
 
                 return (
                   <div key={m.investor_profile_id} className="relative">
@@ -1933,41 +1983,71 @@ export default function ProjectDetailPage({
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <p className="font-medium text-(--color-ink)">
-                                  {locked ? "Upgrade to unlock" : m.investor_name}
+                                  {locked
+                                    ? "Upgrade to unlock"
+                                    : m.investor_name}
                                 </p>
-                                {!locked && m.investor_verification === "verified" && (
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">✓ Verified</span>
-                                )}
+                                {!locked &&
+                                  m.investor_verification === "verified" && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                      ✓ Verified
+                                    </span>
+                                  )}
                               </div>
                               {!locked && m.investor_role_title && (
-                                <p className="text-xs text-(--color-muted)">{m.investor_role_title}</p>
-                              )}
-                              {!locked && (m.investor_sector || m.investor_city) && (
                                 <p className="text-xs text-(--color-muted)">
-                                  {[m.investor_sector, m.investor_city].filter(Boolean).join(" · ")}
+                                  {m.investor_role_title}
                                 </p>
                               )}
+                              {!locked &&
+                                (m.investor_sector || m.investor_city) && (
+                                  <p className="text-xs text-(--color-muted)">
+                                    {[m.investor_sector, m.investor_city]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </p>
+                                )}
                             </div>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
                             {locked ? (
-                              <div className="w-7 h-7 rounded-full bg-(--color-hairline)" aria-hidden />
+                              <div
+                                className="w-7 h-7 rounded-full bg-(--color-hairline)"
+                                aria-hidden
+                              />
                             ) : (
                               <>
                                 <div className="text-right">
-                                  <p className={`text-lg font-bold leading-none ${m.fit_score >= 80 ? "text-emerald-600" : m.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}`}>
+                                  <p
+                                    className={`text-lg font-bold leading-none ${m.fit_score >= 80 ? "text-emerald-600" : m.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}`}
+                                  >
                                     {m.fit_score}%
                                   </p>
-                                  <p className="mt-0.5 text-[10px] text-(--color-muted)">Fit score</p>
-                                  <p className={`text-[10px] font-semibold ${m.fit_score >= 80 ? "text-emerald-600" : m.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}`}>
-                                    {m.fit_score >= 80 ? "Strong match" : m.fit_score >= 65 ? "Good match" : "Developing match"}
+                                  <p className="mt-0.5 text-[10px] text-(--color-muted)">
+                                    Fit score
+                                  </p>
+                                  <p
+                                    className={`text-[10px] font-semibold ${m.fit_score >= 80 ? "text-emerald-600" : m.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}`}
+                                  >
+                                    {m.fit_score >= 80
+                                      ? "Strong match"
+                                      : m.fit_score >= 65
+                                        ? "Good match"
+                                        : "Developing match"}
                                   </p>
                                 </div>
                                 <svg
                                   className={`h-4 w-4 text-(--color-muted) transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
                                 >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M19 9l-7 7-7-7"
+                                  />
                                 </svg>
                               </>
                             )}
@@ -1984,11 +2064,19 @@ export default function ProjectDetailPage({
                           <div className="space-y-5 p-5">
                             {/* Investor name heading */}
                             {m.investor_full_name && (
-                              <p className="text-base font-bold text-(--color-ink)">{m.investor_full_name}</p>
+                              <p className="text-base font-bold text-(--color-ink)">
+                                {m.investor_full_name}
+                              </p>
                             )}
 
                             {/* Investor details */}
-                            {(m.investor_city || m.investor_sector || investorType || m.investor_years || m.investor_employee_band || entityClass.length > 0 || targetStages.length > 0) && (
+                            {(m.investor_city ||
+                              m.investor_sector ||
+                              investorType ||
+                              m.investor_years ||
+                              m.investor_employee_band ||
+                              entityClass.length > 0 ||
+                              targetStages.length > 0) && (
                               <section className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-5">
                                 <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
                                   Investor details
@@ -1996,41 +2084,66 @@ export default function ProjectDetailPage({
                                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                   {m.investor_city && (
                                     <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
-                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Location</p>
-                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">{m.investor_city}</p>
+                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">
+                                        Location
+                                      </p>
+                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">
+                                        {m.investor_city}
+                                      </p>
                                     </div>
                                   )}
                                   {m.investor_sector && (
                                     <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
-                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p>
-                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">{m.investor_sector}</p>
+                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">
+                                        Sector
+                                      </p>
+                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">
+                                        {m.investor_sector}
+                                      </p>
                                     </div>
                                   )}
                                   {investorType && (
                                     <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
-                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Investor type</p>
-                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">{investorType}</p>
+                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">
+                                        Investor type
+                                      </p>
+                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">
+                                        {investorType}
+                                      </p>
                                     </div>
                                   )}
                                   {m.investor_years && (
                                     <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
-                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Years operating</p>
-                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">{m.investor_years}</p>
+                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">
+                                        Years operating
+                                      </p>
+                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">
+                                        {m.investor_years}
+                                      </p>
                                     </div>
                                   )}
                                   {m.investor_employee_band && (
                                     <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
-                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Team size</p>
-                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">{m.investor_employee_band}</p>
+                                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">
+                                        Team size
+                                      </p>
+                                      <p className="mt-1 text-sm font-semibold text-(--color-ink)">
+                                        {m.investor_employee_band}
+                                      </p>
                                     </div>
                                   )}
                                 </div>
                                 {entityClass.length > 0 && (
                                   <div className="mt-4">
-                                    <p className="mb-2 text-[10px] font-bold uppercase text-(--color-muted)">Entity class</p>
+                                    <p className="mb-2 text-[10px] font-bold uppercase text-(--color-muted)">
+                                      Entity class
+                                    </p>
                                     <div className="flex flex-wrap gap-1.5">
                                       {entityClass.map((ec) => (
-                                        <span key={ec} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">
+                                        <span
+                                          key={ec}
+                                          className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)"
+                                        >
                                           {ec}
                                         </span>
                                       ))}
@@ -2039,10 +2152,15 @@ export default function ProjectDetailPage({
                                 )}
                                 {targetStages.length > 0 && (
                                   <div className="mt-4">
-                                    <p className="mb-2 text-[10px] font-bold uppercase text-(--color-muted)">Target stages</p>
+                                    <p className="mb-2 text-[10px] font-bold uppercase text-(--color-muted)">
+                                      Target stages
+                                    </p>
                                     <div className="flex flex-wrap gap-1.5">
                                       {targetStages.map((s) => (
-                                        <span key={s} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">
+                                        <span
+                                          key={s}
+                                          className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)"
+                                        >
                                           {s}
                                         </span>
                                       ))}
@@ -2055,8 +2173,12 @@ export default function ProjectDetailPage({
                             {/* About / Bio */}
                             {m.investor_bio && (
                               <section className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-5">
-                                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">About</p>
-                                <p className="text-sm text-(--color-body) leading-relaxed">{m.investor_bio}</p>
+                                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
+                                  About
+                                </p>
+                                <p className="text-sm text-(--color-body) leading-relaxed">
+                                  {m.investor_bio}
+                                </p>
                                 {m.investor_linkedin && (
                                   <a
                                     href={m.investor_linkedin}
@@ -2064,7 +2186,11 @@ export default function ProjectDetailPage({
                                     rel="noopener noreferrer"
                                     className="mt-3 inline-flex items-center gap-2 text-sm text-(--color-primary) hover:underline"
                                   >
-                                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <svg
+                                      className="h-4 w-4"
+                                      fill="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
                                       <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
                                     </svg>
                                     LinkedIn profile
@@ -2076,11 +2202,15 @@ export default function ProjectDetailPage({
                             {/* Actions */}
                             <div className="flex flex-wrap gap-3">
                               {(() => {
-                                const reqState = introRequests.get(m.investor_profile_id);
+                                const reqState = introRequests.get(
+                                  m.investor_profile_id,
+                                );
                                 const isDone = reqState === "done";
                                 const isRequesting = reqState === "requesting";
                                 const isCancelling = reqState === "cancelling";
-                                const hasMatchId = introMatchIds.has(m.investor_profile_id);
+                                const hasMatchId = introMatchIds.has(
+                                  m.investor_profile_id,
+                                );
                                 if (isDone) {
                                   return (
                                     <div className="flex items-center gap-2">
@@ -2091,7 +2221,11 @@ export default function ProjectDetailPage({
                                         <button
                                           type="button"
                                           disabled={isCancelling}
-                                          onClick={() => void handleCancelIntro(m.investor_profile_id)}
+                                          onClick={() =>
+                                            void handleCancelIntro(
+                                              m.investor_profile_id,
+                                            )
+                                          }
                                           className="rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-medium text-(--color-muted) hover:border-rose-300 hover:text-rose-500 disabled:opacity-50 transition-colors"
                                         >
                                           Cancel
@@ -2104,14 +2238,33 @@ export default function ProjectDetailPage({
                                   <button
                                     type="button"
                                     disabled={isRequesting || isCancelling}
-                                    onClick={() => void handleRequestIntro(m.investor_profile_id)}
+                                    onClick={() =>
+                                      void handleRequestIntro(
+                                        m.investor_profile_id,
+                                      )
+                                    }
                                     className="inline-flex items-center gap-2 rounded-xl border border-(--color-primary)/20 bg-(--color-primary)/10 px-4 py-2.5 text-sm font-semibold text-(--color-primary) hover:bg-(--color-primary)/20 disabled:opacity-50 transition-colors"
                                   >
                                     {isRequesting ? (
                                       <>
-                                        <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
-                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        <svg
+                                          className="animate-spin h-4 w-4 shrink-0"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                        >
+                                          <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="3"
+                                          />
+                                          <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                          />
                                         </svg>
                                         Sending…
                                       </>
@@ -2125,8 +2278,18 @@ export default function ProjectDetailPage({
                                 href={`/matches/breakdown?a=${project?.owner_id ?? ""}&b=${m.investor_profile_id}&score=${m.fit_score}&project=${project?.id ?? ""}`}
                                 className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-500/20 transition-colors"
                               >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                <svg
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                  />
                                 </svg>
                                 View compatibility breakdown
                               </Link>
@@ -2137,7 +2300,11 @@ export default function ProjectDetailPage({
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
                                 >
-                                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                                  <svg
+                                    className="h-4 w-4"
+                                    fill="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
                                     <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
                                   </svg>
                                   LinkedIn profile

@@ -29,7 +29,9 @@
       "Bash(Get-ChildItem -Path . -Directory)",
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
       "Bash(node scripts/seed-onboarding-test.mjs)",
-      "Bash(npm list *)"
+      "Bash(npm list *)",
+      "Bash(node -e \"require\\('resend'\\)\")",
+      "Bash(node scripts/test-signup-email.mjs)"
     ]
   }
 }

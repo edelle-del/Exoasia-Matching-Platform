@@ -406,16 +406,16 @@ export function PartnerDealOverviewCard({
     { label: "Projects",  value: totalProjects, color: "text-(--color-accent-gold)" },
     { label: "Intros",    value: introCount,    color: "text-(--color-hot-pink)" },
     { label: "Active",    value: activeMatches, color: "text-emerald-400" },
-    { label: "Stale",     value: staleCount,    color: staleCount > 0 ? "text-amber-400" : "text-(--color-muted-soft)" },
+    { label: "Stale",     value: staleCount,    color: staleCount > 0 ? "text-amber-400" : "text-(--color-muted)" },
   ];
 
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-(--color-ink)">Portfolio activity</p>
         <Link
           href="/ecosystem"
-          className="text-xs font-semibold text-(--color-primary) hover:underline"
+          className="inline-flex min-h-[44px] items-center text-xs font-semibold text-(--color-primary) hover:underline"
         >
           Ecosystem →
         </Link>
@@ -429,13 +429,13 @@ export function PartnerDealOverviewCard({
             className="rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 text-center"
           >
             <p
-              className={`text-2xl font-extrabold tabular-nums ${
-                isLoading ? "text-(--color-muted-soft)" : color
+              className={`font-mono text-2xl font-extrabold tabular-nums ${
+                isLoading ? "text-(--color-muted)" : color
               }`}
             >
               {isLoading ? "…" : value > 0 ? value : "—"}
             </p>
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
+            <p className="mt-1 text-[0.6rem] font-semibold uppercase tracking-wide text-(--color-muted)">
               {label}
             </p>
           </div>
@@ -461,7 +461,7 @@ export function PartnerDealOverviewCard({
                   {s.shortLabel}
                 </span>
                 <span
-                  className={`text-xs font-extrabold tabular-nums ${count > 0 ? s.textClass : "text-(--color-muted-soft)"}`}
+                  className={`font-mono text-xs font-extrabold tabular-nums ${count > 0 ? s.textClass : "text-(--color-muted)"}`}
                 >
                   {isLoading ? "…" : count}
                 </span>
@@ -473,9 +473,9 @@ export function PartnerDealOverviewCard({
 
       <Link
         href="/ecosystem"
-        className="mt-auto flex items-center justify-between rounded-xl border border-[#ff6b1f]/30 bg-[#ff6b1f]/10 px-4 py-3 transition-colors hover:border-[#ff6b1f]/50"
+        className="mt-auto flex items-center justify-between rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/10 px-4 py-3 transition-colors hover:border-(--color-primary)/50"
       >
-        <p className="text-xs font-medium text-[#ffa04f]">
+        <p className="text-xs font-medium text-(--color-primary-light)">
           View your full ecosystem
         </p>
         <svg
@@ -532,11 +532,11 @@ export function DealBoardSnapshotCard({
 
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-(--color-ink)">Projects by stage</p>
         <Link
           href="/deal-board"
-          className="text-xs font-semibold text-(--color-primary) hover:underline"
+          className="inline-flex min-h-[44px] items-center text-xs font-semibold text-(--color-primary) hover:underline"
         >
           Deal board →
         </Link>
@@ -610,7 +610,8 @@ export function DealBoardSnapshotCard({
                 textAnchor="middle"
                 fontSize={14}
                 fontWeight={700}
-                fill={barH > 0 ? "var(--color-ink)" : "var(--color-muted-soft)"}
+                fontFamily="'JetBrains Mono', monospace"
+                fill={barH > 0 ? "var(--color-ink)" : "var(--color-muted)"}
               >
                 {isLoading ? "" : count}
               </text>
@@ -676,22 +677,23 @@ export function NotificationsCard({ notifications, isLoading }: NotificationsCar
 
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-semibold text-(--color-ink)">Recent activity</p>
         <Link
           href="/notifications"
-          className="text-xs font-semibold text-(--color-primary) hover:underline"
+          className="inline-flex min-h-[44px] items-center text-xs font-semibold text-(--color-primary) hover:underline"
         >
           All notifications →
         </Link>
       </div>
 
+      <div className="flex-1" aria-live="polite">
       {isLoading ? (
-        <p className="flex-1 text-sm text-(--color-muted)">Loading…</p>
+        <p className="text-sm text-(--color-muted)">Loading…</p>
       ) : shown.length === 0 ? (
-        <p className="flex-1 text-sm text-(--color-muted)">No notifications yet.</p>
+        <p className="text-sm text-(--color-muted)">No notifications yet.</p>
       ) : (
-        <ul className="flex-1 space-y-0">
+        <ul className="space-y-0">
           {shown.map((n, i) => {
             const dot = NOTIF_DOT[n.type] ?? "bg-[#ff6b1f]";
             const isLast = i === shown.length - 1;
@@ -709,7 +711,7 @@ export function NotificationsCard({ notifications, isLoading }: NotificationsCar
                     {n.title}
                   </p>
                   <p className="truncate text-xs text-(--color-muted)">{n.body}</p>
-                  <p className="mt-0.5 text-[11px] text-(--color-muted-soft)">
+                  <p className="mt-0.5 text-[0.65rem] text-(--color-muted)">
                     {relativeTime(n.date)}
                   </p>
                 </div>
@@ -718,6 +720,7 @@ export function NotificationsCard({ notifications, isLoading }: NotificationsCar
           })}
         </ul>
       )}
+      </div>
     </div>
   );
 }

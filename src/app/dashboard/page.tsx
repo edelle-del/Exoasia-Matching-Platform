@@ -431,7 +431,7 @@ export default function DashboardPage() {
           <div className="flex justify-end">
             <Link
               href="/matches"
-              className="text-xs font-semibold text-(--color-primary) hover:underline"
+              className="inline-flex min-h-[44px] items-center text-xs font-semibold text-(--color-primary) hover:underline"
             >
               View project pipeline →
             </Link>
@@ -494,7 +494,7 @@ function ProfileStrengthRing({ percent }: { percent: number }) {
           strokeLinecap="round"
         />
       </svg>
-      <span className="absolute text-[10px] font-bold text-(--color-ink)">{percent}%</span>
+      <span className="absolute font-mono text-[0.6rem] font-bold text-(--color-ink)">{percent}%</span>
     </div>
   );
 }
@@ -510,10 +510,10 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.12em] text-(--color-muted)">
+      <p className="text-xs font-medium uppercase tracking-[0.1em] text-(--color-muted)">
         {label}
       </p>
-      <p className={`mt-1 text-2xl font-semibold ${valueColor}`}>{value}</p>
+      <p className={`font-mono mt-1 text-2xl font-semibold ${valueColor}`}>{value}</p>
     </div>
   );
 }

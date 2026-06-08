@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --font-family-sans: var(--font-sans), "Montserrat", system-ui, -apple-system, sans-serif;
+  --font-family-mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+}
+
 :root {
   /* ── FA Color System ──────────────────────────────── */
 
@@ -38,6 +43,7 @@
 
   /* Brand */
   --color-primary: #ff6b1f;
+  --color-primary-light: #ffa04f;
   --color-primary-active: #ff2e93;
   --color-primary-disabled: #4a4a6a;
 

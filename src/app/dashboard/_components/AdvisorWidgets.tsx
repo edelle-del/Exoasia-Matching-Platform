@@ -116,7 +116,7 @@ export function AdvisorMetricCard({
       <p className="text-xs font-semibold uppercase tracking-widest text-(--color-muted)">
         {label}
       </p>
-      <p className={`text-4xl font-bold tabular-nums ${accent}`}>{value}</p>
+      <p className={`font-mono text-4xl font-bold tabular-nums ${accent}`}>{value}</p>
       {sub && <p className="text-xs text-(--color-muted)">{sub}</p>}
       {sparkData && sparkData.length > 0 && (
         <div className="mt-1 h-10" aria-hidden="true">
@@ -172,7 +172,7 @@ export function UrgencyQueuePanel({ companies, isLoading }: UrgencyQueuePanelPro
         </span>
       </div>
 
-      <div className="mt-4 flex-1 overflow-y-auto space-y-3 pr-1">
+      <div className="mt-4 flex-1 overflow-y-auto space-y-3 pr-1" aria-live="polite">
         {isLoading ? (
           <p className="py-6 text-center text-sm text-(--color-muted)">Loading...</p>
         ) : companies.length === 0 ? (
@@ -205,11 +205,11 @@ export function UrgencyQueuePanel({ companies, isLoading }: UrgencyQueuePanelPro
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${priority.labelBg} ${priority.labelColor}`}
+                    className={`rounded-full px-2.5 py-0.5 text-[0.65rem] font-semibold ${priority.labelBg} ${priority.labelColor}`}
                   >
                     {priority.label}
                   </span>
-                  <span className="text-[11px] text-(--color-muted)">
+                  <span className="text-[0.65rem] text-(--color-muted)">
                     {company.verification_status ?? "unverified"}
                   </span>
                 </div>
@@ -246,14 +246,14 @@ export function MatchingFunnelPanel({ companies, isLoading }: MatchingFunnelPane
         </div>
         <Link
           href="/advisor/manual-match"
-          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-(--color-primary) px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#e55919]"
+          className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-(--color-primary) px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#e55919]"
         >
           <Zap className="h-3.5 w-3.5" aria-hidden="true" />
           Manual match
         </Link>
       </div>
 
-      <div className="mt-4 flex-1 overflow-y-auto space-y-4 pr-1">
+      <div className="mt-4 flex-1 overflow-y-auto space-y-4 pr-1" aria-live="polite">
         {isLoading ? (
           <p className="py-6 text-center text-sm text-(--color-muted)">Loading...</p>
         ) : companies.length === 0 ? (
@@ -286,7 +286,7 @@ export function MatchingFunnelPanel({ companies, isLoading }: MatchingFunnelPane
                     <Link
                       key={match.matchId}
                       href={`/advisor/manual-match/${match.matchId}`}
-                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition hover:opacity-80 ${
+                      className={`flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-medium transition hover:opacity-80 ${
                         match.status === "accepted"
                           ? "bg-emerald-500/20 text-emerald-300"
                           : "bg-(--color-hairline) text-(--color-muted)"

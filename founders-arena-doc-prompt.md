@@ -31,6 +31,7 @@ There are two separate role layers:
 | Dashboard | ✓ | ✓ | ✓ | ✓ |
 | Projects | ✓ | ✓ | — | — |
 | Deal Board | ✓ | ✓ | — | — |
+| Requests (Inbox) | ✓ | ✓ | ✓ | — |
 | Events | ✓ | ✓ | ✓ | — |
 | Community | ✓ | ✓ | ✓ | — |
 | Portfolio (/ecosystem) | — | — | ✓ | — |
@@ -43,10 +44,65 @@ There are two separate role layers:
 
 ---
 
+## Credits System
+
+Founders Arena uses a credit-based economy to gate access to premium platform actions. Credits are tracked per member in the `ad_credit_ledger` table, which records every credit change as a signed transaction with a reason and optional expiry.
+
+### How Credits Are Earned
+
+| Source | Amount | Trigger |
+|---|---|---|
+| Welcome bonus | +10 credits | Automatically granted when a member completes onboarding |
+| Event attendance | Variable | Attendance at pitch events tracked via `pitch_credit` on event registrations |
+| Subscription plans | Monthly top-up | Starter: 20/mo · Professional: 60/mo · Premium: 120/mo |
+| Credit packages (one-time) | 20 / 75 / 200 | Purchased directly via the Payments page |
+
+### How Credits Are Spent
+
+- **Match actions** — 1 credit per match acceptance (ENTRY_COST)
+- **Investor match reports** — viewing premium AI score reports
+- **Profile unlocks** — accessing full counterpart profiles
+- **Intro requests** — initiating premium introductions
+
+### Credit Ledger
+
+Every credit change is written to the `ad_credit_ledger` table with:
+
+| Field | Description |
+|---|---|
+| `member_id` | The member whose balance is affected |
+| `change_amount` | Positive (earned) or negative (spent) integer |
+| `reason` | Human-readable label (e.g. "Welcome bonus — account created") |
+| `created_at` | Timestamp of the transaction |
+| `expires_at` | Optional expiry date for time-limited credits |
+
+The member's current credit balance is the sum of all `change_amount` values in their ledger. This is displayed as the **Credits** metric card on the dashboard for all roles.
+
+### Subscription Plans
+
+| Plan | Monthly Credits | Description |
+|---|---|---|
+| Free Tier | 5 | Default for new members before upgrading |
+| Starter | 20 | Entry-level monthly plan |
+| Professional | 60 | Mid-tier plan for active members |
+| Premium | 120 | High-volume plan for power users |
+
+### Credit Packages (One-Time Purchase)
+
+Members may purchase top-up credit packages at any time via the **Payments** page at `/payments`:
+
+| Package | Credits |
+|---|---|
+| Small | 20 credits |
+| Medium | 75 credits |
+| Large | 200 credits |
+
+---
+
 ## Role: Startup
 
 ### Onboarding
-When a startup signs up and completes onboarding, the platform collects: full name, business name, role title, sector, city, short bio, WhatsApp number, what they are looking for (ask categories), what they can offer (offer categories), and free-text summaries of asks and offers. On submit, their profile is created with `verification_status: pending` and `stage: 1`. An advisor must manually verify and advance the stage.
+When a startup signs up and completes onboarding, the platform collects: full name, business name, role title, sector, city, short bio, WhatsApp number, what they are looking for (ask categories), what they can offer (offer categories), and free-text summaries of asks and offers. On submit, their profile is created with `verification_status: pending` and `stage: 1`. An advisor must manually verify and advance the stage. **10 welcome credits are automatically added to the member's credit ledger at this point.**
 
 ### Dashboard
 The startup dashboard shows:
@@ -58,10 +114,31 @@ The startup dashboard shows:
 ### Projects
 Startups create investment projects at `/projects`. Each project has a name, stage (e.g. Pre-Series A), sector, and a detailed description covering traction, technology, raise amount, and use of funds. Projects have an `is_active` flag — only active projects are visible to investors and included in AI scoring.
 
-On the Projects page, startups see their own projects. Each project card shows:
+On the Projects page, startups see their own projects and projects where they have been added as a co-founder. Each project card shows:
 - Project name, stage, sector
 - A score badge if AI scoring has been run (colour-coded: emerald ≥80, indigo ≥65, amber ≥50)
 - A "Find investors" button
+
+### Co-Founder Access
+
+A startup project can have multiple founders working on it. The lead founder (project owner) can invite co-founders by email or phone number. Co-founders receive full owner-like access to the project, including:
+- All project tabs and settings
+- Data room files and storage
+- Investor match scores for the project
+- Deal cards linked to the project
+
+**Inviting a co-founder:**
+1. From the project page, the owner clicks **"Invite Co-founder"**
+2. They enter the co-founder's email address or phone number
+3. An invite token is generated (valid for 14 days) and sent to the co-founder
+4. If the recipient is already a platform member, they see the invite in their **Requests Inbox** and can accept or decline in-app
+5. If the recipient is not yet a member, they receive an email with a signup link pre-loaded with the acceptance token
+
+**Accepting a co-founder invite:**
+- Existing members: Accept or decline directly from the **Requests Inbox** (`/requests`) without leaving the platform
+- New users: Complete signup via the invite link — acceptance is handled automatically on registration
+
+Once accepted, a `cofounder_links` record is created linking the co-founder to the project. The co-founder's projects list will then include both their own projects and all projects they co-found.
 
 ### Finding Investors (AI Scoring)
 When a startup clicks **"Find investors"** on a project:
@@ -104,7 +181,7 @@ On pending matches in the pipeline list, the startup sees **Accept** and **Decli
 ## Role: Investor
 
 ### Onboarding
-Same onboarding flow as startups. Investor-specific profile fields include investment thesis, ticket size range, and target geography. Their member role is set to `investor`.
+Same onboarding flow as startups. Investor-specific profile fields include investment thesis, ticket size range, and target geography. Their member role is set to `investor`. **10 welcome credits are automatically added to the credit ledger on completion.**
 
 ### Dashboard
 The investor dashboard shows:
@@ -211,9 +288,72 @@ The "Nominate Startup" button (in the page header and company feed) opens a moda
 > **Note:** The nomination acceptance flow (startup clicking the invite link to be added to the portfolio) is not yet implemented. Portfolio links can currently be created via the seed script `scripts/seed-ecosystem-portfolio.mjs`.
 
 ### Sidebar Navigation
-Ecosystem partners see: **Dashboard · Portfolio · Events · Community**
+Ecosystem partners see: **Dashboard · Portfolio · Requests · Events · Community**
 
 They do not see Projects or Deal Board — they do not pitch their own projects or participate in startup-investor deals directly.
+
+---
+
+## Requests Inbox (`/requests`)
+
+All members (startups, investors, and ecosystem partners) have access to a unified **Requests Inbox** at `/requests`. This is a single inbox that aggregates every type of inbound invitation or connection request the member has received. The sidebar nav item shows a live badge with the total count of unread/pending items (polled every 30 seconds).
+
+### Pending Tab
+
+The pending tab shows all requests awaiting the member's response, grouped into four categories:
+
+| Category | Source | Actions |
+|---|---|---|
+| Co-founder Invites | `cofounder_invites` table (status: pending) | Accept / Decline |
+| Data Room Requests | `data_room_access_requests` table (status: pending) | Approve / Deny |
+| Ecosystem Collaboration Invites | `portfolio_companies` table (status: pending) | Accept / Decline |
+| Connection Requests | `matches` table (status: pending) | Accept / Decline |
+
+### Accepted Tab
+
+The accepted tab shows a historical record of all requests the member has already accepted, grouped by the same four categories:
+
+| Category | What Is Shown |
+|---|---|
+| Accepted Co-founder Invites | Projects the member joined as co-founder, with inviter name, project name, sector, and a link to view the project |
+| Accepted Ecosystem Collaborations | Active partnership records showing partner details, ask/offer categories, and LinkedIn link if available |
+| Accepted Connections | Members the user is now connected to, showing name, role, fit score, and a link to the matches page |
+| Approved Data Room Access | Data room access requests the member granted, showing requester details, their message, and the approval timestamp |
+
+Each item in both tabs displays:
+- Avatar (initials-based)
+- Member name, role title, and metadata tags (sector, city, stage)
+- Timestamp of when the request was created or resolved
+- Status badge (e.g. "Accepted ✓", "Pending", "Connected")
+
+---
+
+## Data Room
+
+Each startup project can have a **Data Room** — a secure, access-controlled file repository for sensitive documents such as pitch decks, financials, and due diligence materials.
+
+### Uploading Files
+Project owners and co-founders can upload files to the project's data room. Files are stored in a dedicated Supabase Storage bucket (`data-room`) with row-level security.
+
+### Requesting Access
+Investors and other members can request access to a project's data room. The request is submitted with an optional message explaining why access is needed. The request appears in the project owner's **Requests Inbox** under "Data Room Requests."
+
+### Access Control
+
+| Who | Access |
+|---|---|
+| Project owner | Full read/write |
+| Co-founders | Full read (same as owner) |
+| Approved requesters | Read-only after the owner approves |
+| Advisors / Admin | Full read |
+| All others | No access |
+
+### Workflow
+1. Investor clicks "Request Access" on a project's data room
+2. Owner receives the request in their Requests Inbox (pending)
+3. Owner approves or denies from the inbox
+4. If approved, the investor can view and download files
+5. The approval appears in the investor's Accepted tab
 
 ---
 
@@ -287,6 +427,12 @@ This is the moment a scored opportunity becomes an active introduction request.
 
 The platform has a notifications system accessible via a bell icon in the dashboard header. The bell shows an unread count badge. Notifications are fetched from `GET /api/notifications` on dashboard load.
 
+Notification types include:
+- New match or intro requests
+- Co-founder invites received
+- Data room access requests
+- Portfolio nominations (for ecosystem partners)
+
 ---
 
 ## Key Database Tables
@@ -299,8 +445,13 @@ The platform has a notifications system accessible via a bell icon in the dashbo
 | `project_match_scores` | AI fit scores linking a project to an investor profile |
 | `matches` | Member-to-member intro records with dual-status fields (`member_a_status`, `member_b_status`) |
 | `deal_cards` | Deal pipeline cards tracking active deals through stages |
-| `portfolio_companies` | Links ecosystem partners to their active portfolio startups |
+| `portfolio_companies` | Links ecosystem partners to their active portfolio startups (also used for collaboration invites) |
 | `portfolio_nominations` | Invite tokens (14-day expiry) sent by partners to prospective portfolio startups |
+| `cofounder_invites` | Pending and accepted co-founder invitations with token, email/phone, project, and expiry |
+| `cofounder_links` | Accepted co-founder relationships linking a co-founder profile to a project |
+| `ad_credit_ledger` | Credit transaction log — every debit and credit for every member, with reason and optional expiry |
+| `data_room_files` | Files uploaded to project data rooms, stored in Supabase Storage |
+| `data_room_access_requests` | Requests by members to access a project's data room (status: pending/approved/denied) |
 
 ---
 
@@ -322,6 +473,8 @@ The platform has a notifications system accessible via a bell icon in the dashbo
 - **Stage advancement UI:** Startups advance through stages (1–4) as part of the verification process, but the self-serve stage progression UI and its full unlock system are not yet complete.
 - **Deal board:** The deal board route exists and is shown in the sidebar, but the full deal card lifecycle UI may not be fully implemented.
 - **Events page:** The events route exists in the sidebar but the full events management feature may be partial.
+- **Co-founder onboarding path:** Co-founders invited via email who are not yet platform members must sign up via the invite link. A dedicated co-founder signup flow optimised for this path is not yet complete.
+- **Credit spending enforcement:** The credit cost rules (1 credit per match acceptance, premium report unlocks, etc.) are defined in `CREDIT_CONFIG` but may not be fully enforced across all gated actions yet.
 
 ---
 
@@ -334,8 +487,12 @@ Now write the full product document using the knowledge above. Format it as a pr
 - A cover section with the platform name, tagline, and a one-paragraph executive summary
 - Clear H1 / H2 / H3 heading hierarchy
 - Role sections written in plain English for a non-technical audience (product managers, investors, new team members)
-- Tables for structured comparisons (role permissions, match statuses, stat definitions)
+- Tables for structured comparisons (role permissions, match statuses, stat definitions, credit costs)
 - Workflow steps written as numbered lists ("1. The startup clicks... 2. The system creates... 3. The user sees...")
+- A "Credits & Payments" section that explains the credit economy: how credits are earned (welcome bonus, events, subscriptions, packages), how they are spent, and the subscription tiers and one-time package options
+- A "Co-Founder Access" section explaining how founders can invite co-founders, the two acceptance paths (in-app for existing members, email link for new users), and what access co-founders receive
+- A "Requests Inbox" section covering both the Pending tab and the Accepted tab, with the four request types listed in a table
+- A "Data Room" section describing secure file storage, the access request workflow, and who can access what
 - A "How Matching Works" section that explains both systems and the bridge in simple terms
 - A "Current Limitations" section at the end covering the known gaps
 - Page-break markers (use `---` between major sections)

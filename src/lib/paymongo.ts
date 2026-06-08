@@ -2,6 +2,10 @@ import { createHmac } from "crypto";
 
 const PAYMONGO_BASE_URL = "https://api.paymongo.com/v1";
 
+// All plan/pack prices are stored in USD. PayMongo only processes PHP,
+// so we convert at this fixed rate at checkout time.
+export const USD_TO_PHP_RATE = 56;
+
 function getAuthHeader(): string {
   const key = process.env.PAYMONGO_SECRET_KEY;
   if (!key) throw new Error("PAYMONGO_SECRET_KEY is not set");

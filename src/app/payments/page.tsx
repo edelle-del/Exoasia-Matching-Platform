@@ -20,6 +20,7 @@ const FREE_FEATURES = [
   "1 project slot",
   "Top 3 matches visible",
   "Basic profile",
+  "Invitation to Networking Events",
 ];
 
 const PAID_FEATURES = [
@@ -36,6 +37,7 @@ const MOCK_HISTORY = [
 ];
 
 const PAYMENT_INFO = [
+  "Prices shown in USD · charged in PHP at a fixed rate of ₱56 per $1",
   "All payments processed securely via PayMongo",
   "Accepted: GCash · Maya · GrabPay · Visa/Mastercard",
   "Credits added to your account immediately after payment",
@@ -210,7 +212,7 @@ export default function PaymentsPage() {
                     </span>
                   )}
                   <span className="fa-eyebrow">FREE</span>
-                  <p className="font-display text-[2rem] text-white mt-1">₱0</p>
+                  <p className="font-display text-[2rem] text-white mt-1">$0</p>
                   <p className="text-white/35 text-[0.7rem] font-mono mt-0.5">forever</p>
                   <ul className="mt-5 flex flex-col gap-2 flex-1 list-none p-0">
                     {FREE_FEATURES.map((f) => (
@@ -260,13 +262,13 @@ export default function PaymentsPage() {
                     {plan.name.toUpperCase()}
                   </span>
                   <p className="font-display text-[2rem] text-white mt-1">
-                    ₱{price.toLocaleString()}
+                    ${price}
                   </p>
                   <p className={["text-[0.7rem] font-mono mt-0.5", isFeatured ? "text-white/60" : "text-white/35"].join(" ")}>
                     /month{billing === "annual" ? " · billed annually" : ""}
                   </p>
                   <ul className="mt-5 flex flex-col gap-2 flex-1 list-none p-0">
-                    {[`${plan.credits} credits/month`, ...PAID_FEATURES, `₱${(plan.price / plan.credits).toFixed(2)}/credit`].map((f) => (
+                    {[`${plan.credits} credits/month`, ...PAID_FEATURES, `$${(plan.price / plan.credits).toFixed(2)}/credit`].map((f) => (
                       <li key={f} className={["flex gap-2 text-sm", isFeatured ? "text-white/85" : "text-white/60"].join(" ")}>
                         <span className={isFeatured ? "text-white/90 shrink-0" : "text-[#C9A040] shrink-0"}>✓</span> {f}
                       </li>
@@ -325,10 +327,10 @@ export default function PaymentsPage() {
                   </p>
                   <span className="fa-eyebrow text-[0.62rem]">CREDITS</span>
                   <p className="font-display text-[1.4rem] text-white mt-3">
-                    ₱{pkg.price.toLocaleString()}
+                    ${pkg.price}
                   </p>
                   <p className="text-white/30 text-[0.7rem] font-mono mt-0.5">
-                    ₱{(pkg.price / pkg.credits).toFixed(2)}/credit
+                    ${(pkg.price / pkg.credits).toFixed(2)}/credit
                   </p>
                   <button
                     type="button"

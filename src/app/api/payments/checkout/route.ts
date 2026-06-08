@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createCheckoutSession } from "@/lib/paymongo";
+import { createCheckoutSession, USD_TO_PHP_RATE } from "@/lib/paymongo";
 import { SUBSCRIPTION_PLANS, CREDIT_PACKAGES } from "@/types/constants";
 
 export async function POST(request: Request) {
@@ -46,10 +46,12 @@ export async function POST(request: Request) {
       const plan = SUBSCRIPTION_PLANS.find((p) => p.id === id);
       if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 400 });
 
+      // plan.price is in USD — convert to PHP centavos for PayMongo
+      const phpAmount = Math.round(plan.price * USD_TO_PHP_RATE * 100);
       lineItem = {
         name: `${plan.name} Plan`,
-        description: `${plan.credits} credits/month · unlimited project slots & matches`,
-        amount: plan.price * 100,
+        description: `$${plan.price}/mo · ${plan.credits} credits/month · charged in PHP at ₱${USD_TO_PHP_RATE}/$`,
+        amount: phpAmount,
         currency: "PHP",
         quantity: 1,
       };
@@ -58,10 +60,12 @@ export async function POST(request: Request) {
       const pkg = CREDIT_PACKAGES.find((p) => p.id === id);
       if (!pkg) return NextResponse.json({ error: "Package not found" }, { status: 400 });
 
+      // pkg.price is in USD — convert to PHP centavos for PayMongo
+      const phpAmount = Math.round(pkg.price * USD_TO_PHP_RATE * 100);
       lineItem = {
         name: pkg.name,
-        description: `${pkg.credits} credits`,
-        amount: pkg.price * 100,
+        description: `${pkg.credits} credits · $${pkg.price} charged in PHP at ₱${USD_TO_PHP_RATE}/$`,
+        amount: phpAmount,
         currency: "PHP",
         quantity: 1,
       };

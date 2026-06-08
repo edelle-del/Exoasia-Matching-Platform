@@ -8,9 +8,9 @@ export interface CreditPackage {
 }
 
 export const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: "credits-20", name: "Starter Pack", credits: 20, price: 199 },
-  { id: "credits-75", name: "Growth Pack", credits: 75, price: 649 },
-  { id: "credits-200", name: "Scale Pack", credits: 200, price: 1499 },
+  { id: "credits-20", name: "Starter Pack", credits: 20, price: 5 },
+  { id: "credits-75", name: "Growth Pack", credits: 75, price: 15 },
+  { id: "credits-200", name: "Scale Pack", credits: 200, price: 35 },
 ];
 
 // Stage Configuration
@@ -57,27 +57,27 @@ export const CREDIT_CONFIG = {
   ENTRY_COST: 1, // Each match acceptance costs 1 credit
 };
 
-// Subscription Plans
+// Subscription Plans — prices in USD; charged in PHP at checkout via USD_TO_PHP_RATE
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: "starter",
     name: "Starter",
     credits: 20,
-    price: 149,
+    price: 20,
     billingCycle: "monthly",
   },
   {
     id: "professional",
     name: "Professional",
     credits: 60,
-    price: 349,
+    price: 50,
     billingCycle: "monthly",
   },
   {
     id: "premium",
     name: "Premium",
     credits: 120,
-    price: 649,
+    price: 100,
     billingCycle: "monthly",
   },
 ];

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sendNewSignupNotification } from "@/lib/email";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -38,6 +39,21 @@ export async function GET(request: Request) {
     .single();
 
   const needsOnboarding = !profile || !profile.full_name || !profile.sector;
+
+  // Brand-new signup: profile exists (from DB trigger) but full_name is still null,
+  // meaning onboarding has never been completed. The time guard prevents re-firing
+  // on OAuth re-logins where the user abandoned onboarding.
+  const accountAgeMs = Date.now() - new Date(user.created_at).getTime();
+  const isNewSignup = !profile?.full_name && accountAgeMs < 60 * 60 * 1000; // within 1 hour
+  if (isNewSignup && user.email) {
+    const meta = user.user_metadata as Record<string, string> | undefined;
+    void sendNewSignupNotification({
+      email: user.email,
+      createdAt: user.created_at,
+      location: meta?.signin_location,
+      browser: meta?.signin_browser,
+    });
+  }
 
   if (needsOnboarding) {
     return NextResponse.redirect(`${origin}/onboarding`);

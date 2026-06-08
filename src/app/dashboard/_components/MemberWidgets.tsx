@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { Star, Handshake, CheckCircle2, Bell, LucideIcon } from "lucide-react";
 
@@ -35,11 +34,11 @@ export function HeroSection({
     : `Stage ${stage ?? "0"} Member`;
 
   return (
-    <section className="flex flex-col gap-6 rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-8 sm:flex-row sm:items-center sm:justify-between">
+    <section className="flex flex-col gap-6 rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-8 sm:flex-row sm:items-center sm:justify-between">
       {/* Left — greeting */}
       <div>
-        <p className="text-sm font-medium text-[#8B8BA7]">{greeting}</p>
-        <h1 className="mt-1 text-4xl font-bold tracking-tight text-[#F4F4FF]">
+        <p className="text-sm font-medium text-(--color-muted)">{greeting}</p>
+        <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">
           {name || "there"}{" "}
           <i
             className="ri-hand-line text-3xl align-middle text-(--color-primary)"
@@ -61,7 +60,7 @@ export function HeroSection({
             />
             {badgeLabel}
           </span>
-          <span className="text-xs text-[#8B8BA7]">
+          <span className="text-xs text-(--color-muted)">
             Verification: {verificationStatus ?? "unverified"}
           </span>
         </div>
@@ -69,18 +68,18 @@ export function HeroSection({
 
       {/* Right — Next Step nudge */}
       {nextStep && (
-        <div className="flex shrink-0 items-start gap-3 rounded-2xl bg-[#1A1A26] border border-[#2A2A3E] px-5 py-4 sm:max-w-xs">
-          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
+        <div className="flex shrink-0 items-start gap-3 rounded-2xl bg-(--color-surface-strong) border border-(--color-hairline) px-5 py-4 sm:max-w-xs">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#ff6b1f]/20">
             <i
-              className="ri-arrow-right-line text-sm text-indigo-400"
+              className="ri-arrow-right-line text-sm text-(--color-primary)"
               aria-hidden="true"
             />
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#8B8BA7]">
+            <p className="text-[11px] font-semibold text-(--color-muted)">
               Next step
             </p>
-            <p className="mt-0.5 text-sm font-medium text-[#C4C4D4]">
+            <p className="mt-0.5 text-sm font-medium text-(--color-body)">
               {nextStep}
             </p>
           </div>
@@ -106,12 +105,12 @@ export function AirbnbMetricCard({
   sub,
 }: MetricCardProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-1 rounded-3xl bg-[#12121A] border border-[#2A2A3E] py-8 text-center">
-      <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
+    <div className="flex flex-col items-center justify-center gap-1 rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) py-8 text-center">
+      <p className="text-xs font-semibold uppercase tracking-widest text-(--color-muted)">
         {label}
       </p>
       <p className={`text-5xl font-bold tabular-nums ${accent}`}>{value}</p>
-      {sub && <p className="text-xs text-[#8B8BA7]">{sub}</p>}
+      {sub && <p className="text-xs text-(--color-muted)">{sub}</p>}
     </div>
   );
 }
@@ -129,17 +128,15 @@ export function ProfileStrength({ percent, nextStep }: ProfileStrengthProps) {
   const offset = circ - (percent / 100) * circ;
 
   return (
-    <div className="flex flex-col items-center gap-5 rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-6">
-      <p className="self-start text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
-        Profile strength
-      </p>
+    <div className="flex flex-col items-center gap-5 rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-6">
+      <p className="self-start text-sm font-semibold text-(--color-ink)">Profile strength</p>
 
       <div className="relative flex items-center justify-center">
-        <svg width={140} height={140} className="-rotate-90">
+        <svg width={140} height={140} className="-rotate-90" aria-hidden="true">
           <defs>
             <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FB7185" />
-              <stop offset="100%" stopColor="#FB923C" />
+              <stop offset="0%" stopColor="#ff6b1f" />
+              <stop offset="100%" stopColor="#ff2e93" />
             </linearGradient>
           </defs>
           {/* Track */}
@@ -148,7 +145,7 @@ export function ProfileStrength({ percent, nextStep }: ProfileStrengthProps) {
             cy={70}
             r={r}
             fill="none"
-            stroke="#2A2A3E"
+            stroke="var(--color-hairline)"
             strokeWidth={12}
           />
           {/* Progress */}
@@ -166,16 +163,16 @@ export function ProfileStrength({ percent, nextStep }: ProfileStrengthProps) {
           />
         </svg>
         <div className="absolute flex flex-col items-center">
-          <span className="text-3xl font-bold text-[#F4F4FF]">{percent}%</span>
-          <span className="text-[11px] font-medium text-[#8B8BA7]">
+          <span className="text-3xl font-bold text-(--color-ink)">{percent}%</span>
+          <span className="text-[11px] font-medium text-(--color-muted)">
             complete
           </span>
         </div>
       </div>
 
       {nextStep && (
-        <p className="text-center text-xs text-[#8B8BA7]">
-          <span className="font-semibold text-[#C4C4D4]">Tip: </span>
+        <p className="text-center text-xs text-(--color-muted)">
+          <span className="font-semibold text-(--color-body)">Tip: </span>
           {nextStep}
         </p>
       )}
@@ -205,23 +202,18 @@ export function PipelineSummaryCard({
     bestFit >= 80
       ? "text-emerald-400"
       : bestFit >= 65
-        ? "text-indigo-400"
+        ? "text-(--color-primary)"
         : "text-amber-400";
 
   return (
-    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-            Project pipeline
-          </p>
-          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
-            {isInvestor ? "Your matched opportunities" : "Your active projects"}
-          </p>
-        </div>
+    <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
+      <div className="mb-4 flex items-start justify-between">
+        <p className="text-sm font-semibold text-(--color-ink)">
+          {isInvestor ? "Matched opportunities" : "Active projects"}
+        </p>
         <Link
           href="/matches"
-          className="text-xs font-semibold text-indigo-400 hover:underline"
+          className="text-xs font-semibold text-(--color-primary) hover:underline"
         >
           Next steps →
         </Link>
@@ -229,33 +221,33 @@ export function PipelineSummaryCard({
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
+        <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 text-center">
           <p
-            className={`text-3xl font-extrabold ${!isLoading && activeProjects > 0 ? "text-indigo-400" : "text-[#4A4A6A]"}`}
+            className={`text-3xl font-extrabold ${!isLoading && activeProjects > 0 ? "text-(--color-accent-gold)" : "text-(--color-muted-soft)"}`}
           >
             {isLoading ? "…" : activeProjects > 0 ? activeProjects : "—"}
           </p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
             {isInvestor ? "Opportunities" : "Projects"}
           </p>
         </div>
-        <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
+        <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 text-center">
           <p
-            className={`text-3xl font-extrabold ${!isLoading && investorMatches > 0 ? "text-violet-400" : "text-[#4A4A6A]"}`}
+            className={`text-3xl font-extrabold ${!isLoading && investorMatches > 0 ? "text-(--color-primary)" : "text-(--color-muted-soft)"}`}
           >
             {isLoading ? "…" : investorMatches > 0 ? investorMatches : "—"}
           </p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
             {isInvestor ? "Score cards" : "Inv. matches"}
           </p>
         </div>
-        <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center">
+        <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 text-center">
           <p
-            className={`text-3xl font-extrabold ${isLoading || bestFit === 0 ? "text-[#4A4A6A]" : fitColor}`}
+            className={`text-3xl font-extrabold ${isLoading || bestFit === 0 ? "text-(--color-muted-soft)" : fitColor}`}
           >
             {isLoading ? "…" : bestFit > 0 ? `${bestFit}%` : "—"}
           </p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
             Best fit
           </p>
         </div>
@@ -264,9 +256,9 @@ export function PipelineSummaryCard({
       {/* Bottom CTA — always links to /matches for per-project next steps */}
       <Link
         href="/matches"
-        className="mt-auto flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 transition-colors hover:border-indigo-500/50"
+        className="mt-auto flex items-center justify-between rounded-xl border border-[#ff6b1f]/30 bg-[#ff6b1f]/10 px-4 py-3 transition-colors hover:border-[#ff6b1f]/50"
       >
-        <p className="text-xs font-medium text-indigo-300">
+        <p className="text-xs font-medium text-[#ffa04f]">
           {isLoading
             ? "Loading…"
             : activeProjects > 0
@@ -274,11 +266,12 @@ export function PipelineSummaryCard({
               : "Set up your first project to get matched"}
         </p>
         <svg
-          className="h-4 w-4 shrink-0 text-indigo-400"
+          className="h-4 w-4 shrink-0 text-(--color-primary)"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
           strokeWidth={2}
+          aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
@@ -291,36 +284,30 @@ export function PipelineSummaryCard({
 
 export function PartnerPortfolioCard() {
   return (
-    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-            Deal Flow
-          </p>
-          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
-            Your deal flow command center
-          </p>
-        </div>
+    <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
+      <div className="mb-4 flex items-start justify-between">
+        <p className="text-sm font-semibold text-(--color-ink)">Deal flow</p>
         <Link
           href="/ecosystem"
-          className="text-xs font-semibold text-violet-400 hover:underline"
+          className="text-xs font-semibold text-(--color-primary) hover:underline"
         >
-          Open →
+          Ecosystem →
         </Link>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3">
         <Link
           href="/ecosystem"
-          className="flex flex-col gap-1.5 rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 transition hover:border-violet-500/40"
+          className="flex flex-col gap-1.5 rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 transition hover:border-[#ff6b1f]/40"
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ff6b1f]/20">
             <svg
-              className="h-3.5 w-3.5 text-violet-400"
+              className="h-3.5 w-3.5 text-(--color-primary)"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={2}
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -329,23 +316,24 @@ export function PartnerPortfolioCard() {
               />
             </svg>
           </div>
-          <p className="text-xs font-bold text-[#F4F4FF]">Deal flow overview</p>
-          <p className="text-[10px] text-[#8B8BA7]">
+          <p className="text-xs font-bold text-(--color-ink)">Deal flow overview</p>
+          <p className="text-[10px] text-(--color-muted)">
             Pipeline stats, companies, deep-dive
           </p>
         </Link>
 
         <Link
           href="/ecosystem"
-          className="flex flex-col gap-1.5 rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 transition hover:border-indigo-500/40"
+          className="flex flex-col gap-1.5 rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 transition hover:border-[#c9a040]/40"
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#c9a040]/20">
             <svg
-              className="h-3.5 w-3.5 text-indigo-400"
+              className="h-3.5 w-3.5 text-(--color-accent-gold)"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={2}
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -354,8 +342,8 @@ export function PartnerPortfolioCard() {
               />
             </svg>
           </div>
-          <p className="text-xs font-bold text-[#F4F4FF]">Deal Board</p>
-          <p className="text-[10px] text-[#8B8BA7]">
+          <p className="text-xs font-bold text-(--color-ink)">Deal Board</p>
+          <p className="text-[10px] text-(--color-muted)">
             Live intro statuses, stale alerts
           </p>
         </Link>
@@ -363,17 +351,18 @@ export function PartnerPortfolioCard() {
 
       <Link
         href="/ecosystem"
-        className="mt-auto flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 transition-colors hover:border-violet-500/50"
+        className="mt-auto flex items-center justify-between rounded-xl border border-[#ff6b1f]/30 bg-[#ff6b1f]/10 px-4 py-3 transition-colors hover:border-[#ff6b1f]/50"
       >
-        <p className="text-xs font-medium text-violet-300">
+        <p className="text-xs font-medium text-[#ffa04f]">
           Invite startups to the platform · Track mandate-matched deal flow
         </p>
         <svg
-          className="h-4 w-4 shrink-0 text-violet-400"
+          className="h-4 w-4 shrink-0 text-(--color-primary)"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
           strokeWidth={2}
+          aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
@@ -385,12 +374,12 @@ export function PartnerPortfolioCard() {
 // ─── PartnerDealOverviewCard ─────────────────────────────────────────────────
 
 const PIPELINE_STAGES_CONFIG: { label: string; shortLabel: string; dotClass: string; textClass: string }[] = [
-  { label: "Qualified",       shortLabel: "Qualified",   dotClass: "bg-indigo-400",  textClass: "text-indigo-400" },
-  { label: "Intro & Scoping", shortLabel: "Intro",       dotClass: "bg-blue-400",    textClass: "text-blue-400" },
-  { label: "Proposal",        shortLabel: "Proposal",    dotClass: "bg-violet-400",  textClass: "text-violet-400" },
-  { label: "Negotiation",     shortLabel: "Negotiation", dotClass: "bg-amber-400",   textClass: "text-amber-400" },
-  { label: "Closed Won",      shortLabel: "Won",         dotClass: "bg-emerald-400", textClass: "text-emerald-400" },
-  { label: "On Hold",         shortLabel: "On Hold",     dotClass: "bg-slate-400",   textClass: "text-slate-400" },
+  { label: "Qualified",       shortLabel: "Qualified",   dotClass: "bg-[#ff6b1f]",  textClass: "text-[#ff6b1f]" },
+  { label: "Intro & Scoping", shortLabel: "Intro",       dotClass: "bg-[#c9a040]",  textClass: "text-[#c9a040]" },
+  { label: "Proposal",        shortLabel: "Proposal",    dotClass: "bg-[#ff2e93]",  textClass: "text-[#ff2e93]" },
+  { label: "Negotiation",     shortLabel: "Negotiation", dotClass: "bg-amber-400",  textClass: "text-amber-400" },
+  { label: "Closed Won",      shortLabel: "Won",         dotClass: "bg-emerald-400",textClass: "text-emerald-400" },
+  { label: "On Hold",         shortLabel: "On Hold",     dotClass: "bg-slate-400",  textClass: "text-slate-400" },
 ];
 
 type PartnerDealOverviewCardProps = {
@@ -413,47 +402,40 @@ export function PartnerDealOverviewCard({
   isLoading,
 }: PartnerDealOverviewCardProps) {
   const kpis = [
-    { label: "Collabs",   value: totalCollabs,  color: "text-violet-400" },
-    { label: "Projects",  value: totalProjects, color: "text-indigo-400" },
-    { label: "Intros",    value: introCount,    color: "text-blue-400" },
+    { label: "Collabs",   value: totalCollabs,  color: "text-(--color-primary)" },
+    { label: "Projects",  value: totalProjects, color: "text-(--color-accent-gold)" },
+    { label: "Intros",    value: introCount,    color: "text-(--color-hot-pink)" },
     { label: "Active",    value: activeMatches, color: "text-emerald-400" },
-    { label: "Stale",     value: staleCount,    color: staleCount > 0 ? "text-amber-400" : "text-[#4A4A6A]" },
+    { label: "Stale",     value: staleCount,    color: staleCount > 0 ? "text-amber-400" : "text-(--color-muted-soft)" },
   ];
 
   return (
-    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-            Deal Board Overview
-          </p>
-          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
-            Your portfolio activity
-          </p>
-        </div>
+    <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
+      <div className="mb-4 flex items-start justify-between">
+        <p className="text-sm font-semibold text-(--color-ink)">Portfolio activity</p>
         <Link
           href="/ecosystem"
-          className="text-xs font-semibold text-violet-400 hover:underline"
+          className="text-xs font-semibold text-(--color-primary) hover:underline"
         >
-          Open →
+          Ecosystem →
         </Link>
       </div>
 
       {/* KPI tiles */}
-      <div className="mb-5 grid grid-cols-5 gap-2">
+      <div className="mb-5 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {kpis.map(({ label, value, color }) => (
           <div
             key={label}
-            className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-3 text-center"
+            className="rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 text-center"
           >
             <p
               className={`text-2xl font-extrabold tabular-nums ${
-                isLoading ? "text-[#4A4A6A]" : color
+                isLoading ? "text-(--color-muted-soft)" : color
               }`}
             >
               {isLoading ? "…" : value > 0 ? value : "—"}
             </p>
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
               {label}
             </p>
           </div>
@@ -462,25 +444,24 @@ export function PartnerDealOverviewCard({
 
       {/* Stage pipeline chips */}
       <div className="mb-5">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-          Stage pipeline
-        </p>
+        <p className="mb-2 text-xs font-medium text-(--color-muted)">Stage pipeline</p>
         <div className="flex flex-wrap gap-2">
           {PIPELINE_STAGES_CONFIG.map((s) => {
             const count = stageCounts[s.label] ?? 0;
             return (
               <span
                 key={s.label}
-                className="flex items-center gap-1.5 rounded-full border border-[#2A2A3E] bg-[#1A1A26] px-3 py-1"
+                className="flex items-center gap-1.5 rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-3 py-1"
               >
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full ${s.dotClass}`}
+                  aria-hidden="true"
                 />
-                <span className="text-xs font-semibold text-[#C4C4D4]">
+                <span className="text-xs font-semibold text-(--color-body)">
                   {s.shortLabel}
                 </span>
                 <span
-                  className={`text-xs font-extrabold tabular-nums ${count > 0 ? s.textClass : "text-[#4A4A6A]"}`}
+                  className={`text-xs font-extrabold tabular-nums ${count > 0 ? s.textClass : "text-(--color-muted-soft)"}`}
                 >
                   {isLoading ? "…" : count}
                 </span>
@@ -492,17 +473,18 @@ export function PartnerDealOverviewCard({
 
       <Link
         href="/ecosystem"
-        className="mt-auto flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 transition-colors hover:border-violet-500/50"
+        className="mt-auto flex items-center justify-between rounded-xl border border-[#ff6b1f]/30 bg-[#ff6b1f]/10 px-4 py-3 transition-colors hover:border-[#ff6b1f]/50"
       >
-        <p className="text-xs font-medium text-violet-300">
+        <p className="text-xs font-medium text-[#ffa04f]">
           View your full ecosystem
         </p>
         <svg
-          className="h-4 w-4 shrink-0 text-violet-400"
+          className="h-4 w-4 shrink-0 text-(--color-primary)"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
           strokeWidth={2}
+          aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
@@ -514,12 +496,12 @@ export function PartnerDealOverviewCard({
 // ─── DealBoardSnapshotCard ───────────────────────────────────────────────────
 
 const DEAL_STAGES: { label: string; shortLabel: string; fill: string }[] = [
-  { label: "Qualified",      shortLabel: "Qualified",  fill: "#818CF8" },
-  { label: "Intro & Scoping",shortLabel: "Intro",      fill: "#60A5FA" },
-  { label: "Proposal",       shortLabel: "Proposal",   fill: "#A78BFA" },
-  { label: "Negotiation",    shortLabel: "Negotiation",fill: "#FBBF24" },
-  { label: "Closed Won",     shortLabel: "Closed Won", fill: "#34D399" },
-  { label: "On Hold",        shortLabel: "On Hold",    fill: "#94A3B8" },
+  { label: "Qualified",       shortLabel: "Qualified",   fill: "#ff6b1f" },
+  { label: "Intro & Scoping", shortLabel: "Intro",       fill: "#c9a040" },
+  { label: "Proposal",        shortLabel: "Proposal",    fill: "#ff2e93" },
+  { label: "Negotiation",     shortLabel: "Negotiation", fill: "#FBBF24" },
+  { label: "Closed Won",      shortLabel: "Closed Won",  fill: "#34D399" },
+  { label: "On Hold",         shortLabel: "On Hold",     fill: "#94A3B8" },
 ];
 
 // Chart geometry constants
@@ -549,27 +531,23 @@ export function DealBoardSnapshotCard({
   const baselineY = TOP_PAD + CHART_H;
 
   return (
-    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
+    <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
       <div className="mb-4 flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-            Deal board
-          </p>
-          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
-            Projects by stage
-          </p>
-        </div>
+        <p className="text-sm font-semibold text-(--color-ink)">Projects by stage</p>
         <Link
           href="/deal-board"
-          className="text-xs font-semibold text-indigo-400 hover:underline"
+          className="text-xs font-semibold text-(--color-primary) hover:underline"
         >
-          Open →
+          Deal board →
         </Link>
       </div>
 
+      <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:overflow-visible sm:px-0">
       <svg
         viewBox={`0 0 ${VW} ${VH}`}
-        className="w-full flex-1"
+        className="w-full min-w-[480px]"
+        role="img"
+        focusable="false"
         aria-label="Deal stage distribution bar chart"
       >
         {/* Horizontal grid lines at 25 / 50 / 75 / 100 % */}
@@ -582,7 +560,7 @@ export function DealBoardSnapshotCard({
               y1={y}
               x2={VW}
               y2={y}
-              stroke="#2A2A3E"
+              stroke="var(--color-hairline)"
               strokeWidth={1}
             />
           );
@@ -594,7 +572,7 @@ export function DealBoardSnapshotCard({
           y1={baselineY}
           x2={VW}
           y2={baselineY}
-          stroke="#3A3A52"
+          stroke="var(--color-hairline)"
           strokeWidth={1.5}
         />
 
@@ -630,9 +608,9 @@ export function DealBoardSnapshotCard({
                 x={cx}
                 y={barH > 0 ? barY - 6 : baselineY - 6}
                 textAnchor="middle"
-                fontSize={11}
+                fontSize={14}
                 fontWeight={700}
-                fill={barH > 0 ? "#F4F4FF" : "#3A3A52"}
+                fill={barH > 0 ? "var(--color-ink)" : "var(--color-muted-soft)"}
               >
                 {isLoading ? "" : count}
               </text>
@@ -640,11 +618,11 @@ export function DealBoardSnapshotCard({
               {/* Stage label below baseline */}
               <text
                 x={cx}
-                y={baselineY + 18}
+                y={baselineY + 20}
                 textAnchor="middle"
-                fontSize={9}
+                fontSize={11}
                 fontWeight={600}
-                fill="#8B8BA7"
+                fill="var(--color-muted)"
               >
                 {s.shortLabel}
               </text>
@@ -652,24 +630,7 @@ export function DealBoardSnapshotCard({
           );
         })}
       </svg>
-
-      <Link
-        href="/deal-board"
-        className="mt-4 flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 transition-colors hover:border-indigo-500/50"
-      >
-        <p className="text-xs font-medium text-indigo-300">
-          View your full deal board
-        </p>
-        <svg
-          className="h-4 w-4 shrink-0 text-indigo-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </Link>
+      </div>
     </div>
   );
 }
@@ -687,9 +648,9 @@ export type NotificationItem = {
 };
 
 const NOTIF_DOT: Record<NotificationItem["type"], string> = {
-  match:    "bg-indigo-500",
+  match:    "bg-[#ff6b1f]",
   accepted: "bg-emerald-500",
-  intro:    "bg-violet-500",
+  intro:    "bg-[#ff2e93]",
   declined: "bg-rose-500",
 };
 
@@ -714,47 +675,41 @@ export function NotificationsCard({ notifications, isLoading }: NotificationsCar
   const shown = notifications.slice(0, 3);
 
   return (
-    <div className="flex flex-col rounded-[20px] border border-[#2A2A3E] bg-[#12121A] p-6">
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">
-            Notifications
-          </p>
-          <p className="mt-1 text-sm font-semibold text-[#F4F4FF]">
-            Recent activity
-          </p>
-        </div>
+    <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
+      <div className="mb-4 flex items-start justify-between">
+        <p className="text-sm font-semibold text-(--color-ink)">Recent activity</p>
         <Link
           href="/notifications"
-          className="text-xs font-semibold text-indigo-400 hover:underline"
+          className="text-xs font-semibold text-(--color-primary) hover:underline"
         >
-          View all →
+          All notifications →
         </Link>
       </div>
 
       {isLoading ? (
-        <p className="flex-1 text-sm text-[#8B8BA7]">Loading…</p>
+        <p className="flex-1 text-sm text-(--color-muted)">Loading…</p>
       ) : shown.length === 0 ? (
-        <p className="flex-1 text-sm text-[#8B8BA7]">No notifications yet.</p>
+        <p className="flex-1 text-sm text-(--color-muted)">No notifications yet.</p>
       ) : (
         <ul className="flex-1 space-y-0">
           {shown.map((n, i) => {
-            const dot = NOTIF_DOT[n.type] ?? "bg-indigo-500";
+            const dot = NOTIF_DOT[n.type] ?? "bg-[#ff6b1f]";
             const isLast = i === shown.length - 1;
             return (
               <li key={n.id} className="relative flex gap-3">
                 {!isLast && (
-                  <span className="absolute left-[8px] top-5 h-full w-px bg-[#2A2A3E]" />
+                  <span className="absolute left-[8px] top-5 h-full w-px bg-(--color-hairline)" aria-hidden="true" />
                 )}
                 <span
                   className={`mt-1 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full ${dot}`}
+                  aria-hidden="true"
                 />
                 <div className="min-w-0 pb-4">
-                  <p className="text-sm font-medium leading-snug text-[#F4F4FF]">
+                  <p className="text-sm font-medium leading-snug text-(--color-ink)">
                     {n.title}
                   </p>
-                  <p className="truncate text-xs text-[#8B8BA7]">{n.body}</p>
-                  <p className="mt-0.5 text-[11px] text-[#4A4A6A]">
+                  <p className="truncate text-xs text-(--color-muted)">{n.body}</p>
+                  <p className="mt-0.5 text-[11px] text-(--color-muted-soft)">
                     {relativeTime(n.date)}
                   </p>
                 </div>
@@ -763,24 +718,6 @@ export function NotificationsCard({ notifications, isLoading }: NotificationsCar
           })}
         </ul>
       )}
-
-      <Link
-        href="/notifications"
-        className="mt-4 flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 transition-colors hover:border-indigo-500/50"
-      >
-        <p className="text-xs font-medium text-indigo-300">
-          View all notifications
-        </p>
-        <svg
-          className="h-4 w-4 shrink-0 text-indigo-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </Link>
     </div>
   );
 }
@@ -803,23 +740,21 @@ const DOT_MAP: Record<
   ActivityEvent["type"],
   { color: string; Icon: LucideIcon }
 > = {
-  match: { color: "bg-indigo-500", Icon: Star },
-  deal: { color: "bg-emerald-500", Icon: Handshake },
-  intro: { color: "bg-purple-500", Icon: CheckCircle2 },
-  general: { color: "bg-gray-300", Icon: Bell },
+  match:   { color: "bg-[#ff6b1f]",   Icon: Star },
+  deal:    { color: "bg-emerald-500",  Icon: Handshake },
+  intro:   { color: "bg-[#ff2e93]",   Icon: CheckCircle2 },
+  general: { color: "bg-(--color-muted)",  Icon: Bell },
 };
 
 export function ActivityFeed({ events }: ActivityFeedProps) {
   const shown = events.slice(0, 4);
 
   return (
-    <div className="rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
-        Activity
-      </p>
+    <div className="rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-6">
+      <p className="text-sm font-semibold text-(--color-ink)">Activity</p>
       <ul className="mt-5 space-y-0">
         {shown.length === 0 && (
-          <li className="text-sm text-[#8B8BA7]">No recent activity.</li>
+          <li className="text-sm text-(--color-muted)">No recent activity.</li>
         )}
         {shown.map((event, i) => {
           const { color, Icon } = DOT_MAP[event.type];
@@ -828,22 +763,23 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
             <li key={event.id} className="relative flex gap-4">
               {/* vertical connector */}
               {!isLast && (
-                <span className="absolute left-[9px] top-5 h-full w-px bg-[#2A2A3E]" />
+                <span className="absolute left-[9px] top-5 h-full w-px bg-(--color-hairline)" aria-hidden="true" />
               )}
               {/* dot */}
               <span
                 className={`mt-1 h-[18px] w-[18px] shrink-0 rounded-full ${color} flex items-center justify-center`}
+                aria-hidden="true"
               >
                 <Icon className="h-2.5 w-2.5 text-white" />
               </span>
               <div className="pb-5 min-w-0">
-                <p className="text-sm font-medium text-[#F4F4FF] leading-snug">
+                <p className="text-sm font-medium text-(--color-ink) leading-snug">
                   {event.label}
                 </p>
                 {event.subtext && (
-                  <p className="text-xs text-[#8B8BA7]">{event.subtext}</p>
+                  <p className="text-xs text-(--color-muted)">{event.subtext}</p>
                 )}
-                <p className="mt-0.5 text-[11px] text-[#4A4A6A]">
+                <p className="mt-0.5 text-[11px] text-(--color-muted-soft)">
                   {event.time}
                 </p>
               </div>

@@ -342,7 +342,7 @@ body {
   height: 46px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 200ms ease, transform 200ms ease, box-shadow 200ms ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -372,7 +372,7 @@ body {
   border-radius: 10px;
   height: 46px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 200ms ease, color 200ms ease, background-color 200ms ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -605,7 +605,7 @@ button {
   border-radius: 8px;
   font-weight: 700 !important;
   font-size: 0.85rem !important;
-  transition: all 0.2s !important;
+  transition: background 200ms ease, transform 200ms ease !important;
 }
 .xo-nav-cta:hover {
   background: linear-gradient(135deg, #ff2e93, #c81e78) !important;
@@ -766,7 +766,7 @@ button {
   font-weight: 700;
   font-size: 0.92rem;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: background 200ms ease, transform 200ms ease, box-shadow 200ms ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -788,7 +788,7 @@ button {
   font-weight: 700;
   font-size: 0.92rem;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: border-color 200ms ease, background-color 200ms ease, transform 200ms ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -809,7 +809,7 @@ button {
   font-weight: 700;
   font-size: 0.92rem;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: color 200ms ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1423,7 +1423,7 @@ button {
   font-weight: 700;
   font-size: 0.85rem;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: background-color 200ms ease, transform 200ms ease;
   margin-top: auto;
   cursor: pointer;
   border: none;
@@ -1651,7 +1651,7 @@ button {
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: all 0.3s;
+  transition: background-color 300ms ease, transform 300ms ease;
 }
 .xo-dot.xo-dot-active {
   background: var(--xo-gold);
@@ -1896,5 +1896,23 @@ button {
   .xo-exoasia-badge {
     flex-direction: column;
     text-align: center;
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-progress {
+    transition: none;
+  }
+
+  .xo-fade-up {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .xo-slide {
+    transition: none;
   }
 }

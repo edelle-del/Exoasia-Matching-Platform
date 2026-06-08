@@ -259,7 +259,7 @@ export default function DashboardPage() {
 
   if (isAdvisorView) {
     return (
-      <div className="min-h-screen bg-[#F7F7F7] px-4 sm:px-6 py-12">
+      <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
         <div className="mx-auto w-full max-w-7xl space-y-8">
           <SystemPulseHeader
             displayName={displayName}
@@ -273,7 +273,7 @@ export default function DashboardPage() {
               value={
                 isLoading ? "..." : String(advisorDashboard.totalCompanies)
               }
-              accent="text-gray-900"
+              accent="text-(--color-ink)"
             />
             <AdvisorMetricCard
               label="Need matching"
@@ -353,13 +353,13 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
       <div className="mx-auto w-full max-w-7xl space-y-8">
         {/* Row 0: Greeting (profile strength inline next to name) */}
-        <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-8">
+        <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-5 sm:p-8">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
+            <span className="inline-flex items-center rounded-full bg-(--color-primary)/10 px-2.5 py-0.5 text-xs font-semibold text-(--color-primary)">
               {isLoading ? "Member Portal" : portalLabel}
-            </p>
-            <div className="mt-3 flex items-center gap-3">
-              <h1 className="text-3xl font-semibold text-(--color-ink)">
+            </span>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <h1 className="text-balance text-2xl font-semibold text-(--color-ink) sm:text-3xl">
                 Hello,{" "}
                 <span className="text-(--color-primary)">{firstName}</span>
               </h1>
@@ -381,11 +381,11 @@ export default function DashboardPage() {
 
         {/* Row 1: Credits + Pipeline stats */}
         <section className="space-y-3">
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-busy={isLoading ? "true" : "false"} aria-label="Key metrics">
           <MetricCard
             label="Credits"
             value={isLoading ? "..." : String(summary.credits)}
-            valueColor="text-blue-600"
+            valueColor="text-(--color-primary)"
           />
           <MetricCard
             label={isInvestor ? "Opportunities" : "Projects"}
@@ -396,7 +396,7 @@ export default function DashboardPage() {
                   ? String(pipelineStats.activeProjects)
                   : "—"
             }
-            valueColor="text-indigo-500"
+            valueColor="text-(--color-accent-gold)"
           />
           <MetricCard
             label={isInvestor ? "Score cards" : "Inv. matches"}
@@ -407,7 +407,7 @@ export default function DashboardPage() {
                   ? String(pipelineStats.investorMatches)
                   : "—"
             }
-            valueColor="text-violet-500"
+            valueColor="text-(--color-primary)"
           />
           <MetricCard
             label="Best fit"
@@ -422,7 +422,7 @@ export default function DashboardPage() {
               pipelineStats.bestFit >= 80
                 ? "text-emerald-500"
                 : pipelineStats.bestFit >= 65
-                  ? "text-indigo-500"
+                  ? "text-(--color-primary)"
                   : "text-amber-500"
             }
           />
@@ -431,7 +431,7 @@ export default function DashboardPage() {
           <div className="flex justify-end">
             <Link
               href="/matches"
-              className="text-xs font-semibold text-indigo-400 hover:underline"
+              className="text-xs font-semibold text-(--color-primary) hover:underline"
             >
               View project pipeline →
             </Link>
@@ -473,12 +473,12 @@ function ProfileStrengthRing({ percent }: { percent: number }) {
   const circ = 2 * Math.PI * r;
   const offset = circ - (percent / 100) * circ;
   return (
-    <div className="relative flex shrink-0 items-center justify-center" title={`Profile ${percent}% complete`}>
-      <svg width={48} height={48} className="-rotate-90">
+    <div className="relative flex shrink-0 items-center justify-center" title={`Profile ${percent}% complete`} aria-label={`Profile ${percent}% complete`}>
+      <svg width={48} height={48} className="-rotate-90" aria-hidden="true">
         <defs>
           <linearGradient id="miniRingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#FB7185" />
-            <stop offset="100%" stopColor="#FB923C" />
+            <stop offset="0%" stopColor="#ff6b1f" />
+            <stop offset="100%" stopColor="#ff2e93" />
           </linearGradient>
         </defs>
         <circle cx={24} cy={24} r={r} fill="none" stroke="var(--color-hairline)" strokeWidth={4} />

@@ -44,27 +44,27 @@ export function SystemPulseHeader({ displayName, role, urgentCount }: SystemPuls
   const [query, setQuery] = useState("");
 
   return (
-    <section className="rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-8">
+    <section className="rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-8">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
 
         {/* Left: greeting + status */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
             Advisor Console
           </p>
-          <h1 className="mt-1 text-4xl font-bold tracking-tight text-[#F4F4FF]">
+          <h1 className="mt-1 text-balance text-4xl font-bold tracking-tight text-(--color-ink)">
             Hello,{" "}
-            <span className="text-indigo-400">{displayName || "there"}</span>
+            <span className="text-(--color-primary)">{displayName || "there"}</span>
           </h1>
-          <p className="mt-1 text-sm text-[#8B8BA7]">
+          <p className="mt-1 text-sm text-(--color-muted)">
             Managing as{" "}
-            <span className="font-medium text-[#C4C4D4]">
+            <span className="font-medium text-(--color-body)">
               {role === "admin" ? "Admin" : "Advisor"}
             </span>
           </p>
           {urgentCount > 0 && (
             <div className="mt-3 flex w-fit items-center gap-2 rounded-xl bg-rose-500/15 px-4 py-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" aria-hidden="true" />
               <p className="text-sm font-medium text-rose-400">
                 {urgentCount}{" "}
                 {urgentCount === 1 ? "company requires" : "companies require"}{" "}
@@ -76,12 +76,13 @@ export function SystemPulseHeader({ displayName, role, urgentCount }: SystemPuls
 
         {/* Right: search */}
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B8BA7]" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--color-muted)" aria-hidden="true" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Find a company or match..."
-            className="w-full rounded-xl border border-[#2A2A3E] bg-[#1A1A26] py-3 pl-9 pr-4 text-sm text-[#F4F4FF] placeholder:text-[#8B8BA7] transition focus:border-indigo-500 focus:outline-none"
+            aria-label="Search companies and matches"
+            className="w-full rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) py-3 pl-9 pr-4 text-sm text-(--color-ink) placeholder:text-(--color-muted) transition focus:border-(--color-primary) focus:outline-none"
           />
         </div>
       </div>
@@ -105,20 +106,20 @@ type AdvisorMetricCardProps = {
 export function AdvisorMetricCard({
   label,
   value,
-  accent = "text-[#F4F4FF]",
+  accent = "text-(--color-ink)",
   sub,
   sparkData,
-  sparkColor = "#6366F1",
+  sparkColor = "#ff6b1f",
 }: AdvisorMetricCardProps) {
   return (
-    <div className="flex flex-col gap-2 rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
+    <div className="flex flex-col gap-2 rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-6">
+      <p className="text-xs font-semibold uppercase tracking-widest text-(--color-muted)">
         {label}
       </p>
       <p className={`text-4xl font-bold tabular-nums ${accent}`}>{value}</p>
-      {sub && <p className="text-xs text-[#8B8BA7]">{sub}</p>}
+      {sub && <p className="text-xs text-(--color-muted)">{sub}</p>}
       {sparkData && sparkData.length > 0 && (
-        <div className="mt-1 h-10">
+        <div className="mt-1 h-10" aria-hidden="true">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={sparkData}>
               <Line
@@ -144,44 +145,40 @@ type UrgencyQueuePanelProps = {
 };
 
 const STAGE_PRIORITY: Record<string, { label: string; labelColor: string; labelBg: string }> = {
-  "0": { label: "High Priority",   labelColor: "text-rose-400",   labelBg: "bg-rose-500/20"   },
-  "1": { label: "Medium Priority", labelColor: "text-amber-400",  labelBg: "bg-amber-500/20"  },
+  "0": { label: "High Priority",   labelColor: "text-rose-400",    labelBg: "bg-rose-500/20"    },
+  "1": { label: "Medium Priority", labelColor: "text-amber-400",   labelBg: "bg-amber-500/20"   },
 };
 
 function getPriority(stage: string | null) {
   return (
     STAGE_PRIORITY[stage ?? ""] ?? {
       label:      "Standard",
-      labelColor: "text-indigo-400",
-      labelBg:    "bg-indigo-500/20",
+      labelColor: "text-[#ff6b1f]",
+      labelBg:    "bg-[#ff6b1f]/20",
     }
   );
 }
 
 export function UrgencyQueuePanel({ companies, isLoading }: UrgencyQueuePanelProps) {
   return (
-    <div className="flex h-[480px] flex-col rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-6">
+    <div className="flex h-[480px] flex-col rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-6">
       <div className="flex shrink-0 items-start justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
-            Urgency Queue
-          </p>
-          <p className="mt-0.5 text-sm text-[#8B8BA7]">
-            Companies without any match records
-          </p>
+          <p className="text-sm font-semibold text-(--color-ink)">Urgency queue</p>
+          <p className="mt-0.5 text-xs text-(--color-muted)">Companies without match records</p>
         </div>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20" aria-hidden="true">
           <AlertTriangle className="h-4 w-4 text-rose-400" />
         </span>
       </div>
 
       <div className="mt-4 flex-1 overflow-y-auto space-y-3 pr-1">
         {isLoading ? (
-          <p className="py-6 text-center text-sm text-[#8B8BA7]">Loading...</p>
+          <p className="py-6 text-center text-sm text-(--color-muted)">Loading...</p>
         ) : companies.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-[#2A2A3E] py-10">
-            <CheckCircle className="h-6 w-6 text-emerald-400" />
-            <p className="text-sm font-medium text-[#8B8BA7]">
+          <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-(--color-hairline) py-10">
+            <CheckCircle className="h-6 w-6 text-emerald-400" aria-hidden="true" />
+            <p className="text-sm font-medium text-(--color-muted)">
               All companies have matches
             </p>
           </div>
@@ -192,16 +189,16 @@ export function UrgencyQueuePanel({ companies, isLoading }: UrgencyQueuePanelPro
             return (
               <div
                 key={company.id}
-                className="flex items-center gap-3 rounded-2xl border border-[#2A2A3E] bg-[#1A1A26] p-4 transition hover:border-[#3A3A5E]"
+                className="flex items-center gap-3 rounded-2xl border border-(--color-hairline) bg-(--color-surface-strong) p-4 transition hover:border-(--color-border-strong)"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2A2A3E]">
-                  <Building2 className="h-4 w-4 text-[#8B8BA7]" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-(--color-hairline)">
+                  <Building2 className="h-4 w-4 text-(--color-muted)" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#F4F4FF]">
+                  <p className="truncate text-sm font-semibold text-(--color-ink)">
                     {name}
                   </p>
-                  <p className="truncate text-xs text-[#8B8BA7]">
+                  <p className="truncate text-xs text-(--color-muted)">
                     {company.sector || "No sector"} · Stage{" "}
                     {company.stage ?? "—"}
                   </p>
@@ -212,7 +209,7 @@ export function UrgencyQueuePanel({ companies, isLoading }: UrgencyQueuePanelPro
                   >
                     {priority.label}
                   </span>
-                  <span className="text-[11px] text-[#8B8BA7]">
+                  <span className="text-[11px] text-(--color-muted)">
                     {company.verification_status ?? "unverified"}
                   </span>
                 </div>
@@ -233,7 +230,7 @@ type MatchingFunnelPanelProps = {
 };
 
 function fitDotClass(score: number | null) {
-  if (score === null) return "bg-[#4A4A6A]";
+  if (score === null) return "bg-(--color-muted-soft)";
   if (score >= 75) return "bg-emerald-500";
   if (score >= 50) return "bg-amber-400";
   return "bg-rose-400";
@@ -241,31 +238,27 @@ function fitDotClass(score: number | null) {
 
 export function MatchingFunnelPanel({ companies, isLoading }: MatchingFunnelPanelProps) {
   return (
-    <div className="flex h-[480px] flex-col rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-6">
+    <div className="flex h-[480px] flex-col rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-6">
       <div className="flex shrink-0 items-start justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
-            Matching Funnel
-          </p>
-          <p className="mt-0.5 text-sm text-[#8B8BA7]">
-            Active relationships by company
-          </p>
+          <p className="text-sm font-semibold text-(--color-ink)">Matching funnel</p>
+          <p className="mt-0.5 text-xs text-(--color-muted)">Active relationships by company</p>
         </div>
         <Link
           href="/advisor/manual-match"
-          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-(--color-primary) px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#e55919]"
         >
-          <Zap className="h-3.5 w-3.5" />
+          <Zap className="h-3.5 w-3.5" aria-hidden="true" />
           Manual match
         </Link>
       </div>
 
       <div className="mt-4 flex-1 overflow-y-auto space-y-4 pr-1">
         {isLoading ? (
-          <p className="py-6 text-center text-sm text-[#8B8BA7]">Loading...</p>
+          <p className="py-6 text-center text-sm text-(--color-muted)">Loading...</p>
         ) : companies.length === 0 ? (
-          <div className="flex items-center justify-center rounded-2xl border-2 border-dashed border-[#2A2A3E] py-10">
-            <p className="text-sm text-[#8B8BA7]">No active match relationships yet.</p>
+          <div className="flex items-center justify-center rounded-2xl border-2 border-dashed border-(--color-hairline) py-10">
+            <p className="text-sm text-(--color-muted)">No active match relationships yet.</p>
           </div>
         ) : (
           companies.map((company) => {
@@ -273,17 +266,17 @@ export function MatchingFunnelPanel({ companies, isLoading }: MatchingFunnelPane
             return (
               <div
                 key={company.id}
-                className="rounded-2xl border border-[#2A2A3E] bg-[#1A1A26] p-4"
+                className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-strong) p-4"
               >
                 <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
-                    <Building2 className="h-4 w-4 text-indigo-400" />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ff6b1f]/20">
+                    <Building2 className="h-4 w-4 text-(--color-primary)" aria-hidden="true" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#F4F4FF]">
+                    <p className="truncate text-sm font-semibold text-(--color-ink)">
                       {name}
                     </p>
-                    <p className="text-xs text-[#8B8BA7]">
+                    <p className="text-xs text-(--color-muted)">
                       {company.sector || "No sector"}
                     </p>
                   </div>
@@ -296,7 +289,7 @@ export function MatchingFunnelPanel({ companies, isLoading }: MatchingFunnelPane
                       className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition hover:opacity-80 ${
                         match.status === "accepted"
                           ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-[#2A2A3E] text-[#8B8BA7]"
+                          : "bg-(--color-hairline) text-(--color-muted)"
                       }`}
                     >
                       <span
@@ -304,7 +297,7 @@ export function MatchingFunnelPanel({ companies, isLoading }: MatchingFunnelPane
                       />
                       {match.counterpartName}
                       {typeof match.fitScore === "number" && (
-                        <span className="ml-0.5 text-[#8B8BA7]">
+                        <span className="ml-0.5 text-(--color-muted)">
                           · {match.fitScore}
                         </span>
                       )}
@@ -327,16 +320,16 @@ type SectorPieChartProps = {
 };
 
 const PIE_COLORS = [
-  "#6366F1", "#10B981", "#F59E0B",
-  "#EF4444", "#8B5CF6", "#06B6D4", "#F97316",
+  "#ff6b1f", "#10B981", "#F59E0B",
+  "#EF4444", "#ff2e93", "#06B6D4", "#F97316",
 ];
 
 const PIE_DOT_CLASSES = [
-  "bg-indigo-500",
+  "bg-[#ff6b1f]",
   "bg-emerald-500",
   "bg-amber-400",
   "bg-red-500",
-  "bg-violet-500",
+  "bg-[#ff2e93]",
   "bg-cyan-500",
   "bg-orange-500",
 ];
@@ -357,16 +350,14 @@ export function SectorPieChart({ companies }: SectorPieChartProps) {
   if (data.length === 0) return null;
 
   return (
-    <div className="flex h-[480px] flex-col rounded-3xl bg-[#12121A] border border-[#2A2A3E] p-6">
+    <div className="flex h-[480px] flex-col rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-6">
       <div className="shrink-0">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#8B8BA7]">
-          Sector distribution
-        </p>
-        <p className="mt-0.5 text-sm text-[#8B8BA7]">Member industries at a glance</p>
+        <p className="text-sm font-semibold text-(--color-ink)">Sector distribution</p>
+        <p className="mt-0.5 text-xs text-(--color-muted)">Member industries at a glance</p>
       </div>
 
       <div className="mt-5 flex flex-col items-center gap-4 flex-1 overflow-y-auto">
-        <div className="h-44 w-44 shrink-0">
+        <div className="h-44 w-44 shrink-0" role="img" aria-label={`Sector distribution: ${data.map(d => `${d.name} ${d.value}`).join(", ")}`}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -385,12 +376,12 @@ export function SectorPieChart({ companies }: SectorPieChartProps) {
               </Pie>
               <Tooltip
                 contentStyle={{
-                  background: "#1A1A26",
-                  border: "1px solid #2A2A3E",
+                  background: "var(--color-surface-strong)",
+                  border: "1px solid var(--color-hairline)",
                   borderRadius: 12,
                   boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
                   fontSize: 12,
-                  color: "#F4F4FF",
+                  color: "var(--color-ink)",
                 }}
               />
             </PieChart>
@@ -400,10 +391,10 @@ export function SectorPieChart({ companies }: SectorPieChartProps) {
         <ul className="w-full flex flex-col gap-1.5">
           {data.map((d, i) => (
             <li key={d.name} className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${PIE_DOT_CLASSES[i % PIE_DOT_CLASSES.length]}`} />
-              <span className="text-xs text-[#8B8BA7] truncate">
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${PIE_DOT_CLASSES[i % PIE_DOT_CLASSES.length]}`} aria-hidden="true" />
+              <span className="text-xs text-(--color-muted) truncate">
                 {d.name}
-                <span className="ml-1 font-semibold text-[#F4F4FF]">{d.value}</span>
+                <span className="ml-1 font-semibold text-(--color-ink)">{d.value}</span>
               </span>
             </li>
           ))}

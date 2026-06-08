@@ -31,7 +31,9 @@
       "Bash(node scripts/seed-onboarding-test.mjs)",
       "Bash(npm list *)",
       "Bash(node -e \"require\\('resend'\\)\")",
-      "Bash(node scripts/test-signup-email.mjs)"
+      "Bash(node scripts/test-signup-email.mjs)",
+      "Skill(impeccable)",
+      "Skill(impeccable:*)"
     ]
   }
 }

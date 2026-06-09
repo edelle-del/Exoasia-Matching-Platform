@@ -138,17 +138,17 @@ function InvestorDataRoom() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="px-4 sm:px-6 pt-16 pb-8">
+      <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-7xl">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Data Room</p>
-          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data room</h1>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data Room</h1>
           <p className="mt-1 text-sm text-(--color-body)">
             Projects from startups you&apos;ve mutually matched with appear here. Request access to view their documents.
           </p>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-6 pb-8 space-y-8">
         <div className="relative max-w-sm">
           <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
@@ -334,17 +334,17 @@ function StartupDataRoom() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="px-4 sm:px-6 pt-16 pb-8">
+      <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-7xl">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Data Room</p>
-          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data room</h1>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data Room</h1>
           <p className="mt-1 text-sm text-(--color-body)">
             Manage your project documents. Investors must request access before they can view your files.
           </p>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 space-y-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-6 pb-10 space-y-10">
         <section>
           <h2 className="text-base font-semibold text-(--color-ink)">Your projects</h2>
           {projects.length === 0 ? (

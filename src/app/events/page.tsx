@@ -158,11 +158,12 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="px-4 sm:px-6 pt-16 pb-8">
+      <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto w-full max-w-7xl flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">Events</h1>
-            <p className="mt-1 text-sm text-(--color-muted)">RSVP to upcoming FOUNDERS ARENA events</p>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+            <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Events</h1>
+            <p className="mt-1 text-sm text-(--color-muted)">RSVP to upcoming events and meetups</p>
           </div>
           {isAdvisor && (
             <button
@@ -179,7 +180,7 @@ export default function EventsPage() {
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 py-10">
+      <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 pt-6 pb-10">
 
         {/* Add Event Form (advisors only) */}
         {isAdvisor && showAddForm && (

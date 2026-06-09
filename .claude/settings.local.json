@@ -33,7 +33,8 @@
       "Bash(node -e \"require\\('resend'\\)\")",
       "Bash(node scripts/test-signup-email.mjs)",
       "Skill(impeccable)",
-      "Skill(impeccable:*)"
+      "Skill(impeccable:*)",
+      "Bash(npx next *)"
     ]
   }
 }

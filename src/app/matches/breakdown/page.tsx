@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../providers";
@@ -445,7 +445,7 @@ function StatusBadge({ status }: { status: ParamStatus }) {
 
 const FIELDS = "id, full_name, business_name, sector, stage, city, verification_status, member_role, role_title, ask_categories, offer_categories, asks_summary";
 
-export default function BreakdownPage() {
+function BreakdownPage() {
   const params   = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const { user } = useAuth();
@@ -478,6 +478,7 @@ export default function BreakdownPage() {
         { data: theirProfile },
         projectRes,
         scoreRes,
+        ecoScoreRes,
       ] = await Promise.all([
         supabase.from("profiles").select(FIELDS).eq("id", profileAId).single(),
         supabase.from("profiles").select(FIELDS).eq("id", profileBId).single(),
@@ -492,6 +493,15 @@ export default function BreakdownPage() {
               .or(`investor_profile_id.eq.${profileAId},investor_profile_id.eq.${profileBId}`)
               .maybeSingle()
           : Promise.resolve({ data: null }),
+        // Ecosystem partner scores live in a separate table
+        projectId
+          ? supabase
+              .from("ecosystem_match_scores")
+              .select("summary, rationale")
+              .eq("project_id", projectId)
+              .or(`eco_partner_profile_id.eq.${profileAId},eco_partner_profile_id.eq.${profileBId}`)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
 
       setMine(myProfile as Profile ?? null);
@@ -499,8 +509,11 @@ export default function BreakdownPage() {
       const proj = (projectRes as { data: unknown }).data as { stage: string | null } | null;
       setProjectStage(proj?.stage ?? null);
 
-      // Extract AI category scores stored as _cs_* keys in the rationale JSONB column.
-      const scoreData = ((scoreRes as { data: unknown }).data as { summary?: string; rationale?: Record<string, unknown> } | null);
+      // Use ecosystem_match_scores if project_match_scores has no data (ecosystem partner view)
+      const scoreData = (
+        (scoreRes as { data: unknown }).data ??
+        (ecoScoreRes as { data: unknown }).data
+      ) as { summary?: string; rationale?: Record<string, unknown> } | null;
       const rat = scoreData?.rationale ?? {};
       const toNum = (v: unknown) => typeof v === "number" ? v : typeof v === "string" ? Number(v) || undefined : undefined;
       setAiCatScores({
@@ -576,6 +589,31 @@ export default function BreakdownPage() {
         newScore = projectId
           ? data.scores?.find((s) => s.project_id === projectId)?.fit_score
           : data.scores?.[0]?.fit_score;
+
+        // Re-fetch AI summary + rationale from ecosystem_match_scores
+        if (newScore != null && projectId) {
+          const { data: fresh } = await supabase
+            .from("ecosystem_match_scores")
+            .select("summary, rationale")
+            .eq("project_id", projectId)
+            .or(`eco_partner_profile_id.eq.${profileAId},eco_partner_profile_id.eq.${profileBId}`)
+            .maybeSingle();
+          const freshData = fresh as { summary?: string; rationale?: Record<string, unknown> } | null;
+          const rat = freshData?.rationale ?? {};
+          const toNum = (v: unknown) => typeof v === "number" ? v : typeof v === "string" ? Number(v) || undefined : undefined;
+          setAiCatScores({
+            sector_vertical:   toNum(rat._cs_sector_vertical),
+            stage_fit:         toNum(rat._cs_stage_fit),
+            investment_thesis: toNum(rat._cs_investment_thesis),
+            geographic_fit:    toNum(rat._cs_geographic_fit),
+          });
+          setAiSummary(freshData?.summary ?? null);
+          const ratText: Record<string, string> = {};
+          for (const [k, v] of Object.entries(rat)) {
+            if (!k.startsWith("_cs_") && typeof v === "string") ratText[k] = v;
+          }
+          setAiRationale(ratText);
+        }
       } else {
         // Investor or startup path.
         const res = await fetch(`/api/projects/${projectId}/generate-match`, { method: "POST" });
@@ -637,8 +675,11 @@ export default function BreakdownPage() {
       <section className="border-b border-[#2A2A3E] bg-[#12121A] px-4 sm:px-6 py-8">
         <div className="mx-auto max-w-5xl">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/matches" className="text-sm text-indigo-400 hover:underline">
-              ← Back to matches
+            <Link
+              href={mine?.member_role === "ecosystem_partner" ? "/ecosystem" : "/matches"}
+              className="text-sm text-indigo-400 hover:underline"
+            >
+              {mine?.member_role === "ecosystem_partner" ? "← Back to portfolio" : "← Back to matches"}
             </Link>
             {canRescore && (
               <div className="flex items-center gap-3">
@@ -878,5 +919,20 @@ export default function BreakdownPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BreakdownPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
+        <div className="space-y-3 text-center">
+          <div className="h-8 w-72 animate-pulse rounded-xl bg-[#12121A]" />
+          <div className="h-4 w-48 animate-pulse rounded bg-[#12121A] mx-auto" />
+        </div>
+      </div>
+    }>
+      <BreakdownPage />
+    </Suspense>
   );
 }

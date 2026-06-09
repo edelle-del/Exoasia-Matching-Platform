@@ -366,9 +366,12 @@ export default function DashboardPage() {
               <ProfileStrengthRing percent={isLoading ? 0 : profilePercent} />
             </div>
             <p className="mt-2 text-sm text-(--color-body)">
-              You're a member at Stage {summary.profile?.stage || "0"} ·
-              Verification{" "}
-              {summary.profile?.verification_status || "unverified"}
+              {isEcosystemPartner
+                ? isLoading
+                  ? "Loading portfolio…"
+                  : `${partnerStats?.total_companies ?? 0} ${(partnerStats?.total_companies ?? 0) === 1 ? "company" : "companies"} in portfolio · ${partnerStats?.active_matches ?? 0} active deals`
+                : `You're a member at Stage ${summary.profile?.stage || "0"} · Verification ${summary.profile?.verification_status || "unverified"}`
+              }
             </p>
             {profileNextStep && (
               <p className="mt-1 text-xs text-(--color-muted)">
@@ -379,90 +382,100 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Row 1: Credits + Pipeline stats */}
-        <section className="space-y-3">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-live="polite" aria-label="Key metrics">
-          <MetricCard
-            label="Credits"
-            value={isLoading ? "..." : String(summary.credits)}
-            valueColor="text-(--color-primary)"
-          />
-          <MetricCard
-            label={isInvestor ? "Opportunities" : "Projects"}
-            value={
-              isLoading
-                ? "..."
-                : pipelineStats.activeProjects > 0
-                  ? String(pipelineStats.activeProjects)
-                  : "—"
-            }
-            valueColor="text-(--color-accent-gold)"
-          />
-          <MetricCard
-            label={isInvestor ? "Score cards" : "Inv. matches"}
-            value={
-              isLoading
-                ? "..."
-                : pipelineStats.investorMatches > 0
-                  ? String(pipelineStats.investorMatches)
-                  : "—"
-            }
-            valueColor="text-(--color-primary)"
-          />
-          <MetricCard
-            label="Best fit"
-            value={
-              isLoading
-                ? "..."
-                : pipelineStats.bestFit > 0
-                  ? `${pipelineStats.bestFit}%`
-                  : "—"
-            }
-            valueColor={
-              pipelineStats.bestFit >= 80
-                ? "text-emerald-500"
-                : pipelineStats.bestFit >= 65
-                  ? "text-(--color-primary)"
-                  : "text-amber-500"
-            }
-          />
-        </div>
-        {!isInvestor && !isEcosystemPartner && (
-          <div className="flex justify-end">
-            <Link
-              href="/matches"
-              className="inline-flex min-h-[44px] items-center text-xs font-semibold text-(--color-primary) hover:underline"
-            >
-              View project pipeline →
-            </Link>
-          </div>
-        )}
-        </section>
+        {isEcosystemPartner ? (
+          /* ── Ecosystem partner layout ─────────────────────────── */
+          <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+            <PartnerDealOverviewCard
+              totalCollabs={partnerStats?.total_companies ?? 0}
+              totalProjects={partnerStats?.total_projects ?? 0}
+              activeMatches={partnerStats?.active_matches ?? 0}
+              introCount={partnerStats?.intro_count ?? 0}
+              staleCount={partnerStats?.stale_count ?? 0}
+              stageCounts={partnerStats?.stage_counts ?? {}}
+              isLoading={isLoading || partnerStats === null}
+            />
+            <NotificationsCard
+              notifications={notifications}
+              isLoading={isLoading}
+            />
+          </section>
+        ) : (
+          /* ── Startup / investor layout ────────────────────────── */
+          <>
+            {/* Row 1: Credits + Pipeline stats */}
+            <section className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-live="polite" aria-label="Key metrics">
+                <MetricCard
+                  label="Credits"
+                  value={isLoading ? "..." : String(summary.credits)}
+                  valueColor="text-(--color-primary)"
+                />
+                <MetricCard
+                  label={isInvestor ? "Opportunities" : "Projects"}
+                  value={
+                    isLoading
+                      ? "..."
+                      : pipelineStats.activeProjects > 0
+                        ? String(pipelineStats.activeProjects)
+                        : "—"
+                  }
+                  valueColor="text-(--color-accent-gold)"
+                />
+                <MetricCard
+                  label={isInvestor ? "Score cards" : "Inv. matches"}
+                  value={
+                    isLoading
+                      ? "..."
+                      : pipelineStats.investorMatches > 0
+                        ? String(pipelineStats.investorMatches)
+                        : "—"
+                  }
+                  valueColor="text-(--color-primary)"
+                />
+                <MetricCard
+                  label="Best fit"
+                  value={
+                    isLoading
+                      ? "..."
+                      : pipelineStats.bestFit > 0
+                        ? `${pipelineStats.bestFit}%`
+                        : "—"
+                  }
+                  valueColor={
+                    pipelineStats.bestFit >= 80
+                      ? "text-emerald-500"
+                      : pipelineStats.bestFit >= 65
+                        ? "text-(--color-primary)"
+                        : "text-amber-500"
+                  }
+                />
+              </div>
+              {!isInvestor && (
+                <div className="flex justify-end">
+                  <Link
+                    href="/matches"
+                    className="inline-flex min-h-[44px] items-center text-xs font-semibold text-(--color-primary) hover:underline"
+                  >
+                    View project pipeline →
+                  </Link>
+                </div>
+              )}
+            </section>
 
-        {/* Row 2: Deal board graph + Notifications */}
-        <section className="grid gap-6 lg:grid-cols-2">
-          <DealBoardSnapshotCard
-            stageCounts={dealStageCounts}
-            isLoading={isLoading}
-          />
-          <NotificationsCard
-            notifications={notifications}
-            isLoading={isLoading}
-          />
-        </section>
-
-        {/* Partner deal board overview (ecosystem partners only) */}
-        {isEcosystemPartner && (
-          <PartnerDealOverviewCard
-            totalCollabs={partnerStats?.total_companies ?? 0}
-            totalProjects={partnerStats?.total_projects ?? 0}
-            activeMatches={partnerStats?.active_matches ?? 0}
-            introCount={partnerStats?.intro_count ?? 0}
-            staleCount={partnerStats?.stale_count ?? 0}
-            stageCounts={partnerStats?.stage_counts ?? {}}
-            isLoading={isLoading || (isEcosystemPartner && partnerStats === null)}
-          />
+            {/* Row 2: Deal board graph + Notifications */}
+            <section className="grid gap-6 lg:grid-cols-2">
+              <DealBoardSnapshotCard
+                stageCounts={dealStageCounts}
+                isLoading={isLoading}
+              />
+              <NotificationsCard
+                notifications={notifications}
+                isLoading={isLoading}
+              />
+            </section>
+          </>
         )}
+
       </div>
     </div>
   );

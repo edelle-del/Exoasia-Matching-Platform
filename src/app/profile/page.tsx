@@ -420,14 +420,15 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="px-4 sm:px-6 pt-16 pb-8">
+      <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-7xl">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+              <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">
                 Profile
               </h1>
-              <p className="mt-2 text-sm text-(--color-body)">
+              <p className="mt-1 text-sm text-(--color-muted)">
                 {profile?.full_name || "Member profile"} · Stage{" "}
                 {profile?.stage || "0"}
               </p>
@@ -447,7 +448,7 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 py-10">
+      <div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 pt-6 pb-10">
         <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
           <h2 className="text-lg font-semibold text-(--color-ink)">
             Business summary

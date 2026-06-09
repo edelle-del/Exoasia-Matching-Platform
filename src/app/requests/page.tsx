@@ -586,9 +586,10 @@ export default function RequestsPage() {
   return (
     <div className="min-h-screen bg-(--color-canvas)">
       {/* Header */}
-      <section className="px-4 sm:px-6 pt-16 pb-8">
+      <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-3xl">
-          <div className="flex items-baseline gap-3">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <div className="mt-1 flex items-baseline gap-3">
             <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">Requests</h1>
             {pendingCount > 0 && (
               <span className="rounded-full bg-violet-500 px-2.5 py-0.5 text-xs font-bold text-white">
@@ -596,7 +597,7 @@ export default function RequestsPage() {
               </span>
             )}
           </div>
-          <p className="mt-2 text-sm text-(--color-body)">
+          <p className="mt-1 text-sm text-(--color-muted)">
             {isAcceptedTab
               ? "Previously accepted invitations and requests."
               : "Pending invitations and requests that need your response."}
@@ -604,7 +605,7 @@ export default function RequestsPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-6 pb-8">
         {/* Tabs */}
         <div className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
           {tabs.map((tab) => {

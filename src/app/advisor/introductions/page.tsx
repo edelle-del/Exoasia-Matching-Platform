@@ -96,12 +96,12 @@ export default function AdvisorIntroductionsPage() {
 
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Advisor Portal</p>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">
             Introduction facilitation
           </h1>
-          <p className="mt-1 text-sm text-(--color-body)">
-            Both members have accepted these matches. Write the warm
-            introduction and mark it as sent.
+          <p className="mt-1 text-sm text-(--color-muted)">
+            Both members have accepted these matches. Write the warm introduction and mark it as sent.
           </p>
         </div>
 

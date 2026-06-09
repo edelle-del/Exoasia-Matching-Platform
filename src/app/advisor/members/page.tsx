@@ -125,10 +125,11 @@ export default function AdvisorMembersPage() {
 
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Advisor Portal</p>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">
             Member management
           </h1>
-          <p className="mt-1 text-sm text-(--color-body)">
+          <p className="mt-1 text-sm text-(--color-muted)">
             View and manage all members, stage progression, and account status.
           </p>
         </div>

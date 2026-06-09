@@ -459,6 +459,7 @@ export default function MatchesPage() {
         <div className="ma-header-inner">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
               <h1 className="ma-header-title">
                 {isInvestor ? "Projects & Pipeline" : "Your Matches"}
               </h1>

@@ -122,21 +122,15 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="px-4 sm:px-6 pt-16 pb-8">
+      <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-7xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
-            FOUNDERS ARENA
-          </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-(--color-ink)">
-            Community
-          </h1>
-          <p className="mt-1 text-sm text-(--color-body)">
-            Browse all members in the network.
-          </p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Community</h1>
+          <p className="mt-1 text-sm text-(--color-muted)">Browse all members in the network.</p>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 py-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 pt-6 pb-8">
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
           <input

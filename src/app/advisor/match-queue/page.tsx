@@ -141,12 +141,12 @@ export default function AdvisorMatchQueuePage() {
       <div className="mx-auto w-full max-w-5xl space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Advisor Portal</p>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">
             Match review queue
           </h1>
-          <p className="mt-1 text-sm text-(--color-body)">
-            Approve or decline AI-generated matches before members can see them.
-            Approved matches notify both members and open their response window.
+          <p className="mt-1 text-sm text-(--color-muted)">
+            Approve or decline AI-generated matches before members can see them. Approved matches notify both members and open their response window.
           </p>
         </div>
 

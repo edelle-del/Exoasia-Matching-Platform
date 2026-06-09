@@ -55,21 +55,9 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
 
       {/* Portfolio company feed */}
       <div className="rounded-2xl border border-[#2A2A3E] bg-[#12121A]">
-        <div className="flex items-center justify-between border-b border-[#2A2A3E] px-5 py-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Portfolio Companies</p>
-            <p className="mt-0.5 text-sm font-semibold text-[#F4F4FF]">Live pipeline status</p>
-          </div>
-          <button
-            type="button"
-            onClick={onNominate}
-            className="flex items-center gap-2 rounded-lg bg-violet-600/30 px-3 py-2 text-xs font-bold text-violet-300 transition hover:bg-violet-600/50"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Invite to Collab
-          </button>
+        <div className="border-b border-[#2A2A3E] px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Portfolio Companies</p>
+          <p className="mt-0.5 text-sm font-semibold text-[#F4F4FF]">Live pipeline status</p>
         </div>
 
         {isLoading ? (

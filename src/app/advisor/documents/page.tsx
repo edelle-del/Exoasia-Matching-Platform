@@ -164,12 +164,12 @@ export default function AdvisorDocumentsPage() {
 
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Advisor Portal</p>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">
             Document review
           </h1>
-          <p className="mt-1 text-sm text-(--color-body)">
-            Approve or reject Stage 2 KYC submissions. Approval automatically
-            advances the member to Stage 2.
+          <p className="mt-1 text-sm text-(--color-muted)">
+            Approve or reject Stage 2 KYC submissions. Approval automatically advances the member to Stage 2.
           </p>
         </div>
 

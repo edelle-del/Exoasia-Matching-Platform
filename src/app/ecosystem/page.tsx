@@ -338,9 +338,9 @@ export default function EcosystemPage() {
         {/* Page header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Ecosystem Partner</p>
-            <h1 className="mt-1 text-2xl font-extrabold text-[#F4F4FF]">Portfolio</h1>
-            <p className="mt-1 text-sm text-[#8B8BA7]">Portfolio pipeline · Invite startups · Year-round deal flow</p>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Ecosystem Partner</p>
+            <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Portfolio</h1>
+            <p className="mt-1 text-sm text-(--color-muted)">Portfolio pipeline · Invite startups · Year-round deal flow</p>
           </div>
           <button
             type="button"
@@ -350,7 +350,7 @@ export default function EcosystemPage() {
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Invite Startup
+            Invite to Collab
           </button>
         </div>
 

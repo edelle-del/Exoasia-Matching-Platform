@@ -1932,7 +1932,7 @@ button {
 .db-header-inner {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 40px 20px 16px;
+  padding: 40px 20px 4px;
 }
 
 .db-header-back {
@@ -2345,7 +2345,7 @@ button {
 
 .ma-header {
   /* no background or border — header lives on the canvas */
-  padding: 40px 24px 8px;
+  padding: 40px 24px 4px;
   flex-shrink: 0;
 }
 

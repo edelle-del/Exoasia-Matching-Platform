@@ -1,9 +1,11 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const ADMIN_EMAIL = "exoasia.seanjaredsantos@gmail.com";
 const FROM = "onboarding@resend.dev";
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 export async function sendNewSignupNotification(user: {
   email: string;
@@ -17,7 +19,7 @@ export async function sendNewSignupNotification(user: {
     timeStyle: "short",
   });
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: ADMIN_EMAIL,
     subject: `New signup: ${user.email}`,

@@ -106,7 +106,7 @@ function displayName(p: Profile | null) { return p?.business_name || p?.full_nam
 function scoreFromEvidence(params: Param[]): number {
   const scoreable = params.filter((p) => p.status !== "partial" || true); // include all
   if (scoreable.length === 0) return 50;
-  const pts = scoreable.map((p) =>
+  const pts: number[] = scoreable.map((p) =>
     p.status === "matched" ? 100 : p.status === "partial" ? 50 : 0,
   );
   return Math.round(pts.reduce((a, b) => a + b, 0) / pts.length);

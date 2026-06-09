@@ -381,7 +381,7 @@ export default function DashboardPage() {
 
         {/* Row 1: Credits + Pipeline stats */}
         <section className="space-y-3">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-busy={isLoading ? "true" : "false"} aria-label="Key metrics">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-live="polite" aria-label="Key metrics">
           <MetricCard
             label="Credits"
             value={isLoading ? "..." : String(summary.credits)}

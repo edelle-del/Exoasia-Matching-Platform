@@ -120,18 +120,12 @@ export default function AdvisorMembersPage() {
     search || stageFilter !== "all" || verificationFilter !== "all" || statusFilter !== "all";
 
   return (
-    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
+    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 pt-16 pb-12">
       <div className="mx-auto w-full max-w-7xl space-y-8">
 
         {/* Header */}
         <div>
-          <Link
-            href="/dashboard"
-            className="text-sm text-(--color-muted) transition hover:text-(--color-ink)"
-          >
-            ← Dashboard
-          </Link>
-          <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
+          <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
             Member management
           </h1>
           <p className="mt-1 text-sm text-(--color-body)">
@@ -184,6 +178,7 @@ export default function AdvisorMembersPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
           <select
+            aria-label="Filter by verification status"
             className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-3 py-3 text-sm text-(--color-ink) focus:border-(--color-primary) focus:outline-none"
             value={verificationFilter}
             onChange={(e) => setVerificationFilter(e.target.value)}
@@ -194,6 +189,7 @@ export default function AdvisorMembersPage() {
             <option value="verified">Verified</option>
           </select>
           <select
+            aria-label="Filter by member status"
             className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-3 py-3 text-sm text-(--color-ink) focus:border-(--color-primary) focus:outline-none"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}

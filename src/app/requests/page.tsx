@@ -586,13 +586,10 @@ export default function RequestsPage() {
   return (
     <div className="min-h-screen bg-(--color-canvas)">
       {/* Header */}
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
+      <section className="px-4 sm:px-6 pt-16 pb-8">
         <div className="mx-auto max-w-3xl">
-          <Link href="/dashboard" className="text-sm text-(--color-primary) hover:underline">
-            ← Back to dashboard
-          </Link>
-          <div className="mt-3 flex items-center gap-3">
-            <h1 className="text-3xl font-semibold text-(--color-ink)">Requests</h1>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">Requests</h1>
             {pendingCount > 0 && (
               <span className="rounded-full bg-violet-500 px-2.5 py-0.5 text-xs font-bold text-white">
                 {pendingCount}

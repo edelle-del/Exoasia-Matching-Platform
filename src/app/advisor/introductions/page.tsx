@@ -91,18 +91,12 @@ export default function AdvisorIntroductionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
+    <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 pt-16 pb-12">
       <div className="mx-auto w-full max-w-3xl space-y-8">
 
         {/* Header */}
         <div>
-          <Link
-            href="/dashboard"
-            className="text-sm text-(--color-muted) transition hover:text-(--color-ink)"
-          >
-            ← Dashboard
-          </Link>
-          <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
+          <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
             Introduction facilitation
           </h1>
           <p className="mt-1 text-sm text-(--color-body)">

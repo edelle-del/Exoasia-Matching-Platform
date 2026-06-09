@@ -420,17 +420,11 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
+      <section className="px-4 sm:px-6 pt-16 pb-8">
         <div className="mx-auto max-w-7xl">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <Link
-                href="/dashboard"
-                className="text-sm text-(--color-primary) hover:underline"
-              >
-                ← Back to dashboard
-              </Link>
-              <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
+              <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">
                 Profile
               </h1>
               <p className="mt-2 text-sm text-(--color-body)">

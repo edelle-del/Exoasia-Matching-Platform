@@ -1922,3 +1922,481 @@ button {
     transition: none;
   }
 }
+
+/* ── Deal Board ────────────────────────────────────────────── */
+
+.db-header {
+  /* no background or border — header lives on the canvas */
+}
+
+.db-header-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 40px 20px 16px;
+}
+
+.db-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono), "JetBrains Mono", monospace;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.db-header-back:hover { color: var(--color-primary); }
+
+.db-header-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-wrap: balance;
+  margin: 0 0 6px 0;
+}
+
+.db-header-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.db-stale-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.06em;
+  background: rgba(255, 107, 31, 0.1);
+  color: var(--color-primary);
+}
+
+.db-stale-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+  display: block;
+}
+
+.db-total-count {
+  font-size: 11px;
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.db-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface-strong);
+}
+
+.db-summary-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--db-dot);
+  box-shadow: 0 0 4px var(--db-glow, transparent);
+}
+
+.db-summary-label {
+  font-size: 11px;
+  color: var(--color-body);
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.04em;
+}
+
+.db-summary-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--db-dot);
+  font-family: var(--font-mono), monospace;
+}
+
+.db-board-outer {
+  overflow-x: auto;
+  overflow-y: auto;
+  padding: 24px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted-soft) var(--color-surface-soft);
+}
+
+.db-board-outer::-webkit-scrollbar {
+  height: 8px;
+}
+
+.db-board-outer::-webkit-scrollbar-track {
+  background: var(--color-surface-soft);
+  border-radius: 9999px;
+}
+
+.db-board-outer::-webkit-scrollbar-thumb {
+  background: var(--color-muted-soft);
+  border-radius: 9999px;
+  transition: background 150ms ease;
+}
+
+.db-board-outer::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+.db-board-inner {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  min-width: max-content;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.db-column {
+  width: 276px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.db-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-hairline);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  background: var(--color-surface-strong);
+}
+
+.db-col-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--db-dot);
+  box-shadow: 0 0 6px var(--db-glow, transparent);
+}
+
+.db-col-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  border: 1px solid var(--db-count-border, var(--color-hairline));
+  background: var(--db-count-bg, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--db-count-color, var(--color-muted));
+  font-family: var(--font-mono), "JetBrains Mono", monospace;
+}
+
+.db-col-body {
+  border: 1px solid var(--color-hairline);
+  border-radius: 0 0 10px 10px;
+  background: var(--color-surface-soft);
+  min-height: 100px;
+  overflow: hidden;
+}
+
+.db-intros-section {
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.db-intros-label {
+  padding: 10px 12px 4px;
+  font-size: 10px;
+  font-family: var(--font-mono), "JetBrains Mono", monospace;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.db-intro-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-hairline);
+  background: rgba(255, 107, 31, 0.03);
+}
+
+.db-intro-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(255, 107, 31, 0.12);
+  border: 1px solid rgba(255, 107, 31, 0.2);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.db-intro-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+  color: var(--color-muted);
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.db-intro-link:hover {
+  color: var(--color-primary);
+  border-color: rgba(255, 107, 31, 0.3);
+}
+
+.db-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.db-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px dashed var(--db-empty-border, rgba(139, 139, 167, 0.22));
+  margin-bottom: 4px;
+}
+
+.db-empty-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-muted-soft);
+}
+
+.db-card {
+  padding: 12px 14px;
+  background: var(--db-card-bg, transparent);
+}
+
+.db-card + .db-card {
+  border-top: 1px solid var(--color-hairline);
+}
+
+.db-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin: 0 0 2px 0;
+}
+
+.db-card-counterpart {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.db-conf-badge {
+  border-radius: 9999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--db-conf-border);
+  background: var(--color-surface-strong);
+  color: var(--db-conf-color);
+}
+
+.db-next-action {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  margin-bottom: 10px;
+}
+
+.db-next-label {
+  font-size: 10px;
+  font-family: var(--font-mono), "JetBrains Mono", monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 2px 0;
+}
+
+.db-next-text {
+  font-size: 12px;
+  color: var(--color-body);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.db-card-meta {
+  font-size: 12px;
+  color: var(--color-body);
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+}
+
+.db-card-close-reason {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin: 0 0 10px 0;
+}
+
+.db-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.db-age {
+  font-size: 10px;
+  font-family: var(--font-mono), monospace;
+  color: var(--db-age-color, var(--color-muted));
+  font-weight: var(--db-age-weight, 400);
+  flex-shrink: 0;
+}
+
+.db-status-chip {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-mono), monospace;
+  background: var(--db-chip-bg);
+  color: var(--db-chip-color);
+  flex-shrink: 0;
+}
+
+.db-touch-btn {
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+  color: var(--color-body);
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+}
+
+.db-touch-btn:hover {
+  border-color: rgba(255, 107, 31, 0.4);
+  color: var(--color-primary);
+  background: rgba(255, 107, 31, 0.04);
+}
+
+.db-touch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-header-back,
+  .db-intro-link,
+  .db-touch-btn {
+    transition: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MATCHES PAGE — ma-* classes
+   ═══════════════════════════════════════════════════════ */
+
+.ma-header {
+  /* no background or border — header lives on the canvas */
+  padding: 40px 24px 8px;
+  flex-shrink: 0;
+}
+
+.ma-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.ma-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: color 150ms ease;
+}
+
+.ma-header-back:hover { color: var(--color-primary); }
+
+.ma-header-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 4px 0;
+}
+
+.ma-header-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.ma-section-label {
+  font-family: var(--font-mono), "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ma-header-back { transition: none; }
+}

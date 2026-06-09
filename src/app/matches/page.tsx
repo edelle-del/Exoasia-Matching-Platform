@@ -455,35 +455,36 @@ export default function MatchesPage() {
   return (
     <div className="min-h-screen bg-(--color-canvas) text-(--color-ink)">
       {/* Header */}
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-8">
-        <div className="mx-auto w-full max-w-7xl flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Matches</p>
-            <h1 className="mt-1 text-3xl font-bold text-(--color-ink)">
-              {isInvestor ? "Projects & Pipeline" : "Your Projects & Pipeline"}
-            </h1>
-            <p className="mt-1 text-sm text-(--color-muted)">
-              {isLoading
-                ? "Loading…"
-                : isInvestor
-                  ? `${projects.length} project${projects.length !== 1 ? "s" : ""} · ${matches.length} intro${matches.length !== 1 ? "s" : ""}`
-                  : pendingCount > 0
-                    ? `${pendingCount} pending response${pendingCount > 1 ? "s" : ""} · ${matches.length} total intro${matches.length !== 1 ? "s" : ""}`
-                    : `${projects.length} project${projects.length !== 1 ? "s" : ""} · ${matches.length} intro${matches.length !== 1 ? "s" : ""}`}
-            </p>
+      <header className="ma-header">
+        <div className="ma-header-inner">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="ma-header-title">
+                {isInvestor ? "Projects & Pipeline" : "Your Matches"}
+              </h1>
+              <p className="ma-header-desc">
+                {isLoading
+                  ? "Loading…"
+                  : isInvestor
+                    ? `${projects.length} project${projects.length !== 1 ? "s" : ""} · ${matches.length} intro${matches.length !== 1 ? "s" : ""}`
+                    : isStartup
+                      ? pendingCount > 0
+                        ? `${pendingCount} pending response${pendingCount > 1 ? "s" : ""} · ${matches.length} total intro${matches.length !== 1 ? "s" : ""}`
+                        : `${projects.length} project${projects.length !== 1 ? "s" : ""} · ${matches.length} intro${matches.length !== 1 ? "s" : ""}`
+                      : `${matches.length} intro${matches.length !== 1 ? "s" : ""}`}
+              </p>
+            </div>
+            {isStartup && !isLoading && (
+              <Link
+                href={!hasActiveSub && projects.length >= 1 ? "/payments" : "/projects/new"}
+                className="gn-btn-primary shrink-0"
+              >
+                + New project
+              </Link>
+            )}
           </div>
-
-          {/* Startup: new project */}
-          {isStartup && !isLoading && (
-            <Link
-              href={!hasActiveSub && projects.length >= 1 ? "/payments" : "/projects/new"}
-              className="gn-btn-primary shrink-0"
-            >
-              + New project
-            </Link>
-          )}
         </div>
-      </section>
+      </header>
 
       <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 py-10">
 
@@ -491,9 +492,49 @@ export default function MatchesPage() {
         {/* ── STARTUP VIEW ───────────────────────────────────────────────────── */}
         {isStartup && (
           <>
+            {/* ── Pending responses ── */}
+            {!isLoading && (pendingMatches.length > 0 || portfolioInvites.length > 0) && (
+              <section>
+                <h2 className="ma-section-label">
+                  Pending responses
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-(--color-primary)/10 px-1.5 py-px text-[10px] font-bold tabular-nums text-(--color-primary)">
+                    {pendingCount}
+                  </span>
+                </h2>
+                {pendingMatches.length > 0 && (
+                  <div className="mb-3">
+                    <MatchList
+                      matches={pendingMatches}
+                      userId={user?.id ?? ""}
+                      userRole={memberRole}
+                      onRespond={handleRespond}
+                      respondingId={respondingMatchId}
+                      subscriptionActive={hasActiveSub}
+                    />
+                  </div>
+                )}
+                {portfolioInvites.length > 0 && (
+                  <div className="space-y-2.5">
+                    {portfolioInvites.map((invite) => (
+                      <CollabInviteCard
+                        key={invite.id}
+                        invite={invite}
+                        userId={user?.id ?? ""}
+                        isExpanded={expandedInviteId === invite.id}
+                        onToggle={() => setExpandedInviteId((prev) => (prev === invite.id ? null : invite.id))}
+                        isResponding={respondingInviteId === invite.id}
+                        onAccept={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
+                        onDecline={() => void handlePortfolioInviteRespond(invite.id, "declined")}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
             <section>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Your Projects</h2>
+                <h2 className="ma-section-label">Your Projects</h2>
               </div>
 
               {isLoading ? (
@@ -592,6 +633,32 @@ export default function MatchesPage() {
         {/* ── INVESTOR VIEW ──────────────────────────────────────────────────── */}
         {isInvestor && (
           <>
+            {/* ── Collab invites ── */}
+            {!isLoading && portfolioInvites.length > 0 && (
+              <section>
+                <h2 className="ma-section-label">
+                  Collaboration invites
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-(--color-primary)/10 px-1.5 py-px text-[10px] font-bold tabular-nums text-(--color-primary)">
+                    {portfolioInvites.length}
+                  </span>
+                </h2>
+                <div className="space-y-2.5">
+                  {portfolioInvites.map((invite) => (
+                    <CollabInviteCard
+                      key={invite.id}
+                      invite={invite}
+                      userId={user?.id ?? ""}
+                      isExpanded={expandedInviteId === invite.id}
+                      onToggle={() => setExpandedInviteId((prev) => (prev === invite.id ? null : invite.id))}
+                      isResponding={respondingInviteId === invite.id}
+                      onAccept={() => void handlePortfolioInviteRespond(invite.id, "accepted")}
+                      onDecline={() => void handlePortfolioInviteRespond(invite.id, "declined")}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* ── Investor view controls ── */}
             {!isLoading && (
               <div className="flex items-center justify-between gap-3">
@@ -643,7 +710,7 @@ export default function MatchesPage() {
 
             {/* ── Projects ── */}
             <section>
-              <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">
+              <h2 className="ma-section-label">
                 {view === "top5" ? "Top 5 Matches" : "All Projects"}
               </h2>
 
@@ -694,7 +761,7 @@ export default function MatchesPage() {
                               <div className="flex shrink-0 items-center gap-3">
                                 <div className="text-right">
                                   <p className={`text-xl font-bold ${scoreColorClass(score.fit_score)}`}>{score.fit_score}%</p>
-                                  <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
                                 </div>
                                 <PieScore score={score.fit_score} />
                                 <svg className={`h-4 w-4 text-(--color-muted) transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -733,11 +800,31 @@ export default function MatchesPage() {
                                       {founder.business_name && <p className="text-xs text-(--color-muted)">{founder.business_name}</p>}
                                       {founder.role_title && <p className="text-xs text-(--color-muted)">{founder.role_title}</p>}
                                     </div>
-                                    <div className="flex flex-wrap gap-3 text-xs text-(--color-muted)">
-                                      {founder.city && <span>📍 {founder.city}</span>}
-                                      {founder.sector && <span>🏭 {founder.sector}</span>}
-                                      {founder.years_in_operation && <span>🕐 {founder.years_in_operation} in operation</span>}
-                                      {founder.employee_band && <span>👥 {founder.employee_band} employees</span>}
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-(--color-muted)">
+                                      {founder.city && (
+                                        <span className="flex items-center gap-1">
+                                          <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                          {founder.city}
+                                        </span>
+                                      )}
+                                      {founder.sector && (
+                                        <span className="flex items-center gap-1">
+                                          <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                          {founder.sector}
+                                        </span>
+                                      )}
+                                      {founder.years_in_operation && (
+                                        <span className="flex items-center gap-1">
+                                          <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                          {founder.years_in_operation} in operation
+                                        </span>
+                                      )}
+                                      {founder.employee_band && (
+                                        <span className="flex items-center gap-1">
+                                          <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                          {founder.employee_band} employees
+                                        </span>
+                                      )}
                                     </div>
                                     {founder.short_bio && <p className="text-sm text-(--color-body) leading-relaxed">{founder.short_bio}</p>}
                                   </div>
@@ -801,7 +888,7 @@ export default function MatchesPage() {
                                 <>
                                   <div className="text-right">
                                     <p className={`text-xl font-bold ${scoreColorClass(existingScore.fit_score)}`}>{existingScore.fit_score}%</p>
-                                    <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
                                   </div>
                                   <PieScore score={existingScore.fit_score} />
                                 </>
@@ -915,7 +1002,7 @@ export default function MatchesPage() {
         {/* ── Fallback ───────────────────────────────────────────────────────── */}
         {!isStartup && !isInvestor && !isEcosystemPartner && !isLoading && (
           <section>
-            <h2 className="mb-4 text-xs font-bold uppercase tracking-[.15em] text-(--color-muted)">Your Intros</h2>
+            <h2 className="ma-section-label">Your Intros</h2>
             {matches.length === 0 ? (
               <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
                 <p className="text-sm font-semibold text-(--color-ink)">No intros yet</p>
@@ -1079,7 +1166,7 @@ function FounderProfileModal({
                   </span>
                 )}
                 {extra?.verification_status === "verified" && (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">✓ Verified</span>
+                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-400">✓ Verified</span>
                 )}
               </div>
             </div>
@@ -1385,7 +1472,7 @@ function CollabInviteCard({
               <p className={`text-base font-bold tabular-nums ${invite.eco_score >= 75 ? "text-emerald-500" : invite.eco_score >= 50 ? "text-amber-400" : "text-rose-400"}`}>
                 {invite.eco_score}%
               </p>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-(--color-muted)">Fit</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Fit</p>
             </div>
           )}
           <svg

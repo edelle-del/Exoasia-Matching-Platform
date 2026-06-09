@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchDealCards, fetchUserMatches, touchDealCard } from "@/lib/app-data";
 import { useAuth } from "../providers";
@@ -15,7 +15,6 @@ const BOARD_COLUMNS = [
   "On Hold",
 ] as const;
 
-// Maps display label → DB enum value stored in deal_cards.stage
 const STAGE_DB: Record<string, string> = {
   "Qualified":       "discover",
   "Intro & Scoping": "intro",
@@ -24,6 +23,32 @@ const STAGE_DB: Record<string, string> = {
   "Closed Won":      "won",
   "On Hold":         "lost",
 };
+
+const STAGE_COLORS: Record<string, { dot: string; glow: string; bg: string }> = {
+  "Qualified":       { dot: "#8b8ba7", glow: "transparent",           bg: "transparent" },
+  "Intro & Scoping": { dot: "#ff6b1f", glow: "rgba(255,107,31,0.5)",  bg: "rgba(255,107,31,0.06)" },
+  "Proposal":        { dot: "#818cf8", glow: "rgba(129,140,248,0.45)",bg: "rgba(129,140,248,0.05)" },
+  "Negotiation":     { dot: "#c9a040", glow: "rgba(201,160,64,0.45)", bg: "rgba(201,160,64,0.05)" },
+  "Closed Won":      { dot: "#34d399", glow: "rgba(52,211,153,0.45)", bg: "rgba(52,211,153,0.05)" },
+  "On Hold":         { dot: "#4a4a6a", glow: "transparent",           bg: "transparent" },
+};
+
+function fitScoreClass(score: number): string {
+  if (score >= 80) return "fa-score-excellent";
+  if (score >= 60) return "fa-score-strong";
+  if (score >= 40) return "fa-score-moderate";
+  return "fa-score-low";
+}
+
+function confidenceVars(confidence: string): React.CSSProperties {
+  const color =
+    confidence === "high" ? "#34d399" :
+    confidence === "medium" ? "#fbbf24" : "#f87171";
+  return {
+    "--db-conf-color": color,
+    "--db-conf-border": color + "30",
+  } as React.CSSProperties;
+}
 
 type DealCard = {
   id: string;
@@ -53,6 +78,20 @@ export default function DealBoardPage() {
   const { user } = useAuth();
   const [cards, setCards] = useState<DealCard[]>([]);
   const [activeIntros, setActiveIntros] = useState<ActiveIntro[]>([]);
+  const [touchingId, setTouchingId] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   const load = async () => {
     if (!user?.id) return;
@@ -107,7 +146,9 @@ export default function DealBoardPage() {
   }, [user?.id]);
 
   const handleTouch = async (id: string) => {
+    setTouchingId(id);
     const { error } = await touchDealCard(supabase, id);
+    setTouchingId(null);
     if (error) {
       window.alert(error);
       return;
@@ -120,163 +161,247 @@ export default function DealBoardPage() {
     cards: cards.filter((card) => card.stage === STAGE_DB[stage]),
   }));
 
-  return (
-    <div className="min-h-screen bg-(--color-surface-soft)">
-      <section className="border-b border-(--color-hairline) bg-(--color-canvas) px-4 sm:px-6 py-10">
-        <div className="mx-auto max-w-7xl">
-          <Link
-            href="/dashboard"
-            className="text-sm text-(--color-primary) hover:underline"
-          >
-            ← Back to dashboard
-          </Link>
-          <h1 className="mt-3 text-3xl font-semibold text-(--color-ink)">
-            Deal board
-          </h1>
-        </div>
-      </section>
+  const totalCards = cards.length;
+  const staleCount = cards.filter((c) => {
+    const age = Math.floor(
+      (Date.now() - new Date(c.last_updated_at).getTime()) / 86400000,
+    );
+    return age >= 7;
+  }).length;
 
-      <div className="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 py-10">
-        {grouped.map((column) => (
-          <section
-            key={column.stage}
-            className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas)"
-          >
-            <div className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3">
-              <h2 className="text-base font-semibold text-(--color-ink)">
-                {column.stage}
-              </h2>
-              <p className="mt-1 text-xs text-(--color-muted)">
-                {column.stage === "Intro & Scoping" && activeIntros.length > 0
-                  ? `${activeIntros.length} intro${activeIntros.length !== 1 ? "s" : ""} · ${column.cards.length} card${column.cards.length !== 1 ? "s" : ""}`
-                  : `${column.cards.length} card${column.cards.length !== 1 ? "s" : ""}`}
+  return (
+    <div className="h-screen flex flex-col bg-(--color-canvas)">
+      {/* Page header */}
+      <header className="db-header shrink-0">
+        <div className="db-header-inner">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="db-header-title">Deal Pipeline</h1>
+              <p className="db-header-desc">
+                Tracks your active deals from first introduction to close. Each card is generated from a matched introduction — move deals forward by logging your next action, and hit "Mark updated" to reset the staleness timer.
               </p>
             </div>
+            <div className="flex items-center gap-3 shrink-0 mt-1">
+              {staleCount > 0 && (
+                <span className="db-stale-alert">
+                  <span className="db-stale-dot" />
+                  {staleCount} stale
+                </span>
+              )}
+              <span className="db-total-count">
+                {totalCards} deal{totalCards !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
 
-            {/* Active intros — only shown in Intro & Scoping */}
-            {column.stage === "Intro & Scoping" && activeIntros.length > 0 && (
-              <div className="border-b border-(--color-hairline) p-4 space-y-2">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-3">
-                  Active intros
-                </p>
-                {activeIntros.map((intro) => (
-                  <div
-                    key={intro.id}
-                    className="flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3"
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--color-canvas) text-xs font-bold text-(--color-ink)">
-                      {intro.counterpart_name.charAt(0)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-(--color-ink) truncate">
-                        {intro.counterpart_name}
-                      </p>
-                      {intro.counterpart_sector && (
-                        <p className="text-xs text-(--color-muted)">{intro.counterpart_sector}</p>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      {intro.fit_score != null && (
-                        <span className="text-xs font-bold text-(--color-primary)">
-                          {intro.fit_score}% fit
-                        </span>
-                      )}
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${intro.status === "introduced" ? "bg-(--color-surface-soft) text-(--color-muted)" : "bg-(--color-primary)/20 text-(--color-primary)"}`}>
-                        {intro.status === "introduced" ? "Introduced" : "Accepted"}
-                      </span>
-                      <Link
-                        href={`/matches/${intro.id}`}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-(--color-canvas) text-(--color-muted) hover:text-(--color-primary) transition-colors"
-                        aria-label="View match details"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Link>
-                    </div>
+          {/* Stage summary pills */}
+          <div className="mt-3 flex gap-2 flex-wrap">
+            {grouped.map(({ stage, cards: stageCards }) => {
+              const col = STAGE_COLORS[stage];
+              const count =
+                stageCards.length +
+                (stage === "Intro & Scoping" ? activeIntros.length : 0);
+              if (count === 0) return null;
+              return (
+                <div
+                  key={stage}
+                  className="db-summary-pill"
+                  style={{ "--db-dot": col.dot, "--db-glow": col.glow } as React.CSSProperties}
+                >
+                  <span className="db-summary-dot" />
+                  <span className="db-summary-label">{stage}</span>
+                  <span className="db-summary-count">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      {/* Kanban board */}
+      <div ref={boardRef} className="db-board-outer flex-1">
+        <div className="db-board-inner">
+          {grouped.map(({ stage, cards: stageCards }) => {
+            const col = STAGE_COLORS[stage];
+            const hasIntros = stage === "Intro & Scoping" && activeIntros.length > 0;
+            const totalInColumn = stageCards.length + (hasIntros ? activeIntros.length : 0);
+            const colVars = {
+              "--db-dot": col.dot,
+              "--db-glow": totalInColumn > 0 ? col.glow : "transparent",
+              "--db-count-bg": totalInColumn > 0 ? col.bg : "transparent",
+              "--db-count-border": totalInColumn > 0 ? col.dot + "44" : "var(--color-hairline)",
+              "--db-count-color": totalInColumn > 0 ? col.dot : "var(--color-muted)",
+              "--db-empty-border": col.dot + "38",
+            } as React.CSSProperties;
+
+            return (
+              <div key={stage} className="db-column">
+                {/* Column header */}
+                <div className="db-col-header" style={colVars}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="db-col-dot" />
+                    <span className="text-[13px] font-semibold text-(--color-ink) tracking-tight truncate">
+                      {stage}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <span className="db-col-count">{totalInColumn}</span>
+                </div>
 
-            {column.cards.length === 0 ? (
-              <div className="p-4">
-                <div className="rounded-[12px] border border-dashed border-(--color-hairline) p-4 text-center text-xs text-(--color-muted)">
-                  No cards
+                {/* Column body */}
+                <div className="db-col-body">
+                  {/* Active intros — Intro & Scoping only */}
+                  {hasIntros && (
+                    <div className="db-intros-section">
+                      <p className="db-intros-label">Active Intros</p>
+                      {activeIntros.map((intro) => (
+                        <div key={intro.id} className="db-intro-row">
+                          <div className="db-intro-avatar">
+                            {intro.counterpart_name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-(--color-ink) truncate m-0 leading-tight">
+                              {intro.counterpart_name}
+                            </p>
+                            {intro.counterpart_sector && (
+                              <p className="text-[11px] text-(--color-muted) truncate m-0 leading-tight">
+                                {intro.counterpart_sector}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {intro.fit_score != null && (
+                              <span className={`${fitScoreClass(intro.fit_score)} rounded-full px-1.5 py-0.5 text-[11px] font-bold`}>
+                                {intro.fit_score}%
+                              </span>
+                            )}
+                            <Link
+                              href={`/matches/${intro.id}`}
+                              className="db-intro-link"
+                              aria-label="View match"
+                            >
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Deal cards */}
+                  {stageCards.length === 0 ? (
+                    <div className="db-empty" style={colVars}>
+                      <div className="db-empty-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={col.dot + "55"} strokeWidth={1.5}>
+                          <rect x="3" y="3" width="18" height="18" rx="3" />
+                          <path strokeLinecap="round" d="M12 8v8M8 12h8" />
+                        </svg>
+                      </div>
+                      <p className="db-empty-text">No deals in this stage</p>
+                    </div>
+                  ) : (
+                    <>
+                      {stageCards.map((card) => {
+                        const ageDays = Math.floor(
+                          (Date.now() - new Date(card.last_updated_at).getTime()) / 86400000,
+                        );
+                        const isStale = ageDays >= 7;
+                        const isEscalation = stage === "Negotiation" && ageDays >= 14;
+                        const isTouching = touchingId === card.id;
+
+                        const cardVars = {
+                          "--db-card-bg": isEscalation
+                            ? "rgba(201,160,64,0.04)"
+                            : isStale
+                            ? "rgba(255,107,31,0.03)"
+                            : "transparent",
+                          "--db-age-color": isEscalation
+                            ? "#c9a040"
+                            : isStale
+                            ? "var(--color-primary)"
+                            : "var(--color-muted)",
+                          "--db-age-weight": isStale ? "600" : "400",
+                        } as React.CSSProperties;
+
+                        return (
+                          <article key={card.id} className="db-card" style={cardVars}>
+                            <div className="mb-2">
+                              <h3 className="db-card-title">{card.title}</h3>
+                              <p className="db-card-counterpart">with {card.counterpart_name}</p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                              {card.fit_score != null && (
+                                <span className={`${fitScoreClass(card.fit_score)} rounded-full px-2 py-0.5 text-[11px] font-bold`}>
+                                  {card.fit_score}% fit
+                                </span>
+                              )}
+                              <span className="db-conf-badge" style={confidenceVars(card.confidence)}>
+                                {card.confidence}
+                              </span>
+                            </div>
+
+                            {card.next_action && (
+                              <div className="db-next-action">
+                                <p className="db-next-label">Next</p>
+                                <p className="db-next-text">{card.next_action}</p>
+                              </div>
+                            )}
+
+                            {card.impact_projection && (
+                              <p className="db-card-meta">{card.impact_projection}</p>
+                            )}
+
+                            {card.close_reason_code && (
+                              <p className="db-card-close-reason">{card.close_reason_code}</p>
+                            )}
+
+                            <div className="db-card-footer">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="db-age">{ageDays}d ago</span>
+                                {isEscalation && (
+                                  <span
+                                    className="db-status-chip"
+                                    style={{
+                                      "--db-chip-bg": "rgba(201,160,64,0.12)",
+                                      "--db-chip-color": "#c9a040",
+                                    } as React.CSSProperties}
+                                  >
+                                    Escalation
+                                  </span>
+                                )}
+                                {!isEscalation && isStale && (
+                                  <span
+                                    className="db-status-chip"
+                                    style={{
+                                      "--db-chip-bg": "rgba(255,107,31,0.1)",
+                                      "--db-chip-color": "var(--color-primary)",
+                                    } as React.CSSProperties}
+                                  >
+                                    Stale
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                className="db-touch-btn"
+                                onClick={() => handleTouch(card.id)}
+                                disabled={isTouching}
+                              >
+                                {isTouching ? "Saving…" : "Mark updated"}
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="divide-y divide-(--color-hairline)">
-                {column.cards.map((card) => {
-                  const ageDays = Math.floor(
-                    (Date.now() - new Date(card.last_updated_at).getTime()) /
-                      86400000,
-                  );
-                  const isStale = ageDays >= 7;
-                  const isNegotiationEscalation =
-                    column.stage === "Negotiation" && ageDays >= 14;
-
-                  return (
-                    <article
-                      key={card.id}
-                      className={`p-4 ${isStale ? "bg-orange-50/60" : ""}`}
-                    >
-                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-sm font-semibold text-(--color-ink)">
-                            {card.title}
-                          </h3>
-                          <p className="mt-0.5 text-xs text-(--color-muted)">
-                            with {card.counterpart_name}
-                          </p>
-                          <p className="mt-1 text-xs text-(--color-body)">
-                            Fit {card.fit_score ?? "-"} · {card.confidence}{" "}
-                            confidence
-                          </p>
-                          {card.impact_projection && (
-                            <p className="mt-1 text-xs text-(--color-body)">
-                              {card.impact_projection}
-                            </p>
-                          )}
-                          {card.next_action && (
-                            <p className="mt-2 text-xs text-(--color-body)">
-                              Next: {card.next_action}
-                            </p>
-                          )}
-                          {card.close_reason_code && (
-                            <p className="mt-1 text-xs text-(--color-body)">
-                              Reason: {card.close_reason_code}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="w-full shrink-0 md:w-56">
-                          <p className="text-xs text-(--color-muted)">
-                            {ageDays} days since update
-                          </p>
-                          {isStale && (
-                            <p className="mt-1 text-xs font-semibold text-orange-700">
-                              {isNegotiationEscalation
-                                ? "Escalation: 14+ days in Negotiation"
-                                : "Stale: 7+ days without update"}
-                            </p>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleTouch(card.id)}
-                            className="mt-3 w-full rounded-[8px] bg-(--color-primary) px-3 py-1.5 text-xs font-medium text-white hover:bg-(--color-primary-active)"
-                          >
-                            Mark updated
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        ))}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

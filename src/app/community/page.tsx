@@ -23,6 +23,8 @@ export default function CommunityPage() {
   const supabase = useMemo(() => createClient(), []);
   const [members, setMembers] = useState<CommunityMemberRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [connectionMap, setConnectionMap] = useState<Map<string, "pending" | "accepted">>(new Map());
   const [search, setSearch] = useState("");
   const [filterSector, setFilterSector] = useState("all");
   const [filterCountry, setFilterCountry] = useState("all");
@@ -33,8 +35,29 @@ export default function CommunityPage() {
 
   useEffect(() => {
     void (async () => {
-      const data = await fetchCommunityMembers(supabase);
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id ?? null);
+
+      const [data, matchesResult] = await Promise.all([
+        fetchCommunityMembers(supabase),
+        user
+          ? supabase
+              .from("matches")
+              .select("member_a_id, member_b_id, status")
+              .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`)
+          : Promise.resolve({ data: null }),
+      ]);
+
       setMembers(data);
+
+      const map = new Map<string, "pending" | "accepted">();
+      if (user && matchesResult.data) {
+        for (const match of matchesResult.data as { member_a_id: string; member_b_id: string; status: string }[]) {
+          const otherId = match.member_a_id === user.id ? match.member_b_id : match.member_a_id;
+          map.set(otherId, match.status === "accepted" ? "accepted" : "pending");
+        }
+      }
+      setConnectionMap(map);
       setIsLoading(false);
     })();
   }, [supabase]);
@@ -99,12 +122,12 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
+      <section className="px-4 sm:px-6 pt-16 pb-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--color-muted)">
             FOUNDERS ARENA
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-(--color-ink)">
+          <h1 className="mt-2 text-4xl font-bold tracking-tight text-(--color-ink)">
             Community
           </h1>
           <p className="mt-1 text-sm text-(--color-body)">
@@ -195,7 +218,7 @@ export default function CommunityPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((m) => (
-              <MemberCard key={m.id} member={m} onSelect={setSelectedMember} />
+              <MemberCard key={m.id} member={m} onSelect={setSelectedMember} connectionStatus={connectionMap.get(m.id) ?? null} isCurrentUser={m.id === currentUserId} />
             ))}
           </div>
         )}
@@ -204,6 +227,8 @@ export default function CommunityPage() {
       {selectedMember && (
         <MemberDetailModal
           member={selectedMember}
+          currentUserId={currentUserId}
+          connectionStatus={connectionMap.get(selectedMember.id) ?? null}
           onClose={() => setSelectedMember(null)}
         />
       )}
@@ -241,9 +266,13 @@ function FilterSelect({
 function MemberCard({
   member: m,
   onSelect,
+  connectionStatus,
+  isCurrentUser,
 }: {
   member: CommunityMemberRecord;
   onSelect: (m: CommunityMemberRecord) => void;
+  connectionStatus: ConnectionStatus;
+  isCurrentUser: boolean;
 }) {
   const initials = (m.full_name ?? "?")
     .split(" ")
@@ -292,7 +321,7 @@ function MemberCard({
     >
       {/* Avatar + name */}
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-(--color-primary)/10 text-sm font-semibold text-(--color-primary)">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${isCurrentUser ? "ring-2 ring-(--color-primary) ring-offset-2 ring-offset-(--color-canvas) bg-(--color-primary)/10 text-(--color-primary)" : "bg-(--color-primary)/10 text-(--color-primary)"}`}>
           {initials || "?"}
         </div>
         <div className="min-w-0">
@@ -329,6 +358,24 @@ function MemberCard({
         >
           {verificationBadge.label}
         </span>
+        {isCurrentUser && (
+          <span className="rounded-full bg-(--color-primary)/15 px-2 py-0.5 text-xs font-semibold text-(--color-primary)">
+            You
+          </span>
+        )}
+        {!isCurrentUser && connectionStatus === "accepted" && (
+          <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400">
+            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Connected
+          </span>
+        )}
+        {!isCurrentUser && connectionStatus === "pending" && (
+          <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-muted)">
+            Pending
+          </span>
+        )}
       </div>
 
       {/* Bio */}
@@ -396,7 +443,6 @@ function MemberCard({
 // ─── Member detail modal ──────────────────────────────────────────────────────
 
 type FullProfile = {
-  linkedin_url: string | null;
   role_title: string | null;
   years_in_operation: string | null;
   employee_band: string | null;
@@ -404,15 +450,25 @@ type FullProfile = {
   asks_summary: string | null;
 };
 
+type IntroStatus = "idle" | "loading" | "sent" | "pending_connection" | "connected" | "exists" | "error";
+type ConnectionStatus = "pending" | "accepted" | null;
+
 function MemberDetailModal({
   member: m,
+  currentUserId,
+  connectionStatus,
   onClose,
 }: {
   member: CommunityMemberRecord;
+  currentUserId: string | null;
+  connectionStatus: ConnectionStatus;
   onClose: () => void;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [full, setFull] = useState<FullProfile | null>(null);
+  const [introStatus, setIntroStatus] = useState<IntroStatus>(
+    connectionStatus === "accepted" ? "connected" : connectionStatus === "pending" ? "pending_connection" : "idle"
+  );
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const initials = (m.full_name ?? "?")
@@ -427,7 +483,7 @@ function MemberDetailModal({
       const { data } = await supabase
         .from("profiles")
         .select(
-          "linkedin_url, role_title, years_in_operation, employee_band, annual_revenue_estimate, asks_summary",
+          "role_title, years_in_operation, employee_band, annual_revenue_estimate, asks_summary",
         )
         .eq("id", m.id)
         .single();
@@ -450,6 +506,27 @@ function MemberDetailModal({
     },
     [onClose],
   );
+
+  const requestIntro = useCallback(async () => {
+    setIntroStatus("loading");
+    try {
+      const res = await fetch("/api/community/request-intro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_id: m.id }),
+      });
+      const json = await res.json() as { success?: boolean; alreadyExists?: boolean; error?: string };
+      if (json.alreadyExists) {
+        setIntroStatus("exists");
+      } else if (json.success) {
+        setIntroStatus("sent");
+      } else {
+        setIntroStatus("error");
+      }
+    } catch {
+      setIntroStatus("error");
+    }
+  }, [m.id]);
 
   // Parse v2 structured data
   let v2: Record<string, unknown> | null = null;
@@ -519,6 +596,24 @@ function MemberDetailModal({
                 {m.verification_status === "verified" && (
                   <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
                     ✓ Verified
+                  </span>
+                )}
+                {currentUserId === m.id && (
+                  <span className="rounded-full bg-(--color-primary)/15 px-2 py-0.5 text-xs font-semibold text-(--color-primary)">
+                    This is you
+                  </span>
+                )}
+                {currentUserId !== m.id && connectionStatus === "accepted" && (
+                  <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Connected
+                  </span>
+                )}
+                {currentUserId !== m.id && connectionStatus === "pending" && (
+                  <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-muted)">
+                    Request pending
                   </span>
                 )}
               </div>
@@ -661,20 +756,44 @@ function MemberDetailModal({
             </div>
           )}
 
-          {/* LinkedIn */}
-          {full?.linkedin_url && (
-            <a
-              href={full.linkedin_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-(--color-primary) hover:underline"
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-              </svg>
-              LinkedIn profile
-            </a>
+          {/* Request introduction CTA — hidden for own profile */}
+          {currentUserId && currentUserId !== m.id && (
+            <div className="pt-1">
+              {introStatus === "connected" ? (
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
+                  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  You&apos;re connected with this member.
+                </div>
+              ) : introStatus === "pending_connection" ? (
+                <div className="rounded-xl border border-(--color-hairline) px-4 py-3 text-sm text-(--color-muted)">
+                  Connection request pending — waiting for their response.
+                </div>
+              ) : introStatus === "sent" ? (
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
+                  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Request sent — they&apos;ll see it in their notifications.
+                </div>
+              ) : introStatus === "exists" ? (
+                <div className="rounded-xl border border-(--color-hairline) px-4 py-3 text-sm text-(--color-muted)">
+                  You already have a connection with this member.
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={requestIntro}
+                  disabled={introStatus === "loading"}
+                  className="w-full rounded-xl bg-(--color-primary) px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e55919] disabled:opacity-60"
+                >
+                  {introStatus === "loading" ? "Sending…" : introStatus === "error" ? "Failed — try again" : "Request introduction"}
+                </button>
+              )}
+            </div>
           )}
+
         </div>
       </div>
     </div>

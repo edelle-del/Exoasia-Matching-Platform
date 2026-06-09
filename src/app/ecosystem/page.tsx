@@ -310,7 +310,6 @@ export default function EcosystemPage() {
       <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-3xl space-y-4">
           <p className="text-sm text-[#8B8BA7]">This page is only available to Ecosystem Partners.</p>
-          <Link href="/dashboard" className="text-violet-400 hover:underline">Back to dashboard</Link>
         </div>
       </div>
     );

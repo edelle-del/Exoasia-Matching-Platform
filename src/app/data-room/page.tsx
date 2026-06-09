@@ -138,10 +138,10 @@ function InvestorDataRoom() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
+      <section className="px-4 sm:px-6 pt-16 pb-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Data Room</p>
-          <h1 className="mt-1 text-3xl font-semibold text-(--color-ink)">Data room</h1>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data room</h1>
           <p className="mt-1 text-sm text-(--color-body)">
             Projects from startups you&apos;ve mutually matched with appear here. Request access to view their documents.
           </p>
@@ -334,10 +334,10 @@ function StartupDataRoom() {
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
-      <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-10">
+      <section className="px-4 sm:px-6 pt-16 pb-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Data Room</p>
-          <h1 className="mt-1 text-3xl font-semibold text-(--color-ink)">Data room</h1>
+          <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data room</h1>
           <p className="mt-1 text-sm text-(--color-body)">
             Manage your project documents. Investors must request access before they can view your files.
           </p>

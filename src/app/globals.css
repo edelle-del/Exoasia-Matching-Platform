@@ -2119,60 +2119,26 @@ button {
   overflow: hidden;
 }
 
-.db-intros-section {
-  border-bottom: 1px solid var(--color-hairline);
+/* Intro card — same shape as db-card with a subtle orange tint */
+.db-card--intro {
+  background: rgba(255, 107, 31, 0.025);
 }
 
-.db-intros-label {
-  padding: 10px 12px 4px;
-  font-size: 10px;
-  font-family: var(--font-mono), "JetBrains Mono", monospace;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-}
-
-.db-intro-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--color-hairline);
-  background: rgba(255, 107, 31, 0.03);
-}
-
-.db-intro-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: rgba(255, 107, 31, 0.12);
-  border: 1px solid rgba(255, 107, 31, 0.2);
-  color: var(--color-primary);
+.db-intro-stage-badge {
+  border-radius: 9999px;
+  padding: 2px 8px;
   font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.db-intro-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1px solid var(--color-hairline);
-  background: var(--color-canvas);
-  color: var(--color-muted);
-  transition: color 150ms ease, border-color 150ms ease;
-}
-
-.db-intro-link:hover {
+  font-weight: 600;
+  border: 1px solid rgba(255, 107, 31, 0.25);
+  background: rgba(255, 107, 31, 0.08);
   color: var(--color-primary);
-  border-color: rgba(255, 107, 31, 0.3);
+}
+
+.db-intro-view-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  opacity: 0.7;
 }
 
 .db-empty {
@@ -2236,6 +2202,16 @@ button {
   border: 1px solid var(--db-conf-border);
   background: var(--color-surface-strong);
   color: var(--db-conf-color);
+}
+
+.db-conf-badge--high   { --db-conf-color: #34d399; --db-conf-border: rgba(52,211,153,0.19); }
+.db-conf-badge--medium { --db-conf-color: #fbbf24; --db-conf-border: rgba(251,191,36,0.19); }
+.db-conf-badge--low    { --db-conf-color: #f87171; --db-conf-border: rgba(248,113,113,0.19); }
+
+.db-modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.72);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 .db-next-action {
@@ -2306,6 +2282,10 @@ button {
   flex-shrink: 0;
 }
 
+.db-status-chip--pending    { --db-chip-bg: rgba(129,140,248,0.1);  --db-chip-color: #818cf8; }
+.db-status-chip--escalation { --db-chip-bg: rgba(201,160,64,0.12);  --db-chip-color: #c9a040; }
+.db-status-chip--stale      { --db-chip-bg: rgba(255,107,31,0.1);   --db-chip-color: var(--color-primary); }
+
 .db-touch-btn {
   flex-shrink: 0;
   border-radius: 6px;
@@ -2333,7 +2313,6 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .db-header-back,
-  .db-intro-link,
   .db-touch-btn {
     transition: none;
   }

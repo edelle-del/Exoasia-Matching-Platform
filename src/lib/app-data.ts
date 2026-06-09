@@ -397,6 +397,65 @@ export async function touchDealCard(supabase: SupabaseClient, dealId: string) {
   return { error: error?.message ?? null };
 }
 
+const DEAL_STAGE_PROGRESSION: Record<string, string> = {
+  discover:    "intro",
+  intro:       "proposal",
+  proposal:    "negotiation",
+  negotiation: "won",
+};
+
+export function nextDealStage(currentStage: string): string | null {
+  return DEAL_STAGE_PROGRESSION[currentStage] ?? null;
+}
+
+export async function advanceDealCardStage(supabase: SupabaseClient, dealId: string, currentStage: string) {
+  const next = nextDealStage(currentStage);
+  if (!next) return { error: "Already at final stage" };
+
+  const { error } = await supabase
+    .from("deal_cards")
+    .update({ stage: next, last_updated_at: new Date().toISOString() })
+    .eq("id", dealId);
+
+  return { error: error?.message ?? null };
+}
+
+export async function promoteIntroToDeal(
+  supabase: SupabaseClient,
+  userId: string,
+  counterpartId: string,
+  title: string,
+) {
+  const { data, error } = await supabase
+    .from("deal_cards")
+    .insert({
+      title,
+      stage: "proposal",
+      confidence: "medium",
+      buyer_member_id: userId,
+      provider_member_id: counterpartId,
+      last_updated_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  return { id: data?.id ?? null, error: error?.message ?? null };
+}
+
+export async function revertDealCardStage(supabase: SupabaseClient, dealId: string, stage: string) {
+  const { error } = await supabase
+    .from("deal_cards")
+    .update({ stage, last_updated_at: new Date().toISOString() })
+    .eq("id", dealId);
+
+  return { error: error?.message ?? null };
+}
+
+export async function deleteDealCard(supabase: SupabaseClient, dealId: string) {
+  const { error } = await supabase.from("deal_cards").delete().eq("id", dealId);
+  return { error: error?.message ?? null };
+}
+
 export async function fetchDocuments(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("member_documents")

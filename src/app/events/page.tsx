@@ -388,29 +388,17 @@ export default function EventsPage() {
                           )}
                         </>
                       ) : (
-                        <button
-                          type="button"
-                          disabled={isRsvping}
-                          onClick={() => void handleRSVP(event.id)}
-                          className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                        <a
+                          href="https://exoasia.org/foundersarena"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity"
                         >
-                          {isRsvping ? (
-                            <>
-                              <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                              </svg>
-                              Submitting…
-                            </>
-                          ) : (
-                            <>
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                              RSVP
-                            </>
-                          )}
-                        </button>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          RSVP
+                        </a>
                       )}
                     </div>
                   </div>

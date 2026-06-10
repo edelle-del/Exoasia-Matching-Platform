@@ -4,6 +4,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { InviteCofounderModal } from "@/app/projects/_components/InviteCofounderModal";
+import { InsufficientCreditsModal } from "@/app/_components/InsufficientCreditsModal";
 import { CofounderProfileModal, type CofounderProfile } from "@/app/projects/_components/CofounderProfileModal";
 import {
   PolarAngleAxis,
@@ -372,6 +373,17 @@ export default function ProjectDetailPage({
   const [introMatchIds, setIntroMatchIds] = useState<Map<string, string>>(
     new Map(),
   ); // investorId → matchId
+  const [unlockedProfiles, setUnlockedProfiles] = useState<Set<string>>(new Set());
+  const [profileUnlockConfirm, setProfileUnlockConfirm] = useState<string | null>(null);
+  const [profileUnlocking, setProfileUnlocking] = useState(false);
+  const [profileUnlockError, setProfileUnlockError] = useState("");
+  const [introConfirm, setIntroConfirm] = useState<string | null>(null); // investor_profile_id
+  const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
+  const [financialSnapshot, setFinancialSnapshot] = useState<{ revenue: string; burn_rate: string; runway: string } | null>(null);
+  const [snapshotChecked, setSnapshotChecked] = useState(false);
+  const [snapshotUnlockConfirm, setSnapshotUnlockConfirm] = useState(false);
+  const [snapshotUnlocking, setSnapshotUnlocking] = useState(false);
+  const [snapshotUnlockError, setSnapshotUnlockError] = useState("");
   const [activeTab, setActiveTab] = useState<"details" | "matches">(
     searchParams.get("tab") === "matches" ? "matches" : "details",
   );
@@ -383,6 +395,9 @@ export default function ProjectDetailPage({
   const [reportReparseError, setReportReparseError] = useState("");
   const reportInputRef = useRef<HTMLInputElement>(null);
   const [assessmentTaking, setAssessmentTaking] = useState(false);
+  const [redoConfirmOpen, setRedoConfirmOpen] = useState(false);
+  const [redoTaking, setRedoTaking] = useState(false);
+  const [redoError, setRedoError] = useState("");
 
   // data room (investor view)
   type DataRoomFile = {
@@ -498,18 +513,59 @@ export default function ProjectDetailPage({
           }
 
           setMatchesLoading(false);
+
+          // Pre-load any profiles this user has already paid to unlock
+          if (matches.length > 0) {
+            supabase
+              .from("ad_credit_ledger")
+              .select("reason")
+              .eq("member_id", user.id)
+              .ilike("reason", "Unlock investor profile:%")
+              .then(({ data: unlockRows }) => {
+                if (unlockRows && unlockRows.length > 0) {
+                  const ids = new Set(
+                    unlockRows.map((r) =>
+                      (r.reason as string).replace("Unlock investor profile: ", "").trim(),
+                    ),
+                  );
+                  setUnlockedProfiles(ids);
+                }
+              });
+          }
         });
     }
   }, [user?.id, project, id, supabase]);
 
-  // Load data room access status for non-owners
+  // Load data room access status + pre-check financial snapshot unlock for non-owners
   useEffect(() => {
     if (!user?.id || !project) return;
     const userIsTeamMember = project.owner_id === user.id || cofounders.some((c) => c.cofounder_profile_id === user.id);
     if (userIsTeamMember) {
       setDataRoomStatus("none");
+      setSnapshotChecked(true);
       return;
     }
+    // Check if investor has already unlocked the financial snapshot
+    supabase
+      .from("ad_credit_ledger")
+      .select("reason")
+      .eq("member_id", user.id)
+      .eq("reason", `Unlock financial snapshot: ${id}`)
+      .maybeSingle()
+      .then(({ data: lockRow }) => {
+        if (lockRow) {
+          fetch("/api/projects/financial-snapshot/unlock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ projectId: id }),
+          })
+            .then((r) => r.json())
+            .then((d: { success?: boolean; snapshot?: { revenue: string; burn_rate: string; runway: string } | null }) => {
+              if (d.success && d.snapshot) setFinancialSnapshot(d.snapshot);
+            });
+        }
+        setSnapshotChecked(true);
+      });
     fetch(`/api/data-room/${project.owner_id}/request`)
       .then((r) => r.json())
       .then((data: { request?: { status: string } | null }) => {
@@ -557,6 +613,37 @@ export default function ProjectDetailPage({
       }
     } finally {
       setDataRoomDownloadingId(null);
+    }
+  };
+
+  const handleUnlockSnapshot = async () => {
+    setSnapshotUnlocking(true);
+    setSnapshotUnlockError("");
+    try {
+      const res = await fetch("/api/projects/financial-snapshot/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: id }),
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        snapshot?: { revenue: string; burn_rate: string; runway: string } | null;
+        needed?: number;
+        balance?: number;
+      };
+      if (res.status === 402 && data.needed !== undefined && data.balance !== undefined) {
+        setInsufficientCredits({ needed: data.needed, balance: data.balance });
+        setSnapshotUnlockConfirm(false);
+        return;
+      }
+      if (res.ok && data.success) {
+        setFinancialSnapshot(data.snapshot ?? null);
+        setSnapshotUnlockConfirm(false);
+      } else {
+        setSnapshotUnlockError((data as { error?: string }).error ?? "Failed to unlock.");
+      }
+    } finally {
+      setSnapshotUnlocking(false);
     }
   };
 
@@ -745,10 +832,12 @@ export default function ProjectDetailPage({
           );
         }
       } else {
-        const data = await res.json().catch(() => ({}));
-        window.alert(
-          data?.error ?? "Failed to send intro request. Please try again.",
-        );
+        const data = await res.json().catch(() => ({})) as { error?: string; needed?: number; balance?: number };
+        if (res.status === 402 && data.needed !== undefined && data.balance !== undefined) {
+          setInsufficientCredits({ needed: data.needed, balance: data.balance });
+        } else {
+          window.alert(data?.error ?? "Failed to send intro request. Please try again.");
+        }
         setIntroRequests((prev) => {
           const next = new Map(prev);
           next.delete(investorProfileId);
@@ -797,6 +886,38 @@ export default function ProjectDetailPage({
       setIntroRequests((prev) => new Map(prev).set(investorProfileId, "done"));
     }
   };
+
+  const handleUnlockProfile = async () => {
+    if (!profileUnlockConfirm) return;
+    setProfileUnlocking(true);
+    setProfileUnlockError("");
+    try {
+      const res = await fetch("/api/investor-profiles/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ investorProfileId: profileUnlockConfirm }),
+      });
+      const data = await res.json() as { success?: boolean; error?: string; needed?: number; balance?: number };
+      if (!res.ok) {
+        if (res.status === 402 && data.needed !== undefined && data.balance !== undefined) {
+          setProfileUnlockConfirm(null);
+          setInsufficientCredits({ needed: data.needed, balance: data.balance });
+        } else {
+          setProfileUnlockError(data.error ?? "Failed to unlock profile.");
+        }
+        setProfileUnlocking(false);
+        return;
+      }
+      setUnlockedProfiles((prev) => new Set([...prev, profileUnlockConfirm]));
+      setExpandedInvestorId(profileUnlockConfirm);
+      setProfileUnlockConfirm(null);
+    } catch {
+      setProfileUnlockError("Something went wrong. Please try again.");
+    }
+    setProfileUnlocking(false);
+  };
+
+  const hasActivePlan = !!subscriptionPlan;
 
   const visibleMatchLimit =
     subscriptionPlan === "premium"
@@ -918,8 +1039,163 @@ export default function ProjectDetailPage({
     }
   }
 
+  async function handleRedoAssessment() {
+    setRedoError("");
+    setRedoTaking(true);
+    try {
+      const response = await fetch(`/api/projects/${id}/redo-assessment`, {
+        method: "POST",
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        token?: string;
+        url?: string;
+      };
+
+      if (!response.ok || !payload.token || !payload.url) {
+        setRedoError(payload.error ?? "Failed to start assessment.");
+        return;
+      }
+
+      window.location.assign(payload.url);
+    } catch (err) {
+      setRedoError(
+        err instanceof Error ? err.message : "Failed to start assessment.",
+      );
+    } finally {
+      setRedoTaking(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-(--color-canvas)">
+
+      {/* ── Redo Assessment confirm modal ── */}
+      {insufficientCredits && (
+        <InsufficientCreditsModal
+          needed={insufficientCredits.needed}
+          balance={insufficientCredits.balance}
+          onClose={() => setInsufficientCredits(null)}
+        />
+      )}
+
+      {introConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-7 shadow-xl flex flex-col gap-5">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Confirm Action</p>
+              <h2 className="mt-1 text-base font-semibold text-(--color-ink)">Request investor intro</h2>
+              <p className="mt-2 text-sm text-(--color-body)">
+                This will deduct <span className="font-semibold text-(--color-ink)">7 credits</span> from your balance and send a warm intro request to this investor. A deal card will be created in your board.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setIntroConfirm(null)}
+                className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const investorId = introConfirm;
+                  setIntroConfirm(null);
+                  void handleRequestIntro(investorId);
+                }}
+                className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+              >
+                Confirm · 7 credits
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {profileUnlockConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-7 shadow-xl flex flex-col gap-5">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+                Unlock Profile
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
+                View full investor profile
+              </h2>
+              <p className="mt-2 text-sm text-(--color-body)">
+                This will deduct <span className="font-semibold text-(--color-ink)">3 credits</span> from your balance. You get the full profile — thesis, portfolio, contact signals — plus the compatibility breakdown explaining why this investor matches your startup. Once unlocked, it&apos;s permanent.
+              </p>
+            </div>
+            {profileUnlockError && (
+              <p className="rounded-lg bg-red-50 px-4 py-2.5 text-xs text-red-700">
+                {profileUnlockError}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setProfileUnlockConfirm(null); setProfileUnlockError(""); }}
+                disabled={profileUnlocking}
+                className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleUnlockProfile()}
+                disabled={profileUnlocking}
+                className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {profileUnlocking ? "Unlocking…" : "Unlock · 3 credits"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {redoConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-7 shadow-xl flex flex-col gap-5">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+                Confirm Action
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
+                Redo Venture Assessment
+              </h2>
+              <p className="mt-2 text-sm text-(--color-body)">
+                This will deduct <span className="font-semibold text-(--color-ink)">15 credits</span> from your balance and start a new assessment session. Your previous report will be replaced once you upload the new PDF.
+              </p>
+            </div>
+            {redoError && (
+              <p className="rounded-lg bg-red-50 px-4 py-2.5 text-xs text-red-700">
+                {redoError}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRedoConfirmOpen(false)}
+                disabled={redoTaking}
+                className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRedoAssessment()}
+                disabled={redoTaking}
+                className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {redoTaking ? "Starting…" : "Confirm · 15 credits"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="bg-(--color-surface-soft) px-4 sm:px-6 pt-10">
         <div className="mx-auto max-w-7xl">
           <div className="flex items-start justify-between gap-4">
@@ -1069,14 +1345,23 @@ export default function ProjectDetailPage({
                     {reportExpanded ? "Collapse" : "Expand"}
                   </button>
                   {isOwner && (
-                    <button
-                      type="button"
-                      onClick={handleReportReparseClick}
-                      disabled={reportReparsing}
-                      className="rounded-xl whitespace-nowrap border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 text-xs font-semibold text-(--color-ink) transition-colors hover:bg-(--color-surface-soft) disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {reportReparsing ? "Reparsing…" : "Reparse report"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setRedoError(""); setRedoConfirmOpen(true); }}
+                        className="rounded-xl whitespace-nowrap border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 text-xs font-semibold text-(--color-ink) transition-colors hover:bg-(--color-surface-soft)"
+                      >
+                        Redo Assessment
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReportReparseClick}
+                        disabled={reportReparsing}
+                        className="rounded-xl whitespace-nowrap border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 text-xs font-semibold text-(--color-ink) transition-colors hover:bg-(--color-surface-soft) disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {reportReparsing ? "Reparsing…" : "Reparse report"}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1742,6 +2027,67 @@ export default function ProjectDetailPage({
             </div>
           )}
 
+          {/* ── Financial snapshot (investor unlock) ── */}
+          {!isTeamMember && snapshotChecked && (
+            <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Financial Snapshot</p>
+              <h2 className="mt-1 text-base font-semibold text-(--color-ink)">Revenue, burn rate & runway</h2>
+              {financialSnapshot ? (
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Revenue</p>
+                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.revenue || "—"}</p>
+                  </div>
+                  <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Monthly burn</p>
+                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.burn_rate || "—"}</p>
+                  </div>
+                  <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Runway</p>
+                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.runway || "—"}</p>
+                  </div>
+                  <p className="col-span-3 text-[11px] text-(--color-muted)">Self-reported figures provided by the startup.</p>
+                </div>
+              ) : snapshotUnlockConfirm ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm text-(--color-body)">This will deduct <strong>5 credits</strong> from your balance to view this startup&apos;s revenue, burn rate, and runway.</p>
+                  {snapshotUnlockError && <p className="text-xs text-red-600">{snapshotUnlockError}</p>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={snapshotUnlocking}
+                      onClick={() => void handleUnlockSnapshot()}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                    >
+                      {snapshotUnlocking ? "Unlocking…" : "Confirm · 5 credits"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSnapshotUnlockConfirm(false)}
+                      className="text-sm text-(--color-muted) hover:text-(--color-ink)"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <p className="text-sm text-(--color-body) mb-3">Self-reported revenue estimates, monthly burn, and runway — shared only with investors who signal genuine intent.</p>
+                  <button
+                    type="button"
+                    onClick={() => setSnapshotUnlockConfirm(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-500/20 transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Unlock financial snapshot · 5 credits
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Investor: my score detail ── */}
           {!isTeamMember && myScore && (
             <div
@@ -1876,9 +2222,21 @@ export default function ProjectDetailPage({
                 <div className="rounded-xl border border-(--color-hairline) p-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-(--color-ink)">Team</h2>
-                    <span className="text-xs text-(--color-muted)">
-                      {cofounders.length} accepted · {pendingInvites.length} pending
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setInviteModalOpen(true)}
+                        className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-violet-700"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Invite Co-founder
+                      </button>
+                      <span className="text-xs text-(--color-muted)">
+                        {cofounders.length} accepted · {pendingInvites.length} pending
+                      </span>
+                    </div>
                   </div>
 
                   {/* Accepted cofounders */}
@@ -1958,19 +2316,6 @@ export default function ProjectDetailPage({
                     <p className="text-xs text-(--color-muted) text-center py-2">No co-founders yet.</p>
                   )}
 
-                  {/* Invite button */}
-                  <div className="border-t border-(--color-hairline) pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setInviteModalOpen(true)}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
-                      Invite Co-founder
-                    </button>
-                  </div>
                 </div>
               )}
 
@@ -2091,8 +2436,9 @@ export default function ProjectDetailPage({
             <div className="space-y-3">
               {investorMatches.map((m, idx) => {
                 const locked = idx >= visibleMatchLimit;
+                const profileUnlocked = hasActivePlan || unlockedProfiles.has(m.investor_profile_id);
                 const isExpanded =
-                  !locked && expandedInvestorId === m.investor_profile_id;
+                  !locked && profileUnlocked && expandedInvestorId === m.investor_profile_id;
 
                 let investorType: string | null = null;
                 let targetStages: string[] = [];
@@ -2117,11 +2463,16 @@ export default function ProjectDetailPage({
                       <button
                         type="button"
                         disabled={locked}
-                        onClick={() =>
+                        onClick={() => {
+                          if (locked) return;
+                          if (!profileUnlocked) {
+                            setProfileUnlockConfirm(m.investor_profile_id);
+                            return;
+                          }
                           setExpandedInvestorId(
                             isExpanded ? null : m.investor_profile_id,
-                          )
-                        }
+                          );
+                        }}
                         className="w-full text-left p-4 hover:bg-(--color-surface-strong) transition-colors disabled:cursor-default"
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -2205,6 +2556,11 @@ export default function ProjectDetailPage({
                         <p className="mt-2 text-xs font-medium text-(--color-primary)">
                           {locked ? "Match limit reached" : m.summary}
                         </p>
+                        {!locked && !profileUnlocked && (
+                          <p className="mt-1 text-[11px] text-(--color-muted)">
+                            🔒 <span className="font-semibold text-(--color-primary)">Unlock full profile + breakdown · 3 cr</span> — thesis, portfolio, compatibility
+                          </p>
+                        )}
                       </button>
 
                       {/* Expanded investor profile — investor-page style */}
@@ -2387,11 +2743,7 @@ export default function ProjectDetailPage({
                                   <button
                                     type="button"
                                     disabled={isRequesting || isCancelling}
-                                    onClick={() =>
-                                      void handleRequestIntro(
-                                        m.investor_profile_id,
-                                      )
-                                    }
+                                    onClick={() => setIntroConfirm(m.investor_profile_id)}
                                     className="inline-flex items-center gap-2 rounded-xl border border-(--color-primary)/20 bg-(--color-primary)/10 px-4 py-2.5 text-sm font-semibold text-(--color-primary) hover:bg-(--color-primary)/20 disabled:opacity-50 transition-colors"
                                   >
                                     {isRequesting ? (

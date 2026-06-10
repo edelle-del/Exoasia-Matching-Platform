@@ -422,11 +422,12 @@ export default function MatchesPage() {
   const isInvestor = memberRole === "investor";
   const isEcosystemPartner = memberRole === "ecosystem_partner";
 
-  // Maps partner ID → match status so buttons can show accurate state
+  // Maps partner ID → { status, myStatus } so buttons can show accurate state
   const matchStatusByPartnerId = useMemo(
     () => new Map(matches.map((m) => {
       const partnerId = m.member_a_id === user?.id ? m.member_b_id : m.member_a_id;
-      return [partnerId, m.status];
+      const myStatus = m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
+      return [partnerId, { status: m.status, myStatus }];
     })),
     [matches, user?.id],
   );
@@ -1037,14 +1038,16 @@ function ConnectButton({
   projectId: string;
   ownerId: string;
   userId: string;
-  matchStatusByPartnerId: Map<string, string>;
+  matchStatusByPartnerId: Map<string, { status: string; myStatus: string }>;
   introRequests: Map<string, "requesting" | "done">;
   onRequest: (projectId: string, investorId: string) => Promise<void>;
   size?: "sm" | "md";
 }) {
   const key = `${projectId}:${userId}`;
   const reqState = introRequests.get(key);
-  const matchStatus = matchStatusByPartnerId.get(ownerId);
+  const matchEntry = matchStatusByPartnerId.get(ownerId);
+  const matchStatus = matchEntry?.status;
+  const myStatus = matchEntry?.myStatus;
 
   const base = size === "md"
     ? "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
@@ -1054,7 +1057,16 @@ function ConnectButton({
     return <span className={`${base} bg-emerald-500/15 text-emerald-500`}>Connected</span>;
   }
 
-  if (matchStatus === "pending" || reqState === "done") {
+  if (matchStatus === "pending") {
+    // myStatus === "pending" means the founder initiated and I haven't responded yet
+    if (myStatus === "pending") {
+      return <span className={`${base} bg-violet-500/15 text-violet-500`}>Founder requested · check pending</span>;
+    }
+    // myStatus === "accepted" means I already accepted, waiting on the founder
+    return <span className={`${base} bg-amber-500/15 text-amber-500`}>Qualified — awaiting founder</span>;
+  }
+
+  if (reqState === "done") {
     return <span className={`${base} bg-amber-500/15 text-amber-500`}>Qualified — awaiting founder</span>;
   }
 

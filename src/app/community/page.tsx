@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
   fetchCommunityMembers,
   type CommunityMemberRecord,
 } from "@/lib/app-data";
+import { InsufficientCreditsModal } from "@/app/_components/InsufficientCreditsModal";
+
 const PROJECT_STAGES = [
   "Pre-revenue Startups",
   "Cash-flow Businesses",
@@ -19,12 +22,20 @@ const PROJECT_STAGES = [
   "Public Companies",
 ];
 
+function roleBadgeConfig(role: string | null | undefined) {
+  if (role === "investor") return { label: "Investor", cls: "bg-amber-400/15 text-amber-400 border border-amber-400/30" };
+  if (role === "startup") return { label: "Founder", cls: "bg-orange-500/15 text-orange-400 border border-orange-500/30" };
+  if (role === "ecosystem_partner") return { label: "Ecosystem Partner", cls: "bg-purple-500/15 text-purple-400 border border-purple-500/30" };
+  return null;
+}
+
 export default function CommunityPage() {
   const supabase = useMemo(() => createClient(), []);
   const [members, setMembers] = useState<CommunityMemberRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [connectionMap, setConnectionMap] = useState<Map<string, "pending" | "accepted">>(new Map());
+  const [unlockedProfiles, setUnlockedProfiles] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [filterSector, setFilterSector] = useState("all");
   const [filterCountry, setFilterCountry] = useState("all");
@@ -32,19 +43,27 @@ export default function CommunityPage() {
   const [filterStage, setFilterStage] = useState("all");
   const [filterVerification, setFilterVerification] = useState("all");
   const [selectedMember, setSelectedMember] = useState<CommunityMemberRecord | null>(null);
+  const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
 
   useEffect(() => {
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id ?? null);
 
-      const [data, matchesResult] = await Promise.all([
+      const [data, matchesResult, ledgerResult] = await Promise.all([
         fetchCommunityMembers(supabase),
         user
           ? supabase
               .from("matches")
               .select("member_a_id, member_b_id, status")
               .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`)
+          : Promise.resolve({ data: null }),
+        user
+          ? supabase
+              .from("ad_credit_ledger")
+              .select("reason")
+              .eq("member_id", user.id)
+              .or("reason.ilike.Unlock community profile:%,reason.ilike.Unlock investor profile:%")
           : Promise.resolve({ data: null }),
       ]);
 
@@ -58,6 +77,20 @@ export default function CommunityPage() {
         }
       }
       setConnectionMap(map);
+
+      if (user && ledgerResult.data && ledgerResult.data.length > 0) {
+        const ids = new Set(
+          ledgerResult.data.map((r) => {
+            const reason = r.reason as string;
+            return reason
+              .replace("Unlock community profile: ", "")
+              .replace("Unlock investor profile: ", "")
+              .trim();
+          }),
+        );
+        setUnlockedProfiles(ids);
+      }
+
       setIsLoading(false);
     })();
   }, [supabase]);
@@ -103,22 +136,14 @@ export default function CommunityPage() {
       }
       if (filterRole !== "all" && m.member_role !== filterRole) return false;
       if (filterStage !== "all" && m.fundraising_stage !== filterStage) return false;
-      if (
-        filterVerification !== "all" &&
-        m.verification_status !== filterVerification
-      )
-        return false;
+      if (filterVerification !== "all" && m.verification_status !== filterVerification) return false;
       return true;
     });
-  }, [
-    members,
-    search,
-    filterSector,
-    filterCountry,
-    filterRole,
-    filterStage,
-    filterVerification,
-  ]);
+  }, [members, search, filterSector, filterCountry, filterRole, filterStage, filterVerification]);
+
+  const handleProfileUnlocked = useCallback((memberId: string) => {
+    setUnlockedProfiles((prev) => new Set([...prev, memberId]));
+  }, []);
 
   return (
     <div className="min-h-screen bg-(--color-canvas)">
@@ -141,6 +166,17 @@ export default function CommunityPage() {
             className="h-9 min-w-[200px] flex-1 rounded-[10px] border border-(--color-hairline) bg-(--color-canvas) px-3 text-sm text-(--color-ink) outline-none placeholder:text-(--color-muted) focus:border-(--color-primary)"
           />
           <FilterSelect
+            value={filterRole}
+            onChange={setFilterRole}
+            label="Role"
+            options={[
+              { value: "all", label: "All roles" },
+              { value: "startup", label: "Founders" },
+              { value: "investor", label: "Investors" },
+              { value: "ecosystem_partner", label: "Ecosystem Partners" },
+            ]}
+          />
+          <FilterSelect
             value={filterSector}
             onChange={setFilterSector}
             label="Sector"
@@ -156,16 +192,6 @@ export default function CommunityPage() {
             options={[
               { value: "all", label: "All countries" },
               ...countries.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-          <FilterSelect
-            value={filterRole}
-            onChange={setFilterRole}
-            label="Role"
-            options={[
-              { value: "all", label: "All roles" },
-              { value: "investor", label: "Investor" },
-              { value: "startup", label: "Founder" },
             ]}
           />
           <FilterSelect
@@ -201,7 +227,7 @@ export default function CommunityPage() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="h-52 animate-pulse rounded-[16px] border border-(--color-hairline) bg-(--color-surface-soft)"
+                className="h-40 animate-pulse rounded-[16px] border border-(--color-hairline) bg-(--color-surface-soft)"
               />
             ))}
           </div>
@@ -212,17 +238,35 @@ export default function CommunityPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((m) => (
-              <MemberCard key={m.id} member={m} onSelect={setSelectedMember} connectionStatus={connectionMap.get(m.id) ?? null} isCurrentUser={m.id === currentUserId} />
+              <MemberCard
+                key={m.id}
+                member={m}
+                onSelect={setSelectedMember}
+                connectionStatus={connectionMap.get(m.id) ?? null}
+                isCurrentUser={m.id === currentUserId}
+                isUnlocked={m.id !== currentUserId && unlockedProfiles.has(m.id)}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {insufficientCredits && (
+        <InsufficientCreditsModal
+          needed={insufficientCredits.needed}
+          balance={insufficientCredits.balance}
+          onClose={() => setInsufficientCredits(null)}
+        />
+      )}
 
       {selectedMember && (
         <MemberDetailModal
           member={selectedMember}
           currentUserId={currentUserId}
           connectionStatus={connectionMap.get(selectedMember.id) ?? null}
+          isUnlocked={selectedMember.id === currentUserId || unlockedProfiles.has(selectedMember.id)}
+          onUnlocked={handleProfileUnlocked}
+          onInsufficientCredits={setInsufficientCredits}
           onClose={() => setSelectedMember(null)}
         />
       )}
@@ -262,11 +306,13 @@ function MemberCard({
   onSelect,
   connectionStatus,
   isCurrentUser,
+  isUnlocked,
 }: {
   member: CommunityMemberRecord;
   onSelect: (m: CommunityMemberRecord) => void;
   connectionStatus: ConnectionStatus;
   isCurrentUser: boolean;
+  isUnlocked: boolean;
 }) {
   const initials = (m.full_name ?? "?")
     .split(" ")
@@ -274,36 +320,14 @@ function MemberCard({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  const stageBadgeText = m.fundraising_stage ?? `Stage ${m.stage}`;
-
-  const roleBadge =
-    m.member_role === "investor"
-      ? {
-          label: "Investor",
-          cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-accent-gold)",
-        }
-      : m.member_role === "startup"
-        ? {
-            label: "Founder",
-            cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-primary)",
-          }
-        : null;
+  const roleBadge = roleBadgeConfig(m.member_role);
 
   const verificationBadge =
     m.verification_status === "verified"
-      ? {
-          label: "Verified",
-          cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-accent-gold)",
-        }
+      ? { label: "Verified", cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-accent-gold)" }
       : m.verification_status === "pending"
-        ? {
-            label: "Pending",
-            cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-body)",
-          }
-        : {
-            label: "Unverified",
-            cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-muted)",
-          };
+        ? { label: "Pending", cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-body)" }
+        : { label: "Unverified", cls: "border border-(--color-hairline) bg-(--color-surface-strong) text-(--color-muted)" };
 
   return (
     <article
@@ -319,13 +343,9 @@ function MemberCard({
           {initials || "?"}
         </div>
         <div className="min-w-0">
-          <p className="truncate font-semibold text-(--color-ink)">
-            {m.full_name || "—"}
-          </p>
+          <p className="truncate font-semibold text-(--color-ink)">{m.full_name || "—"}</p>
           {m.business_name && (
-            <p className="truncate text-sm text-(--color-body)">
-              {m.business_name}
-            </p>
+            <p className="truncate text-sm text-(--color-body)">{m.business_name}</p>
           )}
           {(m.city || m.sector) && (
             <p className="truncate text-xs text-(--color-muted)">
@@ -338,18 +358,11 @@ function MemberCard({
       {/* Badges */}
       <div className="flex flex-wrap gap-1.5">
         {roleBadge && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${roleBadge.cls}`}
-          >
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${roleBadge.cls}`}>
             {roleBadge.label}
           </span>
         )}
-        <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-muted)">
-          {stageBadgeText}
-        </span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${verificationBadge.cls}`}
-        >
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${verificationBadge.cls}`}>
           {verificationBadge.label}
         </span>
         {isCurrentUser && (
@@ -370,62 +383,15 @@ function MemberCard({
             Pending
           </span>
         )}
+        {isUnlocked && (
+          <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-400 border border-emerald-500/25">
+            <svg className="h-2.5 w-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0v4M5 11h14a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2z" />
+            </svg>
+            Unlocked
+          </span>
+        )}
       </div>
-
-      {/* Bio */}
-      {m.short_bio && (
-        <p className="line-clamp-2 text-sm text-(--color-body)">
-          {m.short_bio}
-        </p>
-      )}
-
-      {/* Ask categories */}
-      {m.ask_categories?.length > 0 && (
-        <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
-            Asking for
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {m.ask_categories.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-primary)"
-              >
-                {tag}
-              </span>
-            ))}
-            {m.ask_categories.length > 3 && (
-              <span className="text-xs text-(--color-muted)">
-                +{m.ask_categories.length - 3} more
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Offer categories */}
-      {m.offer_categories?.length > 0 && (
-        <div>
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
-            Offering
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {m.offer_categories.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-accent-gold)"
-              >
-                {tag}
-              </span>
-            ))}
-            {m.offer_categories.length > 3 && (
-              <span className="text-xs text-(--color-muted)">
-                +{m.offer_categories.length - 3} more
-              </span>
-            )}
-          </div>
-        </div>
-      )}
 
       <p className="mt-auto pt-1 text-right text-xs font-semibold text-(--color-primary)">
         View profile →
@@ -451,18 +417,28 @@ function MemberDetailModal({
   member: m,
   currentUserId,
   connectionStatus,
+  isUnlocked: initialUnlocked,
+  onUnlocked,
+  onInsufficientCredits,
   onClose,
 }: {
   member: CommunityMemberRecord;
   currentUserId: string | null;
   connectionStatus: ConnectionStatus;
+  isUnlocked: boolean;
+  onUnlocked: (memberId: string) => void;
+  onInsufficientCredits: (data: { needed: number; balance: number }) => void;
   onClose: () => void;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [full, setFull] = useState<FullProfile | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(initialUnlocked);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState("");
   const [introStatus, setIntroStatus] = useState<IntroStatus>(
     connectionStatus === "accepted" ? "connected" : connectionStatus === "pending" ? "pending_connection" : "idle"
   );
+  const [introConfirm, setIntroConfirm] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const initials = (m.full_name ?? "?")
@@ -471,37 +447,59 @@ function MemberDetailModal({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-  // Fetch extra fields lazily
+  // Fetch extra fields when unlocked
   useEffect(() => {
+    if (!isUnlocked) return;
     void (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select(
-          "role_title, years_in_operation, employee_band, annual_revenue_estimate, asks_summary",
-        )
+        .select("role_title, years_in_operation, employee_band, annual_revenue_estimate, asks_summary")
         .eq("id", m.id)
         .single();
       if (data) setFull(data as FullProfile);
     })();
-  }, [supabase, m.id]);
+  }, [supabase, m.id, isUnlocked]);
 
-  // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
   const handleBackdrop = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === backdropRef.current) onClose();
-    },
+    (e: React.MouseEvent) => { if (e.target === backdropRef.current) onClose(); },
     [onClose],
   );
 
+  const handleUnlock = async () => {
+    setUnlocking(true);
+    setUnlockError("");
+    try {
+      const res = await fetch("/api/community/unlock-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: m.id }),
+      });
+      const data = await res.json() as { success?: boolean; error?: string; needed?: number; balance?: number };
+      if (!res.ok) {
+        if (res.status === 402 && data.needed !== undefined && data.balance !== undefined) {
+          onInsufficientCredits({ needed: data.needed, balance: data.balance });
+        } else {
+          setUnlockError(data.error ?? "Failed to unlock profile.");
+        }
+        setUnlocking(false);
+        return;
+      }
+      setIsUnlocked(true);
+      onUnlocked(m.id);
+    } catch {
+      setUnlockError("Something went wrong. Please try again.");
+    }
+    setUnlocking(false);
+  };
+
   const requestIntro = useCallback(async () => {
+    setIntroConfirm(false);
     setIntroStatus("loading");
     try {
       const res = await fetch("/api/community/request-intro", {
@@ -509,20 +507,18 @@ function MemberDetailModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_id: m.id }),
       });
-      const json = await res.json() as { success?: boolean; alreadyExists?: boolean; error?: string };
-      if (json.alreadyExists) {
-        setIntroStatus("exists");
-      } else if (json.success) {
-        setIntroStatus("sent");
-      } else {
-        setIntroStatus("error");
-      }
+      const json = await res.json() as { success?: boolean; alreadyExists?: boolean; error?: string; needed?: number; balance?: number };
+      if (json.alreadyExists) setIntroStatus("exists");
+      else if (json.success) setIntroStatus("sent");
+      else if (res.status === 402 && json.needed !== undefined && json.balance !== undefined) {
+        setIntroStatus("idle");
+        onInsufficientCredits({ needed: json.needed, balance: json.balance });
+      } else setIntroStatus("error");
     } catch {
       setIntroStatus("error");
     }
   }, [m.id]);
 
-  // Parse v2 structured data
   let v2: Record<string, unknown> | null = null;
   try {
     const parsed = JSON.parse(full?.asks_summary ?? "");
@@ -539,14 +535,7 @@ function MemberDetailModal({
   const targetRaiseMin = v2?.target_raise_min as string | null ?? null;
   const targetRaiseMax = v2?.target_raise_max as string | null ?? null;
 
-  const roleBadgeLabel =
-    m.member_role === "investor"
-      ? "Investor"
-      : m.member_role === "startup"
-        ? "Founder"
-        : m.member_role === "ecosystem_partner"
-          ? "Ecosystem Partner"
-          : null;
+  const roleBadge = roleBadgeConfig(m.member_role);
 
   return (
     <div
@@ -555,7 +544,6 @@ function MemberDetailModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8 backdrop-blur-sm"
     >
       <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-(--color-hairline) bg-(--color-canvas) shadow-2xl">
-        {/* Close button */}
         <button
           type="button"
           onClick={onClose}
@@ -578,13 +566,13 @@ function MemberDetailModal({
               {m.business_name && (
                 <p className="text-sm text-(--color-body)">{m.business_name}</p>
               )}
-              {full?.role_title && (
+              {isUnlocked && full?.role_title && (
                 <p className="text-xs text-(--color-muted)">{full.role_title}</p>
               )}
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {roleBadgeLabel && (
-                  <span className="rounded-full border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs font-medium text-(--color-primary)">
-                    {roleBadgeLabel}
+                {roleBadge && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${roleBadge.cls}`}>
+                    {roleBadge.label}
                   </span>
                 )}
                 {m.verification_status === "verified" && (
@@ -614,180 +602,238 @@ function MemberDetailModal({
             </div>
           </div>
 
-          {/* Quick facts grid */}
-          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-            {m.city && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Location</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{m.city}</p>
-              </div>
-            )}
-            {m.sector && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{m.sector}</p>
-              </div>
-            )}
-            {full?.years_in_operation && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Years operating</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{full.years_in_operation}</p>
-              </div>
-            )}
-            {full?.employee_band && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Team size</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{full.employee_band}</p>
-              </div>
-            )}
-            {full?.annual_revenue_estimate && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Revenue</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{full.annual_revenue_estimate}</p>
-              </div>
-            )}
-            {fundraisingStage && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{fundraisingStage}</p>
-              </div>
-            )}
-            {productStage && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Product stage</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{productStage}</p>
-              </div>
-            )}
-            {investorType && (
-              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Investor type</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">{investorType}</p>
-              </div>
-            )}
-            {(targetRaiseMin || targetRaiseMax) && (
-              <div className="col-span-2 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                <p className="text-[10px] font-bold uppercase text-(--color-muted)">Target raise</p>
-                <p className="mt-0.5 font-medium text-(--color-ink)">
-                  {targetRaiseMin && targetRaiseMax
-                    ? `$${Number(targetRaiseMin).toLocaleString()} – $${Number(targetRaiseMax).toLocaleString()}`
-                    : targetRaiseMin
-                      ? `From $${Number(targetRaiseMin).toLocaleString()}`
-                      : `Up to $${Number(targetRaiseMax).toLocaleString()}`}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Bio */}
-          {m.short_bio && (
-            <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">About</p>
-              <p className="text-sm text-(--color-body) leading-relaxed">{m.short_bio}</p>
-            </div>
-          )}
-
-          {/* Entity class / target stages / regions / industries */}
-          {entityClass.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Entity class</p>
-              <div className="flex flex-wrap gap-1.5">
-                {entityClass.map((ec) => (
-                  <span key={ec} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{ec}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {targetStages.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target stages</p>
-              <div className="flex flex-wrap gap-1.5">
-                {targetStages.map((s) => (
-                  <span key={s} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{s}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {targetRegions.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target regions</p>
-              <div className="flex flex-wrap gap-1.5">
-                {targetRegions.map((r) => (
-                  <span key={r} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{r}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {targetIndustries.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target industries</p>
-              <div className="flex flex-wrap gap-1.5">
-                {targetIndustries.map((i) => (
-                  <span key={i} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{i}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Asks / Offers */}
-          {m.ask_categories?.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Asking for</p>
-              <div className="flex flex-wrap gap-1.5">
-                {m.ask_categories.map((tag) => (
-                  <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-primary)">{tag}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {m.offer_categories?.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Offering</p>
-              <div className="flex flex-wrap gap-1.5">
-                {m.offer_categories.map((tag) => (
-                  <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-accent-gold)">{tag}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Request introduction CTA — hidden for own profile */}
-          {currentUserId && currentUserId !== m.id && (
-            <div className="pt-1">
-              {introStatus === "connected" ? (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
-                  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  You&apos;re connected with this member.
+          {/* Basic always-visible facts */}
+          {(m.city || m.sector) && (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {m.city && (
+                <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                  <p className="text-[10px] font-bold uppercase text-(--color-muted)">Location</p>
+                  <p className="mt-0.5 font-medium text-(--color-ink)">{m.city}</p>
                 </div>
-              ) : introStatus === "pending_connection" ? (
-                <div className="rounded-xl border border-(--color-hairline) px-4 py-3 text-sm text-(--color-muted)">
-                  Connection request pending — waiting for their response.
+              )}
+              {m.sector && (
+                <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                  <p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p>
+                  <p className="mt-0.5 font-medium text-(--color-ink)">{m.sector}</p>
                 </div>
-              ) : introStatus === "sent" ? (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
-                  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Request sent — they&apos;ll see it in their notifications.
-                </div>
-              ) : introStatus === "exists" ? (
-                <div className="rounded-xl border border-(--color-hairline) px-4 py-3 text-sm text-(--color-muted)">
-                  You already have a connection with this member.
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={requestIntro}
-                  disabled={introStatus === "loading"}
-                  className="w-full rounded-xl bg-(--color-primary) px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e55919] disabled:opacity-60"
-                >
-                  {introStatus === "loading" ? "Sending…" : introStatus === "error" ? "Failed — try again" : "Request introduction"}
-                </button>
               )}
             </div>
           )}
 
+          {/* ── Locked state ── */}
+          {!isUnlocked && currentUserId !== m.id && (
+            <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-5 flex flex-col gap-3 text-center">
+              <div>
+                <p className="text-sm font-semibold text-(--color-ink)">Full profile locked</p>
+                <p className="mt-1 text-xs text-(--color-muted) leading-relaxed">
+                  Unlock to see bio, asks &amp; offers, experience, financials, and contact details.
+                </p>
+              </div>
+              {unlockError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{unlockError}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => void handleUnlock()}
+                disabled={unlocking}
+                className="w-full rounded-xl bg-(--color-primary) px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {unlocking ? "Unlocking…" : "Unlock full profile · 2 credits"}
+              </button>
+            </div>
+          )}
+
+          {/* ── Unlocked full details ── */}
+          {isUnlocked && (
+            <>
+              {/* Extended facts grid */}
+              {(full?.years_in_operation || full?.employee_band || full?.annual_revenue_estimate || fundraisingStage || productStage || investorType || targetRaiseMin || targetRaiseMax) && (
+                <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                  {full?.years_in_operation && (
+                    <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Years operating</p>
+                      <p className="mt-0.5 font-medium text-(--color-ink)">{full.years_in_operation}</p>
+                    </div>
+                  )}
+                  {full?.employee_band && (
+                    <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Team size</p>
+                      <p className="mt-0.5 font-medium text-(--color-ink)">{full.employee_band}</p>
+                    </div>
+                  )}
+                  {full?.annual_revenue_estimate && (
+                    <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Revenue</p>
+                      <p className="mt-0.5 font-medium text-(--color-ink)">{full.annual_revenue_estimate}</p>
+                    </div>
+                  )}
+                  {fundraisingStage && (
+                    <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p>
+                      <p className="mt-0.5 font-medium text-(--color-ink)">{fundraisingStage}</p>
+                    </div>
+                  )}
+                  {productStage && (
+                    <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Product stage</p>
+                      <p className="mt-0.5 font-medium text-(--color-ink)">{productStage}</p>
+                    </div>
+                  )}
+                  {investorType && (
+                    <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Investor type</p>
+                      <p className="mt-0.5 font-medium text-(--color-ink)">{investorType}</p>
+                    </div>
+                  )}
+                  {(targetRaiseMin || targetRaiseMax) && (
+                    <div className="col-span-2 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-(--color-muted)">Target raise</p>
+                      <p className="mt-0.5 font-medium text-(--color-ink)">
+                        {targetRaiseMin && targetRaiseMax
+                          ? `$${Number(targetRaiseMin).toLocaleString()} – $${Number(targetRaiseMax).toLocaleString()}`
+                          : targetRaiseMin
+                            ? `From $${Number(targetRaiseMin).toLocaleString()}`
+                            : `Up to $${Number(targetRaiseMax).toLocaleString()}`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bio */}
+              {m.short_bio && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">About</p>
+                  <p className="text-sm text-(--color-body) leading-relaxed">{m.short_bio}</p>
+                </div>
+              )}
+
+              {/* Investor structured data */}
+              {entityClass.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Entity class</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {entityClass.map((ec) => (
+                      <span key={ec} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{ec}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {targetStages.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target stages</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {targetStages.map((s) => (
+                      <span key={s} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {targetRegions.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target regions</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {targetRegions.map((r) => (
+                      <span key={r} className="rounded-full border border-(--color-hairline) bg-(--color-surface-soft) px-2 py-0.5 text-xs font-medium text-(--color-muted)">{r}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {targetIndustries.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Target industries</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {targetIndustries.map((i) => (
+                      <span key={i} className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-xs font-medium text-(--color-primary)">{i}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Asks / Offers */}
+              {m.ask_categories?.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Asking for</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.ask_categories.map((tag) => (
+                      <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-primary)">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {m.offer_categories?.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Offering</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.offer_categories.map((tag) => (
+                      <span key={tag} className="rounded-[6px] border border-(--color-hairline) bg-(--color-surface-strong) px-2 py-0.5 text-xs text-(--color-accent-gold)">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Request introduction CTA */}
+              {currentUserId && currentUserId !== m.id && (
+                <div className="pt-1">
+                  {introStatus === "connected" ? (
+                    <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      You&apos;re connected with this member.
+                    </div>
+                  ) : introStatus === "pending_connection" ? (
+                    <div className="rounded-xl border border-(--color-hairline) px-4 py-3 text-sm text-(--color-muted)">
+                      Connection request pending — waiting for their response.
+                    </div>
+                  ) : introStatus === "sent" ? (
+                    <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Request sent — they&apos;ll see it in their notifications.
+                    </div>
+                  ) : introStatus === "exists" ? (
+                    <div className="rounded-xl border border-(--color-hairline) px-4 py-3 text-sm text-(--color-muted)">
+                      You already have a connection with this member.
+                    </div>
+                  ) : introConfirm ? (
+                    <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-4 flex flex-col gap-3">
+                      <p className="text-sm text-(--color-body)">
+                        This will deduct <span className="font-semibold text-(--color-ink)">2 credits</span> to send a connection request to this member.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIntroConfirm(false)}
+                          className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void requestIntro()}
+                          disabled={introStatus === "loading"}
+                          className="flex-1 rounded-xl bg-(--color-primary) py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                          {introStatus === "loading" ? "Sending…" : "Confirm · 2 credits"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIntroConfirm(true)}
+                      disabled={introStatus === "loading"}
+                      className="w-full rounded-xl bg-(--color-primary) px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e55919] disabled:opacity-60"
+                    >
+                      {introStatus === "error" ? "Failed — try again" : "Request introduction"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

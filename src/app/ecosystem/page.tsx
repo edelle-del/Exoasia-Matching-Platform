@@ -7,7 +7,7 @@ import { CoPilotKanban }   from "./_components/CoPilotKanban";
 import { NominateModal }    from "./_components/NominateModal";
 import { DiscoverView }     from "./_components/DiscoverView";
 import type { PortfolioCompany, PortfolioResponse } from "@/app/api/ecosystem/portfolio/route";
-import type { DiscoverProject } from "@/app/api/ecosystem/discover/route";
+import type { DiscoverProject, DiscoverInvestor } from "@/app/api/ecosystem/discover/route";
 import Link from "next/link";
 
 type View = "portfolio" | "kanban" | "discover" | "deep-dive";
@@ -193,15 +193,19 @@ export default function EcosystemPage() {
   const [nominateOpen, setNominateOpen]   = useState(false);
   const [reloadKey, setReloadKey]         = useState(0);
   const [forbidden, setForbidden]         = useState(false);
-  const [discoverProjects, setDiscoverProjects] = useState<DiscoverProject[]>([]);
-  const [discoverLoading, setDiscoverLoading]   = useState(false);
+  const [discoverProjects,  setDiscoverProjects]  = useState<DiscoverProject[]>([]);
+  const [discoverInvestors, setDiscoverInvestors] = useState<DiscoverInvestor[]>([]);
+  const [discoverLoading,   setDiscoverLoading]   = useState(false);
   const [addingToPortfolio, setAddingToPortfolio] = useState<Record<string, boolean>>({});
-  const [scoringId, setScoringId] = useState<string | null>(null);
-  const [scoringDiscover, setScoringDiscover] = useState<Record<string, boolean>>({});
-  const [discoverViewMode, setDiscoverViewMode] = useState<"all" | "top5">("all");
-  const [generatingTop5, setGeneratingTop5]     = useState(false);
-  const [top5Progress, setTop5Progress]         = useState(0);
-  const [top5Total, setTop5Total]               = useState(0);
+  const [scoringId,         setScoringId]         = useState<string | null>(null);
+  const [scoringDiscover,   setScoringDiscover]   = useState<Record<string, boolean>>({});
+  const [discoverViewMode,  setDiscoverViewMode]  = useState<"all" | "top3">("all");
+  const [discoverMemberFilter, setDiscoverMemberFilter] = useState<"all" | "startups" | "investors">("all");
+  const [generatingTop3,    setGeneratingTop3]    = useState(false);
+  const [top3Progress,      setTop3Progress]      = useState(0);
+  const [top3Total,         setTop3Total]         = useState(0);
+  const [featuringId, setFeaturingId]           = useState<string | null>(null);
+  const [exportingAnalytics, setExportingAnalytics] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -222,8 +226,9 @@ export default function EcosystemPage() {
     setDiscoverLoading(true);
     fetch("/api/ecosystem/discover")
       .then((r) => r.json())
-      .then((json: { projects?: DiscoverProject[] }) => {
+      .then((json: { projects?: DiscoverProject[]; investors?: DiscoverInvestor[] }) => {
         setDiscoverProjects(json.projects ?? []);
+        setDiscoverInvestors(json.investors ?? []);
         setDiscoverLoading(false);
       })
       .catch(() => setDiscoverLoading(false));
@@ -252,38 +257,13 @@ export default function EcosystemPage() {
         body: JSON.stringify({ startup_id: ownerId }),
       });
       if (res.ok) {
-        const json = await fetch("/api/ecosystem/discover").then((r) => r.json()) as { projects?: DiscoverProject[] };
+        const json = await fetch("/api/ecosystem/discover").then((r) => r.json()) as { projects?: DiscoverProject[]; investors?: DiscoverInvestor[] };
         setDiscoverProjects(json.projects ?? []);
+        setDiscoverInvestors(json.investors ?? []);
       }
     } finally {
       setScoringDiscover((prev) => ({ ...prev, [ownerId]: false }));
     }
-  };
-
-  const handleGetTop5Discover = async () => {
-    setGeneratingTop5(true);
-    setTop5Progress(0);
-    const unscored = discoverProjects.filter((p) => p.eco_score === null);
-    setTop5Total(unscored.length);
-    let done = 0;
-    await Promise.all(
-      unscored.map(async (p) => {
-        try {
-          await fetch("/api/ecosystem/score-company", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ startup_id: p.owner_id }),
-          });
-        } catch { /* skip */ } finally {
-          done += 1;
-          setTop5Progress(done);
-        }
-      }),
-    );
-    const json = await fetch("/api/ecosystem/discover").then((r) => r.json()) as { projects?: DiscoverProject[] };
-    setDiscoverProjects(json.projects ?? []);
-    setGeneratingTop5(false);
-    setDiscoverViewMode("top5");
   };
 
   const handleAddToPortfolio = async (ownerId: string) => {
@@ -303,6 +283,92 @@ export default function EcosystemPage() {
     } finally {
       setAddingToPortfolio((prev) => ({ ...prev, [ownerId]: false }));
     }
+  };
+
+  const handleFeatureStartup = async (startupId: string) => {
+    setFeaturingId(startupId);
+    try {
+      const res = await fetch("/api/ecosystem/feature-startup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startup_id: startupId }),
+      });
+      const json = await res.json() as { ok?: boolean; already_featured?: boolean; error?: string; needed?: number; balance?: number };
+      if (res.status === 402) {
+        window.alert(`Insufficient credits — you need ${json.needed ?? 10} cr but have ${json.balance ?? 0} cr.`);
+      } else if (!res.ok) {
+        window.alert(json.error ?? "Failed to feature startup.");
+      } else if (json.already_featured) {
+        window.alert("This startup was already featured in your digest this month.");
+      } else {
+        window.alert("Startup featured in your partner digest!");
+      }
+    } finally {
+      setFeaturingId(null);
+    }
+  };
+
+  const handleExportAnalytics = async () => {
+    setExportingAnalytics(true);
+    try {
+      const res = await fetch("/api/ecosystem/analytics-export", { method: "POST" });
+      const json = await res.json() as { ok?: boolean; error?: string; needed?: number; balance?: number };
+      if (res.status === 402) {
+        window.alert(`Insufficient credits — you need ${json.needed ?? 8} cr but have ${json.balance ?? 0} cr.`);
+        return;
+      }
+      if (!res.ok) { window.alert(json.error ?? "Export failed."); return; }
+
+      const { pdf } = await import("@react-pdf/renderer");
+      const { EcosystemAnalyticsPdf } = await import("@/components/ecosystem-analytics-pdf");
+      const generatedAt = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const blob = await pdf(
+        <EcosystemAnalyticsPdf stats={stats} companies={companies} generatedAt={generatedAt} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cohort-analytics-${new Date().toISOString().split("T")[0]}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingAnalytics(false);
+    }
+  };
+
+  const handleGetTop3Discover = async () => {
+    const authRes = await fetch("/api/ecosystem/bulk-match", { method: "POST" });
+    const authJson = await authRes.json() as { ok?: boolean; error?: string; needed?: number; balance?: number };
+    if (authRes.status === 402) {
+      window.alert(`Insufficient credits — you need ${authJson.needed ?? 15} cr but have ${authJson.balance ?? 0} cr.`);
+      return;
+    }
+    if (!authRes.ok) { window.alert(authJson.error ?? "Bulk match failed."); return; }
+
+    setGeneratingTop3(true);
+    setTop3Progress(0);
+    const unscored = discoverProjects.filter((p) => p.eco_score === null);
+    setTop3Total(unscored.length);
+    let done = 0;
+    await Promise.all(
+      unscored.map(async (p) => {
+        try {
+          await fetch("/api/ecosystem/score-company", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ startup_id: p.owner_id }),
+          });
+        } catch { /* skip */ } finally {
+          done += 1;
+          setTop3Progress(done);
+        }
+      }),
+    );
+    const json = await fetch("/api/ecosystem/discover").then((r) => r.json()) as { projects?: DiscoverProject[]; investors?: DiscoverInvestor[] };
+    setDiscoverProjects(json.projects ?? []);
+    setDiscoverInvestors(json.investors ?? []);
+    setGeneratingTop3(false);
+    setDiscoverViewMode("top3");
   };
 
   if (forbidden) {
@@ -375,22 +441,29 @@ export default function EcosystemPage() {
             onNominate={() => setNominateOpen(true)}
             onScoreCompany={handleScoreCompany}
             scoringId={scoringId}
+            onFeatureStartup={handleFeatureStartup}
+            featuringId={featuringId}
+            onExportAnalytics={handleExportAnalytics}
+            exportingAnalytics={exportingAnalytics}
           />
         ) : view === "discover" ? (
           <DiscoverView
             projects={discoverProjects}
+            investors={discoverInvestors}
             isLoading={discoverLoading}
             adding={addingToPortfolio}
             scoring={scoringDiscover}
             viewMode={discoverViewMode}
             onViewModeChange={setDiscoverViewMode}
-            generatingTop5={generatingTop5}
-            top5Progress={top5Progress}
-            top5Total={top5Total}
+            memberFilter={discoverMemberFilter}
+            onMemberFilterChange={setDiscoverMemberFilter}
+            generatingTop3={generatingTop3}
+            top3Progress={top3Progress}
+            top3Total={top3Total}
             userId={user?.id ?? ""}
             onAdd={handleAddToPortfolio}
             onScore={handleScoreDiscover}
-            onGetTop5={handleGetTop5Discover}
+            onGetTop3={handleGetTop3Discover}
           />
         ) : (
           <CoPilotKanban

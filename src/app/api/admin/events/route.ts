@@ -21,6 +21,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Ecosystem partners pay 5 credits to post an event; stage-4 advisors post for free
+  if (profile?.member_role === "ecosystem_partner") {
+    const POST_COST = 5;
+
+    const { data: ledgerRows } = await admin
+      .from("ad_credit_ledger")
+      .select("change_amount")
+      .eq("member_id", user.id);
+
+    const balance = (ledgerRows ?? []).reduce(
+      (sum, r) => sum + Number(r.change_amount ?? 0),
+      0,
+    );
+
+    if (balance < POST_COST) {
+      return NextResponse.json(
+        { error: `Insufficient credits. You need ${POST_COST} credits but have ${balance}.`, needed: POST_COST, balance },
+        { status: 402 },
+      );
+    }
+
+    const { error: deductError } = await admin.from("ad_credit_ledger").insert({
+      member_id: user.id,
+      change_amount: -POST_COST,
+      reason: `Post opportunity/program call`,
+    });
+
+    if (deductError) {
+      return NextResponse.json({ error: deductError.message }, { status: 500 });
+    }
+  }
+
   const body = await req.json() as {
     title: string;
     type: string;

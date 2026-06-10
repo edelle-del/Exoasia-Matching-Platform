@@ -65,7 +65,8 @@ export default function EventsPage() {
   const [upcoming, setUpcoming]           = useState<UpcomingEvent[]>([]);
   const [past, setPast]                   = useState<PastEvent[]>([]);
   const [rsvping, setRsvping]             = useState<string | null>(null);
-  const [isAdvisor, setIsAdvisor]         = useState(false);
+  const [canCreateEvent, setCanCreateEvent] = useState(false);
+  const [isEcosystemPartner, setIsEcosystemPartner] = useState(false);
   const [showAddForm, setShowAddForm]     = useState(false);
   const [creating, setCreating]           = useState(false);
   const [createError, setCreateError]     = useState<string | null>(null);
@@ -92,13 +93,17 @@ export default function EventsPage() {
   useEffect(() => {
     if (!user?.id) return;
     void load();
-    // Check if advisor (stage 4)
     supabase
       .from("profiles")
-      .select("stage")
+      .select("stage, member_role")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => setIsAdvisor(data?.stage === "4"));
+      .then(({ data }) => {
+        const isAdvisor = data?.stage === "4";
+        const isPartner = data?.member_role === "ecosystem_partner";
+        setCanCreateEvent(isAdvisor || isPartner);
+        setIsEcosystemPartner(isPartner && !isAdvisor);
+      });
   }, [user?.id]);
 
   const handleRSVP = async (eventId: string) => {
@@ -147,8 +152,15 @@ export default function EventsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json() as { id?: string; error?: string };
-      if (!res.ok) { setCreateError(data.error ?? "Failed to create event."); return; }
+      const data = await res.json() as { id?: string; error?: string; needed?: number; balance?: number };
+      if (!res.ok) {
+        if (res.status === 402) {
+          setCreateError(`Insufficient credits — you need ${data.needed ?? 5} cr but have ${data.balance ?? 0} cr.`);
+        } else {
+          setCreateError(data.error ?? "Failed to create event.");
+        }
+        return;
+      }
       setShowAddForm(false);
       await load();
     } finally {
@@ -165,7 +177,7 @@ export default function EventsPage() {
             <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Events</h1>
             <p className="mt-1 text-sm text-(--color-muted)">RSVP to upcoming events and meetups</p>
           </div>
-          {isAdvisor && (
+          {canCreateEvent && (
             <button
               type="button"
               onClick={() => setShowAddForm((v) => !v)}
@@ -174,7 +186,7 @@ export default function EventsPage() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Add Event
+              Post Event{isEcosystemPartner ? " · 5 cr" : ""}
             </button>
           )}
         </div>
@@ -183,7 +195,7 @@ export default function EventsPage() {
       <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 pt-6 pb-10">
 
         {/* Add Event Form (advisors only) */}
-        {isAdvisor && showAddForm && (
+        {canCreateEvent && showAddForm && (
           <section className="rounded-2xl border border-(--color-primary)/30 bg-(--color-primary)/5 p-6 space-y-4">
             <p className="text-xs font-bold uppercase tracking-widest text-(--color-primary)">New Event</p>
             <div className="grid gap-4 sm:grid-cols-2">

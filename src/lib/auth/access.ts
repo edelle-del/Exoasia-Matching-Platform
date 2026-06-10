@@ -14,6 +14,7 @@ export const PUBLIC_PATHS = [
 export const MEMBER_PATH_PREFIXES = [
   "/dashboard",
   "/profile",
+  "/startup",
   "/account-settings",
   "/notifications",
   "/requests",

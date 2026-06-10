@@ -71,6 +71,12 @@ Return valid JSON only (no markdown fences), shaped as:
       "project_id": "the project id from input",
       "fit_score": 0,
       "summary": "short one-liner",
+      "category_scores": {
+        "sector_match": 0,
+        "stage_fit": 0,
+        "support_type_alignment": 0,
+        "geographic_fit": 0
+      },
       "rationale": {
         "support_type_alignment": "...",
         "stage_fit": "...",
@@ -83,6 +89,7 @@ Return valid JSON only (no markdown fences), shaped as:
 
 Additional constraints:
 - fit_score must be an integer between 0 and 100.
+- All category_scores must be integers between 0 and 100 and must independently reflect alignment on that dimension alone — do not anchor them to fit_score.
 - Return one entry per project in the input.
 - If partner mandate data is sparse, score conservatively but still return a result.
 - project_id must be copied verbatim from the input.

@@ -48,6 +48,49 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Startups pay 7 cr, investors pay 5 cr per intro request
+    const INTRO_COST = isStartup ? 7 : 5;
+
+    // Idempotent — don't charge if match already exists
+    const { data: existingMatch } = await admin
+      .from("matches")
+      .select("id")
+      .or(
+        `and(member_a_id.eq.${project.owner_id},member_b_id.eq.${investor_profile_id}),and(member_a_id.eq.${investor_profile_id},member_b_id.eq.${project.owner_id})`,
+      )
+      .maybeSingle();
+
+    if (!existingMatch) {
+      const { data: ledgerRows } = await admin
+        .from("ad_credit_ledger")
+        .select("change_amount")
+        .eq("member_id", user.id);
+
+      const balance = (ledgerRows ?? []).reduce(
+        (sum, r) => sum + Number(r.change_amount ?? 0),
+        0,
+      );
+
+      if (balance < INTRO_COST) {
+        return NextResponse.json(
+          { error: `Insufficient credits. You need ${INTRO_COST} credits but have ${balance}.`, needed: INTRO_COST, balance },
+          { status: 402 },
+        );
+      }
+
+      const { error: deductError } = await admin.from("ad_credit_ledger").insert({
+        member_id: user.id,
+        change_amount: -INTRO_COST,
+        reason: isStartup
+          ? `Intro request to investor: ${investor_profile_id}`
+          : `Intro request to startup: ${project.owner_id}`,
+      });
+
+      if (deductError) {
+        return NextResponse.json({ error: deductError.message }, { status: 500 });
+      }
+    }
+
     // Carry over fit_score + summary from the project score if it exists
     const { data: scoreRow } = await admin
       .from("project_match_scores")

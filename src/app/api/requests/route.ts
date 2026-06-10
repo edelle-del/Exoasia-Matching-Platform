@@ -158,6 +158,37 @@ export async function GET() {
         };
       });
 
+    // ── Investor: their own data room access requests (resolved) ────────────
+    const { data: rawInvestorDRReqs } = await admin
+      .from("data_room_access_requests")
+      .select("id, owner_id, status, created_at, updated_at")
+      .eq("requester_id", user.id)
+      .in("status", ["approved", "denied"])
+      .order("updated_at", { ascending: false });
+
+    const drOwnerIds = [...new Set((rawInvestorDRReqs ?? []).map((r: { owner_id: string }) => r.owner_id))];
+    const [{ data: drOwnerProfiles }, { data: drOwnerProjects }] = await Promise.all([
+      drOwnerIds.length > 0
+        ? admin.from("profiles").select("id, full_name, business_name").in("id", drOwnerIds)
+        : Promise.resolve({ data: [] }),
+      drOwnerIds.length > 0
+        ? admin.from("projects").select("id, name, owner_id").in("owner_id", drOwnerIds).eq("is_active", true).limit(drOwnerIds.length)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const drOwnerMap = new Map((drOwnerProfiles ?? []).map((p: { id: string; full_name: string | null; business_name: string | null }) => [p.id, p]));
+    const drProjectByOwner = new Map((drOwnerProjects ?? []).map((p: { id: string; name: string; owner_id: string }) => [p.owner_id, p]));
+
+    type RawInvestorDRReq = { id: string; owner_id: string; status: string; created_at: string; updated_at: string | null };
+    const investorDataRoomNotifications = (rawInvestorDRReqs ?? []).map((req: RawInvestorDRReq) => ({
+      id: req.id,
+      type: "investor_data_room_notification" as const,
+      status: req.status as "approved" | "denied",
+      startup: drOwnerMap.get(req.owner_id) ?? null,
+      project: drProjectByOwner.get(req.owner_id) ?? null,
+      created_at: req.updated_at ?? req.created_at,
+    }));
+
     // ── Split into pending / accepted ────────────────────────────────────────
     const cofounderInvites        = allCofounderInvites.filter((i) => i.status === "pending");
     const acceptedCofounderInvites = allCofounderInvites.filter((i) => i.status === "accepted");
@@ -196,6 +227,8 @@ export async function GET() {
       acceptedCollabInvites,
       acceptedConnectionRequests,
       totalAccepted,
+      // investor-specific
+      investorDataRoomNotifications,
     });
   } catch (err) {
     return NextResponse.json(

@@ -106,6 +106,8 @@ export default function DashboardPage() {
     stale_count: number;
     stage_counts: Record<string, number>;
   } | null>(null);
+  const [missingCount, setMissingCount] = useState(0);
+  const [completenessPercent, setCompletenessPercent] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -149,6 +151,17 @@ export default function DashboardPage() {
           counts[label] = (counts[label] ?? 0) + 1;
         }
         setDealStageCounts(counts);
+
+        if (["startup", "investor", "ecosystem_partner"].includes(next.profile?.member_role ?? "")) {
+          const cRes = await fetch("/api/startup/completeness");
+          if (active && cRes.ok) {
+            const cData = await cRes.json();
+            setMissingCount(cData.missingCount ?? 0);
+            if (typeof cData.completedCount === "number" && typeof cData.totalCount === "number" && cData.totalCount > 0) {
+              setCompletenessPercent(Math.round((cData.completedCount / cData.totalCount) * 100));
+            }
+          }
+        }
 
         if (next.profile?.member_role === "ecosystem_partner") {
           const pRes = await fetch("/api/ecosystem/portfolio");
@@ -363,7 +376,19 @@ export default function DashboardPage() {
                 Hello,{" "}
                 <span className="text-(--color-primary)">{firstName}</span>
               </h1>
-              <ProfileStrengthRing percent={isLoading ? 0 : profilePercent} />
+              <ProfileStrengthRing percent={isLoading ? 0 : (completenessPercent ?? profilePercent)} />
+              {!isLoading && missingCount > 0 && (
+                <Link
+                  href="/profile/complete"
+                  className="flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 transition hover:bg-rose-500/20"
+                >
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
+                  </span>
+                  <span className="text-xs font-semibold text-rose-500">Your account needs more info</span>
+                </Link>
+              )}
             </div>
             <p className="mt-2 text-sm text-(--color-body)">
               {isEcosystemPartner
@@ -373,12 +398,6 @@ export default function DashboardPage() {
                 : `You're a member at Stage ${summary.profile?.stage || "0"} · Verification ${summary.profile?.verification_status || "unverified"}`
               }
             </p>
-            {profileNextStep && (
-              <p className="mt-1 text-xs text-(--color-muted)">
-                <span className="font-semibold text-(--color-body)">Next:</span>{" "}
-                {profileNextStep}
-              </p>
-            )}
           </div>
         </section>
 

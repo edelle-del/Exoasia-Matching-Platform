@@ -264,6 +264,13 @@ export default function TopHeader() {
                 label="Network graph"
                 icon={ICONS.networkGraph}
               />
+              {role === "admin" && (
+                <NavLink
+                  href="/admin/users"
+                  label="User management"
+                  icon={ICONS.members}
+                />
+              )}
             </>
           )}
         </nav>

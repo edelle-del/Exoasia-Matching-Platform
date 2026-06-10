@@ -260,6 +260,45 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const REGEN_COST = 3;
+
+    // First generation is free; every subsequent run costs 3 credits.
+    const { count: existingScoreCount } = await admin
+      .from("project_match_scores")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId);
+
+    const isRegen = (existingScoreCount ?? 0) > 0;
+
+    if (isRegen) {
+      const { data: ledgerRows } = await admin
+        .from("ad_credit_ledger")
+        .select("change_amount")
+        .eq("member_id", user.id);
+
+      const balance = (ledgerRows ?? []).reduce(
+        (sum, r) => sum + Number(r.change_amount ?? 0),
+        0,
+      );
+
+      if (balance < REGEN_COST) {
+        return NextResponse.json(
+          { error: `Insufficient credits. You need ${REGEN_COST} credits but have ${balance}.`, needed: REGEN_COST, balance },
+          { status: 402 },
+        );
+      }
+
+      const { error: deductError } = await admin.from("ad_credit_ledger").insert({
+        member_id: user.id,
+        change_amount: -REGEN_COST,
+        reason: `Regenerate match report: ${projectId}`,
+      });
+
+      if (deductError) {
+        return NextResponse.json({ error: deductError.message }, { status: 500 });
+      }
+    }
+
     const { data: investors } = await admin
       .from("profiles")
       .select(

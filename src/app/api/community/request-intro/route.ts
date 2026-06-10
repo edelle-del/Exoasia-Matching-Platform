@@ -54,6 +54,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ alreadyExists: true });
     }
 
+    // Deduct 2 credits for community intro requests
+    const INTRO_COST = 2;
+    const { data: ledgerRows } = await admin
+      .from("ad_credit_ledger")
+      .select("change_amount")
+      .eq("member_id", user.id);
+
+    const balance = (ledgerRows ?? []).reduce(
+      (sum, r) => sum + Number(r.change_amount ?? 0),
+      0,
+    );
+
+    if (balance < INTRO_COST) {
+      return NextResponse.json(
+        { error: `Insufficient credits. You need ${INTRO_COST} credits but have ${balance}.`, needed: INTRO_COST, balance },
+        { status: 402 },
+      );
+    }
+
+    const { error: deductError } = await admin.from("ad_credit_ledger").insert({
+      member_id: user.id,
+      change_amount: -INTRO_COST,
+      reason: `Community intro request to: ${target_id}`,
+    });
+
+    if (deductError) {
+      return NextResponse.json({ error: deductError.message }, { status: 500 });
+    }
+
     const { error: insertError } = await admin
       .from("matches")
       .insert({

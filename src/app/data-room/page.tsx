@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../providers";
 import type { InvestorProjectRow } from "@/app/api/data-room/investor-projects/route";
+import { InsufficientCreditsModal } from "@/app/_components/InsufficientCreditsModal";
 
 // ─── Startup types ────────────────────────────────────────────────────────────
 
@@ -57,6 +58,9 @@ function InvestorDataRoom() {
   const [requesting, setRequesting] = useState<Record<string, boolean>>({});
   const [emailForms, setEmailForms] = useState<Record<string, EmailFormState>>({});
   const [search, setSearch] = useState("");
+  const [pitchUnlocking, setPitchUnlocking] = useState<Record<string, boolean>>({});
+  const [pitchConfirm, setPitchConfirm] = useState<string | null>(null);
+  const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/data-room/investor-projects")
@@ -104,6 +108,34 @@ function InvestorDataRoom() {
           p.owner_id === ownerId ? { ...p, access_status: "pending" } : p,
         ),
       );
+    }
+  };
+
+  const handleUnlockPitchDeck = async (projectId: string) => {
+    setPitchConfirm(null);
+    setPitchUnlocking((prev) => ({ ...prev, [projectId]: true }));
+    try {
+      const res = await fetch("/api/data-room/unlock-pitch-deck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      const data = (await res.json()) as { success?: boolean; pitchDeckUrl?: string | null; needed?: number; balance?: number };
+      if (res.status === 402 && data.needed !== undefined && data.balance !== undefined) {
+        setInsufficientCredits({ needed: data.needed, balance: data.balance });
+        return;
+      }
+      if (res.ok && data.success) {
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.project_id === projectId
+              ? { ...p, pitch_deck_unlocked: true, pitch_deck_url: data.pitchDeckUrl ?? null }
+              : p,
+          ),
+        );
+      }
+    } finally {
+      setPitchUnlocking((prev) => ({ ...prev, [projectId]: false }));
     }
   };
 
@@ -196,23 +228,79 @@ function InvestorDataRoom() {
                       </div>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-4 space-y-3">
                       {project.access_status === "approved" && (
-                        project.drive_link ? (
-                          <a
-                            href={project.drive_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-primary) hover:underline"
-                          >
-                            Open Drive folder
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        ) : (
-                          <p className="text-xs text-(--color-muted) italic">Access approved — waiting for founder to share the folder.</p>
-                        )
+                        <>
+                          {project.drive_link ? (
+                            <a
+                              href={project.drive_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm font-semibold text-(--color-primary) hover:underline"
+                            >
+                              Open Drive folder
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          ) : (
+                            <p className="text-xs text-(--color-muted) italic">Access approved — waiting for founder to share the folder.</p>
+                          )}
+
+                          {/* Pitch deck section */}
+                          <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-2">Pitch deck</p>
+                            {project.pitch_deck_unlocked ? (
+                              project.pitch_deck_url ? (
+                                <a
+                                  href={project.pitch_deck_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-500 hover:underline"
+                                >
+                                  View pitch deck
+                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              ) : (
+                                <p className="text-xs text-(--color-muted) italic">Pitch deck not uploaded yet.</p>
+                              )
+                            ) : pitchConfirm === project.project_id ? (
+                              <div className="space-y-2">
+                                <p className="text-xs text-(--color-muted)">This will deduct <strong>3 credits</strong> from your balance.</p>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={pitchUnlocking[project.project_id]}
+                                    onClick={() => void handleUnlockPitchDeck(project.project_id)}
+                                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 transition-colors disabled:opacity-50"
+                                  >
+                                    {pitchUnlocking[project.project_id] ? "Unlocking…" : "Confirm · 3 cr"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPitchConfirm(null)}
+                                    className="text-xs text-(--color-muted) hover:text-(--color-ink)"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setPitchConfirm(project.project_id)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-500 hover:text-violet-600"
+                              >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                Unlock pitch deck · 3 credits
+                              </button>
+                            )}
+                          </div>
+                        </>
                       )}
                       {project.access_status === "pending" && (
                         <p className="text-xs text-amber-600">Awaiting founder approval</p>
@@ -279,6 +367,14 @@ function InvestorDataRoom() {
           ))
         )}
       </div>
+
+      {insufficientCredits && (
+        <InsufficientCreditsModal
+          needed={insufficientCredits.needed}
+          balance={insufficientCredits.balance}
+          onClose={() => setInsufficientCredits(null)}
+        />
+      )}
     </div>
   );
 }

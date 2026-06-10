@@ -19,13 +19,13 @@ export async function GET(
     let { data, error } = await supabase
       .from("projects")
       .select(
-        "id, owner_id, name, description, stage, sector, venture_readiness_report, drive_link, is_active, created_at, updated_at",
+        "id, owner_id, name, description, stage, sector, venture_readiness_report, drive_link, pitch_deck_url, financial_snapshot, is_active, created_at, updated_at",
       )
       .eq("id", id)
       .single();
 
-    // drive_link column may not exist yet (migration pending) — retry without it
-    if (error?.message?.includes("drive_link")) {
+    // drive_link / pitch_deck_url / financial_snapshot columns may not exist yet — retry without them
+    if (error?.message?.includes("drive_link") || error?.message?.includes("pitch_deck_url") || error?.message?.includes("financial_snapshot")) {
       const retry = await supabase
         .from("projects")
         .select(
@@ -33,7 +33,7 @@ export async function GET(
         )
         .eq("id", id)
         .single();
-      data = retry.data ? { ...retry.data, drive_link: null } : null;
+      data = retry.data ? { ...retry.data, drive_link: null, pitch_deck_url: null, financial_snapshot: null } : null;
       error = retry.error;
     }
 
@@ -70,6 +70,8 @@ export async function PATCH(
       sector?: string;
       venture_readiness_report?: unknown;
       drive_link?: string | null;
+      pitch_deck_url?: string | null;
+      financial_snapshot?: { revenue: string; burn_rate: string; runway: string } | null;
       is_active?: boolean;
     };
 
@@ -91,6 +93,8 @@ export async function PATCH(
     if (body.venture_readiness_report !== undefined)
       updates.venture_readiness_report = body.venture_readiness_report;
     if (body.drive_link !== undefined) updates.drive_link = body.drive_link ?? null;
+    if (body.pitch_deck_url !== undefined) updates.pitch_deck_url = body.pitch_deck_url ?? null;
+    if (body.financial_snapshot !== undefined) updates.financial_snapshot = body.financial_snapshot ?? null;
     if (body.is_active !== undefined) updates.is_active = body.is_active;
 
     let { error } = await supabase
@@ -98,12 +102,12 @@ export async function PATCH(
       .update(updates)
       .eq("id", id);
 
-    // drive_link column may not exist yet — retry without it
-    if (error?.message?.includes("drive_link")) {
-      const { drive_link: _omit, ...updatesWithoutDriveLink } = updates;
+    // drive_link / pitch_deck_url / financial_snapshot columns may not exist yet — retry without them
+    if (error?.message?.includes("drive_link") || error?.message?.includes("pitch_deck_url") || error?.message?.includes("financial_snapshot")) {
+      const { drive_link: _omit1, pitch_deck_url: _omit2, financial_snapshot: _omit3, ...safeUpdates } = updates;
       const retry = await supabase
         .from("projects")
-        .update(updatesWithoutDriveLink)
+        .update(safeUpdates)
         .eq("id", id);
       error = retry.error;
     }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../providers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,15 @@ type ConnectionRequest = {
   created_at: string;
 };
 
+type InvestorDataRoomNotification = {
+  id: string;
+  type: "investor_data_room_notification";
+  status: "approved" | "denied";
+  startup: { full_name: string | null; business_name: string | null } | null;
+  project: { id: string; name: string } | null;
+  created_at: string;
+};
+
 type RequestsData = {
   cofounderInvites: CofounderInvite[];
   dataRoomRequests: DataRoomRequest[];
@@ -66,6 +76,7 @@ type RequestsData = {
   acceptedCollabInvites: CollabInvite[];
   acceptedConnectionRequests: ConnectionRequest[];
   totalAccepted: number;
+  investorDataRoomNotifications?: InvestorDataRoomNotification[];
 };
 
 type Tab = "all" | "cofounder" | "collaboration" | "connections" | "data_room" | "accepted";
@@ -531,12 +542,83 @@ function AcceptedDataRoomCard({ req }: { req: DataRoomRequest }) {
   );
 }
 
+// ── Investor data room notification card ─────────────────────────────────────
+
+function InvestorDataRoomNotificationCard({
+  notification,
+  onAcknowledge,
+}: {
+  notification: InvestorDataRoomNotification;
+  onAcknowledge: (id: string) => void;
+}) {
+  const approved = notification.status === "approved";
+  const startupName =
+    notification.startup?.business_name ||
+    notification.startup?.full_name ||
+    "the startup";
+  const initials = getInitials(startupName);
+
+  return (
+    <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-5">
+      <div className="flex items-start gap-4">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${approved ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"}`}>
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-(--color-ink)">{startupName}</p>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${approved ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"}`}>
+              {approved ? "Approved" : "Denied"}
+            </span>
+          </div>
+          {notification.project && (
+            <p className="mt-0.5 text-xs text-(--color-muted)">{notification.project.name}</p>
+          )}
+          <p className="mt-1.5 text-sm text-(--color-body)">
+            {approved
+              ? "Your data room access request was approved. You can now view their data room."
+              : "Your data room access request was denied."}
+          </p>
+          <p className="mt-2 text-[11px] text-(--color-muted)">{relativeTime(notification.created_at)}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {approved && notification.project && (
+              <Link
+                href={`/data-room`}
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                View data room →
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => onAcknowledge(notification.id)}
+              className="flex items-center gap-1.5 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-muted) transition hover:border-(--color-ink)/30 hover:text-(--color-ink)"
+            >
+              Acknowledge
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function RequestsPage() {
+  const { memberRole } = useAuth();
+  const isInvestor = memberRole === "investor";
+
   const [data, setData] = useState<RequestsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("all");
+  const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem("drNotifAcknowledged");
+      return new Set(stored ? (JSON.parse(stored) as string[]) : []);
+    } catch { return new Set(); }
+  });
 
   useEffect(() => {
     fetch("/api/requests")
@@ -556,19 +638,46 @@ export default function RequestsPage() {
   const handleDataRoomRespond = (id: string) =>
     setData((p) => p ? { ...p, dataRoomRequests: remove(p.dataRoomRequests, id), totalPending: p.totalPending - 1 } : p);
 
-  const pendingCount = (data?.cofounderInvites.length ?? 0) + (data?.collabInvites.length ?? 0) + (data?.connectionRequests.length ?? 0) + (data?.dataRoomRequests.length ?? 0);
-  const acceptedCount = (data?.acceptedCofounderInvites.length ?? 0) + (data?.acceptedCollabInvites.length ?? 0) + (data?.acceptedConnectionRequests.length ?? 0) + (data?.acceptedDataRoomRequests.length ?? 0);
+  const handleAcknowledge = (id: string) => {
+    setAcknowledgedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try { localStorage.setItem("drNotifAcknowledged", JSON.stringify([...next])); } catch { /* noop */ }
+      return next;
+    });
+  };
+
+  const allInvestorNotifications = data?.investorDataRoomNotifications ?? [];
+  const unacknowledgedNotifications = allInvestorNotifications.filter((n) => !acknowledgedIds.has(n.id));
+
+  // ── Role-specific tab config ─────────────────────────────────────────────────
+  const founderPendingCount =
+    (data?.cofounderInvites.length ?? 0) +
+    (data?.collabInvites.length ?? 0) +
+    (data?.connectionRequests.length ?? 0) +
+    (data?.dataRoomRequests.length ?? 0);
+  const investorPendingCount =
+    (data?.connectionRequests.length ?? 0) + unacknowledgedNotifications.length;
+  const pendingCount = isInvestor ? investorPendingCount : founderPendingCount;
+
+  const founderAcceptedCount =
+    (data?.acceptedCofounderInvites.length ?? 0) +
+    (data?.acceptedCollabInvites.length ?? 0) +
+    (data?.acceptedConnectionRequests.length ?? 0) +
+    (data?.acceptedDataRoomRequests.length ?? 0);
+  const investorAcceptedCount = data?.acceptedConnectionRequests.length ?? 0;
+  const acceptedCount = isInvestor ? investorAcceptedCount : founderAcceptedCount;
 
   const tabCounts: Record<Tab, number> = {
     all: pendingCount,
     cofounder: data?.cofounderInvites.length ?? 0,
     collaboration: data?.collabInvites.length ?? 0,
     connections: data?.connectionRequests.length ?? 0,
-    data_room: data?.dataRoomRequests.length ?? 0,
+    data_room: isInvestor ? unacknowledgedNotifications.length : (data?.dataRoomRequests.length ?? 0),
     accepted: acceptedCount,
   };
 
-  const tabs: { key: Tab; label: string }[] = [
+  const founderTabs: { key: Tab; label: string }[] = [
     { key: "all", label: "All" },
     { key: "cofounder", label: "Co-founder" },
     { key: "collaboration", label: "Collaboration" },
@@ -576,6 +685,15 @@ export default function RequestsPage() {
     { key: "data_room", label: "Data Room" },
     { key: "accepted", label: "Accepted" },
   ];
+
+  const investorTabs: { key: Tab; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "connections", label: "Founder Requests" },
+    { key: "data_room", label: "Data Room" },
+    { key: "accepted", label: "Accepted" },
+  ];
+
+  const tabs = isInvestor ? investorTabs : founderTabs;
 
   const show = (tab: Tab) => activeTab === "all" || activeTab === tab;
   const isAcceptedTab = activeTab === "accepted";
@@ -588,7 +706,9 @@ export default function RequestsPage() {
       {/* Header */}
       <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-3xl">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+            {isInvestor ? "Investor Hub" : "Founders Arena"}
+          </p>
           <div className="mt-1 flex items-baseline gap-3">
             <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">Requests</h1>
             {pendingCount > 0 && (
@@ -658,18 +778,30 @@ export default function RequestsPage() {
               )}
             </div>
             <p className="mt-4 text-base font-semibold text-(--color-ink)">
-              {isAcceptedTab ? "No accepted requests yet" : "No pending requests"}
+              {(() => {
+                if (isAcceptedTab) return "No accepted requests yet";
+                if (activeTab === "cofounder") return "No co-founder invites";
+                if (activeTab === "collaboration") return "No collaboration invites";
+                if (activeTab === "connections") return isInvestor ? "No founder requests" : "No connection requests";
+                if (activeTab === "data_room") return isInvestor ? "No data room responses" : "No data room requests";
+                return "No pending requests";
+              })()}
             </p>
             <p className="mt-1 text-sm text-(--color-muted)">
-              {isAcceptedTab
-                ? "Accepted invitations and connections will appear here."
-                : "Invitations and connection requests will appear here."}
+              {(() => {
+                if (isAcceptedTab) return isInvestor ? "Accepted connections will appear here." : "Accepted invitations and connections will appear here.";
+                if (activeTab === "cofounder") return "Co-founder invitations from other founders will appear here.";
+                if (activeTab === "collaboration") return "Ecosystem partner collaboration invites will appear here.";
+                if (activeTab === "connections") return isInvestor ? "When a founder requests to connect with you, it will appear here." : "When an investor requests to connect with your project, it will appear here.";
+                if (activeTab === "data_room") return isInvestor ? "Startup responses to your data room access requests will appear here." : "Investor requests to access your data room will appear here.";
+                return isInvestor ? "Founder requests and data room responses will appear here." : "Invitations and connection requests will appear here.";
+              })()}
             </p>
           </div>
         )}
 
-        {/* Pending lists */}
-        {!loading && data && !isEmpty && !isAcceptedTab && (
+        {/* Pending lists — FOUNDER */}
+        {!loading && data && !isEmpty && !isAcceptedTab && !isInvestor && (
           <div className="space-y-8">
             {show("cofounder") && data.cofounderInvites.length > 0 && (
               <div>
@@ -717,8 +849,35 @@ export default function RequestsPage() {
           </div>
         )}
 
-        {/* Accepted tab */}
-        {!loading && data && !isEmpty && isAcceptedTab && (
+        {/* Pending lists — INVESTOR */}
+        {!loading && data && !isEmpty && !isAcceptedTab && isInvestor && (
+          <div className="space-y-8">
+            {show("connections") && data.connectionRequests.length > 0 && (
+              <div>
+                {activeTab === "all" && <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founder requests</p>}
+                <div className="space-y-3">
+                  {data.connectionRequests.map((req) => (
+                    <ConnectionRequestCard key={req.id} req={req} onRespond={handleConnectionRespond} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {show("data_room") && unacknowledgedNotifications.length > 0 && (
+              <div>
+                {activeTab === "all" && <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Data room responses</p>}
+                <div className="space-y-3">
+                  {unacknowledgedNotifications.map((n) => (
+                    <InvestorDataRoomNotificationCard key={n.id} notification={n} onAcknowledge={handleAcknowledge} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Accepted tab — FOUNDER */}
+        {!loading && data && !isEmpty && isAcceptedTab && !isInvestor && (
           <div className="space-y-8">
             {data.acceptedCofounderInvites.length > 0 && (
               <div>
@@ -759,6 +918,22 @@ export default function RequestsPage() {
                 <div className="space-y-3">
                   {data.acceptedDataRoomRequests.map((req) => (
                     <AcceptedDataRoomCard key={req.id} req={req} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Accepted tab — INVESTOR */}
+        {!loading && data && !isEmpty && isAcceptedTab && isInvestor && (
+          <div className="space-y-8">
+            {data.acceptedConnectionRequests.length > 0 && (
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Connections</p>
+                <div className="space-y-3">
+                  {data.acceptedConnectionRequests.map((req) => (
+                    <AcceptedConnectionCard key={req.id} req={req} />
                   ))}
                 </div>
               </div>

@@ -576,8 +576,8 @@ export default function ProfilePage() {
               My Team / Cofounders
             </h2>
             <p className="mt-1 text-sm text-(--color-body)">
-              Invite cofounders by email or phone number. They&apos;ll receive a
-              link to join your team.
+              Invite cofounders by email. They&apos;ll receive a link to join
+              your team.
             </p>
 
             {cofounders.length > 0 && (
@@ -672,30 +672,6 @@ export default function ProfilePage() {
               <p className="text-sm font-semibold text-(--color-ink)">
                 Invite a cofounder
               </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setInviteUidType("email")}
-                  className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
-                    inviteUidType === "email"
-                      ? "border-(--color-primary) bg-(--color-primary) text-white"
-                      : "border-(--color-hairline) text-(--color-body) hover:border-(--color-primary) hover:text-(--color-primary)"
-                  }`}
-                >
-                  Email
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInviteUidType("phone")}
-                  className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
-                    inviteUidType === "phone"
-                      ? "border-(--color-primary) bg-(--color-primary) text-white"
-                      : "border-(--color-hairline) text-(--color-body) hover:border-(--color-primary) hover:text-(--color-primary)"
-                  }`}
-                >
-                  Phone
-                </button>
-              </div>
               {projects.length > 0 && (
                 <select
                   aria-label="Select project for invite"
@@ -713,18 +689,14 @@ export default function ProfilePage() {
               )}
               <div className="flex gap-2">
                 <input
-                  type={inviteUidType === "email" ? "email" : "tel"}
+                  type="email"
                   className="gn-input flex-1"
                   value={inviteUidValue}
                   onChange={(e) => {
                     setInviteUidValue(e.target.value);
                     setInviteError("");
                   }}
-                  placeholder={
-                    inviteUidType === "email"
-                      ? "cofounder@email.com"
-                      : "+63 912 345 6789"
-                  }
+                  placeholder="cofounder@email.com"
                 />
                 <button
                   type="submit"

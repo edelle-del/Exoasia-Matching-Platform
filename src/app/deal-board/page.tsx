@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { advanceDealCardStage, deleteDealCard, fetchDealCards, fetchUserMatches, nextDealStage, promoteIntroToDeal, revertDealCardStage, touchDealCard } from "@/lib/app-data";
 import { useAuth } from "../providers";
+import type { PdfDealCard } from "@/components/deal-pipeline-pdf";
 
 const BOARD_COLUMNS = [
   "Qualified",
@@ -94,6 +95,7 @@ export default function DealBoardPage() {
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; onUndo: () => Promise<void> } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -224,6 +226,25 @@ export default function DealBoardPage() {
     }
   };
 
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const { pdf } = await import("@react-pdf/renderer");
+      const { DealPipelineReport } = await import("@/components/deal-pipeline-pdf");
+      const pdfCards: PdfDealCard[] = cards;
+      const generatedAt = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const blob = await pdf(<DealPipelineReport cards={pdfCards} generatedAt={generatedAt} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `deal-pipeline-${new Date().toISOString().split("T")[0]}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const grouped = BOARD_COLUMNS.map((stage) => ({
     stage,
     cards: cards.filter((card) => card.stage === STAGE_DB[stage]),
@@ -260,6 +281,28 @@ export default function DealBoardPage() {
               <span className="db-total-count">
                 {totalCards} deal{totalCards !== 1 ? "s" : ""}
               </span>
+              <button
+                type="button"
+                onClick={() => void handleExportPDF()}
+                disabled={exporting || totalCards === 0}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-3 py-1.5 text-xs font-semibold text-(--color-ink) transition hover:bg-(--color-canvas) disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {exporting ? (
+                  <>
+                    <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round" />
+                    </svg>
+                    Exporting…
+                  </>
+                ) : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                    Export PDF
+                  </>
+                )}
+              </button>
             </div>
           </div>
 

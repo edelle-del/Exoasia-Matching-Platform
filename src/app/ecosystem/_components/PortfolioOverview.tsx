@@ -19,6 +19,10 @@ type Props = {
   onNominate: () => void;
   onScoreCompany: (startup_id: string) => void;
   scoringId: string | null;
+  onFeatureStartup: (startup_id: string) => void;
+  featuringId: string | null;
+  onExportAnalytics: () => void;
+  exportingAnalytics: boolean;
 };
 
 function EcoFitBadge({ score }: { score: number | null }) {
@@ -30,9 +34,35 @@ function EcoFitBadge({ score }: { score: number | null }) {
   );
 }
 
-export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany, onNominate, onScoreCompany, scoringId }: Props) {
+export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany, onNominate, onScoreCompany, scoringId, onFeatureStartup, featuringId, onExportAnalytics, exportingAnalytics }: Props) {
   return (
     <div className="space-y-6">
+
+      {/* Analytics export */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onExportAnalytics}
+          disabled={exportingAnalytics || isLoading}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#2A2A3E] bg-[#12121A] px-3 py-1.5 text-xs font-semibold text-[#8B8BA7] transition hover:bg-[#1A1A26] hover:text-violet-300 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {exportingAnalytics ? (
+            <>
+              <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round" />
+              </svg>
+              Exporting…
+            </>
+          ) : (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              Export analytics · 8 cr
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Stat grid */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -175,6 +205,24 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
                       {isScoring ? "Scoring…" : company.best_eco_fit_score !== null ? "Re-score" : "Score"}
                     </button>
                   )}
+
+                  {/* Feature in digest button */}
+                  <button
+                    type="button"
+                    disabled={featuringId === company.startup_id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFeatureStartup(company.startup_id);
+                    }}
+                    title="Feature in partner digest · 10 cr"
+                    className={`shrink-0 rounded-lg px-2 py-1.5 text-[11px] font-bold transition ${
+                      featuringId === company.startup_id
+                        ? "cursor-wait bg-amber-500/10 text-amber-400"
+                        : "bg-[#1A1A26] text-[#4A4A6A] hover:bg-amber-500/10 hover:text-amber-400"
+                    }`}
+                  >
+                    {featuringId === company.startup_id ? "★…" : "★"}
+                  </button>
 
                   <svg
                     onClick={() => onSelectCompany(company.startup_id)}

@@ -284,17 +284,55 @@ export function parseProjectProfile(profileText: string): ProjectProfile {
 }
 
 export function parseAssessmentScores(text: string): ReadinessScores {
-  const m = text.match(
+  // Pattern 1: all on one line with real numbers
+  // "Assessment snapshot — Technology: 4.2, Business: 3.8, Investment: 3.1, Team: 4.5"
+  const oneLine = text.match(
     /Assessment snapshot\s*[—–\-]\s*Technology:\s*([\d.]+)[,.]?\s*Business:\s*([\d.]+)[,.]?\s*Investment:\s*([\d.]+)[,.]?\s*Team:\s*([\d.]+)/i,
   );
-  if (!m)
-    return { technology: null, business: null, investment: null, team: null };
-  return {
-    technology: parseFloat(m[1]),
-    business: parseFloat(m[2]),
-    investment: parseFloat(m[3]),
-    team: parseFloat(m[4]),
+  if (oneLine) {
+    return {
+      technology: parseFloat(oneLine[1]),
+      business: parseFloat(oneLine[2]),
+      investment: parseFloat(oneLine[3]),
+      team: parseFloat(oneLine[4]),
+    };
+  }
+
+  // Pattern 2: "X Readiness  Y.Y/Z" — the VENTURE READINESS LEVEL section format
+  // e.g. "Technology Readiness   0.0/9"  or  "Technology Readiness   6.5/9"
+  const extractReadinessScore = (label: string): number | null => {
+    const esc = escapeRegExp(label);
+    const re = new RegExp(
+      `(?:^|\\n)[ \\t]*${esc}(?:\\s+Readiness)?[ \\t]*:?[ \\t]*(\\d+(?:\\.\\d+)?)(?:/\\d+)?`,
+      "im",
+    );
+    const m = re.exec(text);
+    return m ? parseFloat(m[1]) : null;
   };
+
+  const technology = extractReadinessScore("Technology");
+  const business   = extractReadinessScore("Business");
+  const investment = extractReadinessScore("Investment");
+  // "Team" is also a dimension header — require "Readiness" suffix or a standalone numeric line
+  const teamWithSuffix = new RegExp(
+    `(?:^|\\n)[ \\t]*Team\\s+Readiness[ \\t]*:?[ \\t]*(\\d+(?:\\.\\d+)?)(?:/\\d+)?`,
+    "im",
+  ).exec(text);
+  const teamStandalone = new RegExp(
+    `(?:^|\\n)[ \\t]*Team[ \\t]*:?[ \\t]+(\\d+(?:\\.\\d+)?)[ \\t]*(?:/\\d+)?[ \\t]*(?:\\n|$)`,
+    "im",
+  ).exec(text);
+  const team = teamWithSuffix
+    ? parseFloat(teamWithSuffix[1])
+    : teamStandalone
+      ? parseFloat(teamStandalone[1])
+      : null;
+
+  if (technology !== null || business !== null || investment !== null || team !== null) {
+    return { technology, business, investment, team };
+  }
+
+  return { technology: null, business: null, investment: null, team: null };
 }
 
 export function parseExecutiveSummary(summaryText: string): ExecutiveSummary {
@@ -563,6 +601,13 @@ export function parseVentureReadinessText(
     "EXECUTIVE SUMMARY",
   ]);
 
+  // Dedicated readiness scores section (appears before EXECUTIVE SUMMARY in the PDF)
+  const readinessLevelText = extractSection(t, "VENTURE READINESS LEVEL", [
+    "EXECUTIVE SUMMARY",
+    "CONCLUSION",
+    "IDEAS WORTH PURSUING",
+  ]);
+
   const executiveSummaryText = extractSection(t, "EXECUTIVE SUMMARY", [
     "CONCLUSION",
     "IDEAS WORTH PURSUING",
@@ -579,10 +624,27 @@ export function parseVentureReadinessText(
   const conclusionMatch = conclusionRe.exec(t);
   const afterConclusion = conclusionMatch ? t.slice(conclusionMatch.index) : t;
 
+  const execSummary = parseExecutiveSummary(executiveSummaryText);
+
+  // Score resolution priority:
+  //   1. VENTURE READINESS LEVEL section  (most reliable — explicit score grid)
+  //   2. EXECUTIVE SUMMARY section        (inline "Assessment snapshot" line)
+  //   3. Full document scan               (last resort)
+  const allNull = Object.values(execSummary.assessment).every((v) => v === null);
+  if (allNull) {
+    const levelScores = readinessLevelText ? parseAssessmentScores(readinessLevelText) : null;
+    const resolved = levelScores && Object.values(levelScores).some((v) => v !== null)
+      ? levelScores
+      : parseAssessmentScores(t);
+    if (Object.values(resolved).some((v) => v !== null)) {
+      execSummary.assessment = resolved;
+    }
+  }
+
   return {
     report_date: parseReportDate(t),
     profile: parseProjectProfile(profileText),
-    executive_summary: parseExecutiveSummary(executiveSummaryText),
+    executive_summary: execSummary,
     conclusion: parseConclusion(conclusionText),
     sections: parseDimensionSections(afterConclusion),
   };

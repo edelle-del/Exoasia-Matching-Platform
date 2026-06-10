@@ -12,6 +12,8 @@ export type InvestorProjectRow = {
   access_status: "none" | "pending" | "approved" | "denied";
   access_request_id: string | null;
   drive_link: string | null;
+  pitch_deck_url: string | null;
+  pitch_deck_unlocked: boolean;
 };
 
 export async function GET() {
@@ -46,7 +48,7 @@ export async function GET() {
     // Only projects owned by matched startups
     const { data: projects, error: projectsError } = await admin
       .from("projects")
-      .select("id, name, stage, sector, owner_id, drive_link, profiles!owner_id(full_name, business_name)")
+      .select("id, name, stage, sector, owner_id, drive_link, pitch_deck_url, profiles!owner_id(full_name, business_name)")
       .eq("is_active", true)
       .in("owner_id", matchedOwnerIds)
       .order("created_at", { ascending: false });
@@ -65,10 +67,25 @@ export async function GET() {
       (requests ?? []).map((r) => [r.owner_id, r]),
     );
 
+    // Check which pitch decks this investor has already unlocked
+    const { data: pitchDeckLedger } = await admin
+      .from("ad_credit_ledger")
+      .select("reason")
+      .eq("member_id", user.id)
+      .ilike("reason", "Unlock pitch deck: %");
+
+    const unlockedPitchDeckIds = new Set(
+      (pitchDeckLedger ?? []).map((r) =>
+        (r.reason as string).replace("Unlock pitch deck: ", ""),
+      ),
+    );
+
     const rows: InvestorProjectRow[] = (projects ?? []).map((p) => {
       const owner = p.profiles as { full_name?: string | null; business_name?: string | null } | null;
       const req = requestByOwner.get(p.owner_id);
       const status = (req?.status as InvestorProjectRow["access_status"]) ?? "none";
+      const pitchDeckUnlocked = unlockedPitchDeckIds.has(p.id);
+      const projectData = p as typeof p & { pitch_deck_url?: string | null };
       return {
         project_id: p.id,
         project_name: p.name,
@@ -79,6 +96,8 @@ export async function GET() {
         access_status: status,
         access_request_id: req?.id ?? null,
         drive_link: status === "approved" ? (p.drive_link ?? null) : null,
+        pitch_deck_url: pitchDeckUnlocked ? (projectData.pitch_deck_url ?? null) : null,
+        pitch_deck_unlocked: pitchDeckUnlocked,
       };
     });
 

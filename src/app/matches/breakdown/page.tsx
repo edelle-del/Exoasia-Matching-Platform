@@ -322,14 +322,14 @@ function computeCategories(
   const stageScore = aiScores.stage_fit ?? scoreFromEvidence(stageParams);
   const stageContext: ContextItem[] = productStage ? [{ name: "Product stage", value: productStage }] : [];
 
-  // ── 3. Investment Thesis / Ask–Offer Fit (High weight) ───────────────────
+  // ── 3. Investment Thesis / Ask–Offer Fit  (or Support Type Alignment for eco partners) ─────
+  const isEcoPartner = myIsInvestor && mine?.member_role === "ecosystem_partner";
   const myAsks     = mine?.ask_categories   ?? [];
   const theirOffers= theirs?.offer_categories ?? [];
   const myOffers   = mine?.offer_categories  ?? [];
   const theirAsks  = theirs?.ask_categories  ?? [];
   const askOfferOverlap = myAsks.filter(a  => theirOffers.some(o => semanticMatch(a, o))).length;
   const offerAskOverlap = myOffers.filter(o => theirAsks.some(a  => semanticMatch(o, a))).length;
-  const totalOverlap    = askOfferOverlap + offerAskOverlap;
 
   const targetRaiseMin = startupV2?.target_raise_min != null ? Number(startupV2.target_raise_min) : null;
   const targetRaiseMax = startupV2?.target_raise_max != null ? Number(startupV2.target_raise_max) : null;
@@ -340,27 +340,42 @@ function computeCategories(
   const aoMax = Math.min(myAsks.length,   theirOffers.length);
   const oaMax = Math.min(myOffers.length, theirAsks.length);
 
-  const thesisParams: Param[] = [
-    {
-      name: "Ask / Offer fit",
-      myVal:    myAsks.slice(0, 3).join(", ")     || "None",
-      theirVal: theirOffers.slice(0, 3).join(", ") || "None",
-      status: ps(
-        askOfferOverlap > 0 && askOfferOverlap >= aoMax,
-        askOfferOverlap >= 1 || !myAsks.length || !theirOffers.length,
-      ),
-    },
-    {
-      name: "Offer / Ask fit",
-      myVal:    myOffers.slice(0, 3).join(", ") || "None",
-      theirVal: theirAsks.slice(0, 3).join(", ") || "None",
-      status: ps(
-        offerAskOverlap > 0 && offerAskOverlap >= oaMax,
-        offerAskOverlap >= 1 || !myOffers.length || !theirAsks.length,
-      ),
-    },
-  ];
-  if (targetRaiseMin != null || targetRaiseMax != null) {
+  const thesisParams: Param[] = isEcoPartner
+    ? [
+        // Eco partner: partner's offerings (myVal) vs startup's needs (theirVal)
+        {
+          name: "Partner support",
+          myVal:    myOffers.slice(0, 3).join(", ") || "None",
+          theirVal: theirAsks.slice(0, 3).join(", ") || "None",
+          status: ps(
+            offerAskOverlap > 0 && offerAskOverlap >= oaMax,
+            offerAskOverlap >= 1 || !myOffers.length || !theirAsks.length,
+          ),
+        },
+      ]
+    : [
+        {
+          name: "Ask / Offer fit",
+          myVal:    myAsks.slice(0, 3).join(", ")     || "None",
+          theirVal: theirOffers.slice(0, 3).join(", ") || "None",
+          status: ps(
+            askOfferOverlap > 0 && askOfferOverlap >= aoMax,
+            askOfferOverlap >= 1 || !myAsks.length || !theirOffers.length,
+          ),
+        },
+        {
+          name: "Offer / Ask fit",
+          myVal:    myOffers.slice(0, 3).join(", ") || "None",
+          theirVal: theirAsks.slice(0, 3).join(", ") || "None",
+          status: ps(
+            offerAskOverlap > 0 && offerAskOverlap >= oaMax,
+            offerAskOverlap >= 1 || !myOffers.length || !theirAsks.length,
+          ),
+        },
+      ];
+
+  // Raise size context is investment-specific; skip for ecosystem partners
+  if (!isEcoPartner && (targetRaiseMin != null || targetRaiseMax != null)) {
     thesisParams.push({
       name: "Target raise",
       myVal:    myIsInvestor ? "Investor" : raiseLabel(targetRaiseMin, targetRaiseMax),
@@ -409,7 +424,7 @@ function computeCategories(
       context: stageContext,
     },
     {
-      id: "thesis", label: "Investment Thesis",
+      id: "thesis", label: isEcoPartner ? "Support Type Alignment" : "Investment Thesis",
       score: thesisScore, color: "#8B5CF6",
       params: thesisParams,
       isEstimated: aiScores.investment_thesis == null,
@@ -460,6 +475,7 @@ function BreakdownPage() {
   const [theirs,     setTheirs]     = useState<Profile | null>(null);
   const [openCat,    setOpenCat]    = useState<number | null>(0);
   const [fitScore,      setFitScore]      = useState(initialScore);
+  const [hasStoredEcoScore, setHasStoredEcoScore] = useState(false);
   const [projectStage,  setProjectStage]  = useState<string | null>(null);
   const [aiCatScores,   setAiCatScores]   = useState<AICategoryScores>({});
   const [aiSummary,    setAiSummary]    = useState<string | null>(null);
@@ -497,7 +513,7 @@ function BreakdownPage() {
         projectId
           ? supabase
               .from("ecosystem_match_scores")
-              .select("summary, rationale")
+              .select("fit_score, summary, rationale")
               .eq("project_id", projectId)
               .or(`eco_partner_profile_id.eq.${profileAId},eco_partner_profile_id.eq.${profileBId}`)
               .maybeSingle()
@@ -510,9 +526,15 @@ function BreakdownPage() {
       setProjectStage(proj?.stage ?? null);
 
       // Use ecosystem_match_scores if project_match_scores has no data (ecosystem partner view)
+      const ecoRaw = (ecoScoreRes as { data: unknown }).data as { fit_score?: number; summary?: string; rationale?: Record<string, unknown> } | null;
+      // If the ecosystem table has a stored fit_score, use it so the ring matches the discover card.
+      if (ecoRaw?.fit_score != null) {
+        setFitScore(ecoRaw.fit_score);
+        setHasStoredEcoScore(true);
+      }
       const scoreData = (
         (scoreRes as { data: unknown }).data ??
-        (ecoScoreRes as { data: unknown }).data
+        ecoRaw
       ) as { summary?: string; rationale?: Record<string, unknown> } | null;
       const rat = scoreData?.rationale ?? {};
       const toNum = (v: unknown) => typeof v === "number" ? v : typeof v === "string" ? Number(v) || undefined : undefined;
@@ -543,9 +565,11 @@ function BreakdownPage() {
   // ring is logically consistent with what the categories show. Showing the AI's holistic fitScore
   // alongside evidence-only category scores produces an unexplainable contradiction (e.g. ring 75%,
   // categories 25/0/0/25).
+  // Exception: ecosystem partners — the stored fit_score is AI-generated mandate-fit (not a
+  // dimension average), so always trust it even when per-dimension AI scores aren't stored.
   const allEstimated   = categories.every((c) => c.isEstimated);
   const someEstimated  = categories.some((c) => c.isEstimated);
-  const ringScore     = allEstimated
+  const ringScore     = (allEstimated && !hasStoredEcoScore)
     ? Math.round(categories.reduce((sum, c) => sum + c.score, 0) / categories.length)
     : fitScore;
   const circumf      = 2 * Math.PI * 28;
@@ -589,6 +613,7 @@ function BreakdownPage() {
         newScore = projectId
           ? data.scores?.find((s) => s.project_id === projectId)?.fit_score
           : data.scores?.[0]?.fit_score;
+        if (newScore != null) setHasStoredEcoScore(true);
 
         // Re-fetch AI summary + rationale from ecosystem_match_scores
         if (newScore != null && projectId) {

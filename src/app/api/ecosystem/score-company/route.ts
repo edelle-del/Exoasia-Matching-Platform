@@ -123,10 +123,17 @@ export async function POST(request: Request) {
 
     const json = await callOpenRouter(GEMINI_ECO_PARTNER_SCORES_STARTUP_INSTRUCTIONS, payload);
 
+    type CategoryScores = {
+      sector_match?: number;
+      stage_fit?: number;
+      support_type_alignment?: number;
+      geographic_fit?: number;
+    };
     type ScoreEntry = {
       project_id: string;
       fit_score: number;
       summary: string;
+      category_scores?: CategoryScores;
       rationale: Record<string, string>;
     };
     const result = JSON.parse(json) as { scores: ScoreEntry[] };
@@ -135,17 +142,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid AI response" }, { status: 500 });
     }
 
+    const clampScore = (v: unknown) =>
+      typeof v === "number" ? Math.max(0, Math.min(100, Math.round(v))) : undefined;
+
     const validProjectIds = new Set(projects.map((p) => p.id));
     const rows = result.scores
       .filter((s) => s.project_id && validProjectIds.has(s.project_id))
-      .map((s) => ({
-        project_id: s.project_id,
-        eco_partner_profile_id: user.id,
-        fit_score: Math.max(0, Math.min(100, Math.round(Number(s.fit_score) || 0))),
-        summary: String(s.summary || ""),
-        rationale: s.rationale ?? {},
-        generated_at: new Date().toISOString(),
-      }));
+      .map((s) => {
+        const cs = s.category_scores;
+        const rationale = {
+          ...(s.rationale ?? {}),
+          ...(cs?.sector_match           != null ? { _cs_sector_vertical:   clampScore(cs.sector_match)           } : {}),
+          ...(cs?.stage_fit              != null ? { _cs_stage_fit:         clampScore(cs.stage_fit)               } : {}),
+          ...(cs?.support_type_alignment != null ? { _cs_investment_thesis: clampScore(cs.support_type_alignment)  } : {}),
+          ...(cs?.geographic_fit         != null ? { _cs_geographic_fit:    clampScore(cs.geographic_fit)          } : {}),
+        };
+        return {
+          project_id: s.project_id,
+          eco_partner_profile_id: user.id,
+          fit_score: Math.max(0, Math.min(100, Math.round(Number(s.fit_score) || 0))),
+          summary: String(s.summary || ""),
+          rationale,
+          generated_at: new Date().toISOString(),
+        };
+      });
 
     if (rows.length > 0) {
       const { error: upsertError } = await admin

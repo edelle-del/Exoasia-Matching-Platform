@@ -34,6 +34,51 @@ export async function POST(request: Request) {
       }
     }
 
+    // Email invites cost 1 credit. Skip the charge if an active invite to
+    // the same email+project already exists (idempotency guard).
+    if (uid_type === "email") {
+      const admin = createAdminClient();
+      const INVITE_COST = 1;
+
+      const { data: existingInvite } = await admin
+        .from("cofounder_invites")
+        .select("id")
+        .eq("inviter_id", user.id)
+        .eq("uid_value", uid_value.trim())
+        .eq("project_id", project_id ?? null)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (!existingInvite) {
+        const { data: ledgerRows } = await admin
+          .from("ad_credit_ledger")
+          .select("change_amount")
+          .eq("member_id", user.id);
+
+        const balance = (ledgerRows ?? []).reduce(
+          (sum, r) => sum + Number(r.change_amount ?? 0),
+          0,
+        );
+
+        if (balance < INVITE_COST) {
+          return NextResponse.json(
+            { error: `Insufficient credits. You need ${INVITE_COST} credit but have ${balance}.`, needed: INVITE_COST, balance },
+            { status: 402 },
+          );
+        }
+
+        const { error: deductError } = await admin.from("ad_credit_ledger").insert({
+          member_id: user.id,
+          change_amount: -INVITE_COST,
+          reason: `Cofounder email invite: ${uid_value.trim()}`,
+        });
+
+        if (deductError) {
+          return NextResponse.json({ error: deductError.message }, { status: 500 });
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from("cofounder_invites")
       .insert({

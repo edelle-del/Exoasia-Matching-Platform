@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../../../providers";
+import { InsufficientCreditsModal } from "@/app/_components/InsufficientCreditsModal";
 
 type Project = {
   id: string;
@@ -81,6 +82,14 @@ export default function InvestorProjectOverviewPage() {
   const [score, setScore] = useState<MatchScore | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [financialSnapshot, setFinancialSnapshot] = useState<{ revenue: string; burn_rate: string; runway: string } | null>(null);
+  const [hasFinancialSnapshot, setHasFinancialSnapshot] = useState(false);
+  const [snapshotChecked, setSnapshotChecked] = useState(false);
+  const [snapshotUnlockConfirm, setSnapshotUnlockConfirm] = useState(false);
+  const [snapshotUnlocking, setSnapshotUnlocking] = useState(false);
+  const [snapshotUnlockError, setSnapshotUnlockError] = useState("");
+  const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
+
   useEffect(() => {
     if (!user?.id || !id) return;
     void (async () => {
@@ -114,8 +123,68 @@ export default function InvestorProjectOverviewPage() {
       setFounder(founderData as FounderProfile ?? null);
       setScore(scoreData as MatchScore ?? null);
       setIsLoading(false);
+
+      // Check if startup has filled in their snapshot (filter-only, no data exposed)
+      const { data: snapExistsRow } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("id", id)
+        .not("financial_snapshot", "is", null)
+        .maybeSingle();
+      setHasFinancialSnapshot(!!snapExistsRow);
+
+      // Pre-check if investor already paid to unlock the financial snapshot
+      const { data: lockRow } = await supabase
+        .from("ad_credit_ledger")
+        .select("reason")
+        .eq("member_id", user.id)
+        .eq("reason", `Unlock financial snapshot: ${id}`)
+        .maybeSingle();
+
+      if (lockRow) {
+        const res = await fetch("/api/projects/financial-snapshot/unlock", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId: id }),
+        });
+        const d = (await res.json()) as { success?: boolean; snapshot?: { revenue: string; burn_rate: string; runway: string } | null };
+        if (d.success && d.snapshot) setFinancialSnapshot(d.snapshot);
+      }
+      setSnapshotChecked(true);
     })();
   }, [supabase, user?.id, id]);
+
+  const handleUnlockSnapshot = async () => {
+    setSnapshotUnlocking(true);
+    setSnapshotUnlockError("");
+    try {
+      const res = await fetch("/api/projects/financial-snapshot/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: id }),
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        snapshot?: { revenue: string; burn_rate: string; runway: string } | null;
+        needed?: number;
+        balance?: number;
+        error?: string;
+      };
+      if (res.status === 402 && data.needed !== undefined && data.balance !== undefined) {
+        setInsufficientCredits({ needed: data.needed, balance: data.balance });
+        setSnapshotUnlockConfirm(false);
+        return;
+      }
+      if (res.ok && data.success) {
+        setFinancialSnapshot(data.snapshot ?? null);
+        setSnapshotUnlockConfirm(false);
+      } else {
+        setSnapshotUnlockError(data.error ?? "Failed to unlock.");
+      }
+    } finally {
+      setSnapshotUnlocking(false);
+    }
+  };
 
   const v2 = parseV2(founder?.asks_summary);
   const fundraisingStage = v2?.fundraising_stage ?? null;
@@ -388,6 +457,81 @@ export default function InvestorProjectOverviewPage() {
           )}
         </section>
 
+        {/* Financial snapshot */}
+        {snapshotChecked && (
+          <section className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted) mb-1">Financial snapshot</p>
+            <h2 className="text-base font-semibold text-(--color-ink)">Revenue, burn rate &amp; runway</h2>
+
+            {financialSnapshot ? (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
+                    <p className="text-[10px] font-bold uppercase text-(--color-muted) mb-1">Revenue</p>
+                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.revenue || "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
+                    <p className="text-[10px] font-bold uppercase text-(--color-muted) mb-1">Monthly burn</p>
+                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.burn_rate || "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-3">
+                    <p className="text-[10px] font-bold uppercase text-(--color-muted) mb-1">Runway</p>
+                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.runway || "—"}</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-(--color-muted)">Self-reported figures provided by the startup.</p>
+              </div>
+            ) : !hasFinancialSnapshot ? (
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3">
+                <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-(--color-muted)">This startup hasn&apos;t added their financial snapshot yet. No credits will be charged.</p>
+              </div>
+            ) : snapshotUnlockConfirm ? (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-(--color-body)">
+                  This will deduct <strong>5 credits</strong> from your balance to view this startup&apos;s revenue, burn rate, and runway.
+                </p>
+                {snapshotUnlockError && <p className="text-xs text-red-600">{snapshotUnlockError}</p>}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={snapshotUnlocking}
+                    onClick={() => void handleUnlockSnapshot()}
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  >
+                    {snapshotUnlocking ? "Unlocking…" : "Confirm · 5 credits"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSnapshotUnlockConfirm(false)}
+                    className="text-sm text-(--color-muted) hover:text-(--color-ink)"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <p className="text-sm text-(--color-body) mb-3">
+                  Self-reported revenue estimates, monthly burn, and runway — shared only with investors who signal genuine intent.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSnapshotUnlockConfirm(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-500/20 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Unlock financial snapshot · 5 credits
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Actions */}
         <section className="flex flex-wrap gap-3">
           {founder && (
@@ -409,6 +553,14 @@ export default function InvestorProjectOverviewPage() {
           </Link>
         </section>
       </div>
+
+      {insufficientCredits && (
+        <InsufficientCreditsModal
+          needed={insufficientCredits.needed}
+          balance={insufficientCredits.balance}
+          onClose={() => setInsufficientCredits(null)}
+        />
+      )}
     </div>
   );
 }

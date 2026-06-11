@@ -4,73 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/providers";
 import { createClient } from "@/lib/supabase/client";
-import { CREDIT_PACKAGES, type CreditPackage } from "@/types/constants";
+import { CREDIT_PACKAGES, DURATION_PLANS, type CreditPackage } from "@/types/constants";
 
-const DURATION_PLANS = [
-  {
-    id: "1mo",
-    label: "1 Month",
-    months: 1,
-    upfront: 29,
-    perMonth: 29,
-    savings: null as string | null,
-    tagline: "For founders on a single-month active sprint.",
-    featured: false,
-    features: [
-      "Unlimited project slots",
-      "All investor matches unlocked",
-      "Priority advisor queue",
-      "Standard profile badge",
-      "Cancel anytime",
-    ],
-  },
-  {
-    id: "3mo",
-    label: "3 Months",
-    months: 3,
-    upfront: 60,
-    perMonth: 20,
-    savings: "Save 30% vs. monthly" as string | null,
-    tagline: "For founders exploring the market over a quarter.",
-    featured: false,
-    features: [
-      "Everything in 1-Month",
-      "Verified founder status badge",
-    ],
-  },
-  {
-    id: "6mo",
-    label: "6 Months",
-    months: 6,
-    upfront: 96,
-    perMonth: 16,
-    savings: "Save 45% vs. monthly" as string | null,
-    tagline: "For serious startups executing an active funding round.",
-    featured: true,
-    features: [
-      "Everything in 3-Month",
-      "2 warm intro requests / month",
-      "Investor analytics dashboard",
-      "Featured placement — 30 days",
-    ],
-  },
-  {
-    id: "12mo",
-    label: "12 Months",
-    months: 12,
-    upfront: 144,
-    perMonth: 12,
-    savings: "Save 58% — deepest discount" as string | null,
-    tagline: "For high-growth companies seeking long-term backing.",
-    featured: false,
-    features: [
-      "Everything in 6-Month",
-      "VIP advisor queue",
-      "Unlimited warm intros",
-      "1× pitch deck expert review",
-    ],
-  },
-];
 
 type CreditRole = "startup" | "investor" | "ecosystem_partner";
 
@@ -93,9 +28,9 @@ const CREDIT_COSTS: {
   },
   {
     action: "View full investor profile + compatibility breakdown",
-    cost: 3,
-    note: "Match card always visible · 3 cr unlocks everything",
-    reason: "Your match cards (score, name, fund type, city) are always visible for free. The 3-credit unlock opens the full profile — thesis, portfolio, check size ranges, contact signals — plus the compatibility breakdown that explains exactly why this investor aligns with your startup. One payment, one unlock, permanent access to that investor's full details. No double-charging.",
+    cost: 0,
+    note: "Free on any paid plan · 3 cr on free tier",
+    reason: "On any paid subscription, investor profiles and compatibility breakdowns are fully unlocked at no credit cost — this is the core benefit of subscribing. On the free tier, each unlock costs 3 credits. Either way, the unlock is permanent: once you've accessed a profile, it stays open with no repeat charges.",
     roles: ["startup"],
     href: "/matches",
   },
@@ -224,12 +159,6 @@ const FREE_FEATURES = [
 ];
 
 
-// Replace with real DB query when credit history table is ready
-const MOCK_HISTORY = [
-  { id: "h1", amount: 10,  description: "Welcome bonus — account created",  date: "2026-05-01" },
-  { id: "h2", amount: -5,  description: "Investor match report generated",   date: "2026-05-03" },
-  { id: "h3", amount: -2,  description: "Full investor profile unlocked",    date: "2026-05-05" },
-];
 
 const PAYMENT_INFO = [
   "Prices shown in USD · charged in PHP at a fixed rate of ₱56 per $1",
@@ -249,9 +178,12 @@ export default function PaymentsPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [confirmPack, setConfirmPack] = useState<CreditPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
+  const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [openCreditItem, setOpenCreditItem] = useState<string | null>(null);
   const [creditRoleFilter, setCreditRoleFilter] = useState<CreditRole>("startup");
+  const [creditHistory, setCreditHistory] = useState<{ id: string; change_amount: number; reason: string | null; created_at: string }[]>([]);
+  const [planModal, setPlanModal] = useState<typeof DURATION_PLANS[0] | null>(null);
 
   useEffect(() => {
     if (memberRole === "investor" || memberRole === "startup" || memberRole === "ecosystem_partner") {
@@ -279,9 +211,23 @@ export default function PaymentsPage() {
         .eq("id", user.id)
         .single(),
       fetchCredits(user.id),
-    ]).then(([{ data }, total]) => {
+      supabase
+        .from("ad_credit_ledger")
+        .select("id, change_amount, reason, created_at")
+        .eq("member_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(30),
+    ]).then(([{ data }, total, { data: history }]) => {
       setSubscriptionPlan(data?.subscription_plan ?? null);
       setCredits(total);
+      setCreditHistory(
+        (history ?? []).map((r) => ({
+          id: r.id as string,
+          change_amount: Number(r.change_amount ?? 0),
+          reason: r.reason as string | null,
+          created_at: r.created_at as string,
+        })),
+      );
       setLoadingProfile(false);
     });
   }, [user, supabase, fetchCredits]);
@@ -293,8 +239,21 @@ export default function PaymentsPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleUpgrade = (_planId: string) => {
-    showToast("PayMongo integration coming soon — subscription upgrades will be live shortly.");
+  const handleUpgrade = async (planId: string) => {
+    setUpgradingPlanId(planId);
+    try {
+      const res = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "subscription", id: planId }),
+      });
+      const json = await res.json() as { checkoutUrl?: string; error?: string };
+      if (!res.ok || !json.checkoutUrl) throw new Error(json.error ?? "Checkout failed");
+      window.location.href = json.checkoutUrl;
+    } catch (err) {
+      showToast((err as Error).message ?? "Something went wrong. Please try again.");
+      setUpgradingPlanId(null);
+    }
   };
 
   const handleBuyPack = (packId: string) => {
@@ -306,19 +265,16 @@ export default function PaymentsPage() {
     if (!confirmPack) return;
     setPurchasing(true);
     try {
-      const res = await fetch("/api/payments/mock-topup", {
+      const res = await fetch("/api/payments/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId: confirmPack.id }),
+        body: JSON.stringify({ type: "credits", id: confirmPack.id }),
       });
-      const json = await res.json() as { success?: boolean; credits?: number; added?: number; error?: string };
-      if (!res.ok || !json.success) throw new Error(json.error ?? "Purchase failed");
-      setCredits(json.credits ?? credits);
-      setConfirmPack(null);
-      showToast(`+${json.added} credits added to your account!`);
+      const json = await res.json() as { checkoutUrl?: string; error?: string };
+      if (!res.ok || !json.checkoutUrl) throw new Error(json.error ?? "Checkout failed");
+      window.location.href = json.checkoutUrl;
     } catch (err) {
       showToast((err as Error).message ?? "Something went wrong. Please try again.");
-    } finally {
       setPurchasing(false);
     }
   };
@@ -344,9 +300,9 @@ export default function PaymentsPage() {
                 {confirmPack.credits} credits · ${confirmPack.price}
               </p>
             </div>
-            <div className="rounded-[12px] bg-[#FF6B1F]/10 border border-[#FF6B1F]/20 px-4 py-3 text-[0.78rem] text-[#FF6B1F] font-mono">
-              PLACEHOLDER MODE — no real payment processed
-            </div>
+            <p className="text-white/40 text-[0.78rem] leading-relaxed">
+              You&apos;ll be redirected to PayMongo to complete payment. Credits are added to your account automatically once the transaction clears.
+            </p>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -362,12 +318,125 @@ export default function PaymentsPage() {
                 disabled={purchasing}
                 className="flex-1 py-2.5 rounded-[10px] fa-gradient-primary text-white text-sm font-bold border-none cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {purchasing ? "Processing…" : "Confirm Payment"}
+                {purchasing ? "Redirecting…" : "Pay with PayMongo"}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Plan detail modal ── */}
+      {planModal && (() => {
+        const planRole: "startup" | "investor" | "ecosystem_partner" =
+          memberRole === "investor" || memberRole === "ecosystem_partner" ? memberRole : "startup";
+        const isCurrent = subscriptionPlan === planModal.id;
+        const roleActions = CREDIT_COSTS.filter((c) => c.roles.includes(planRole));
+        const freeActions = roleActions.filter((c) => c.cost === 0);
+        const paidActions = roleActions.filter((c) => c.cost > 0);
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+            onClick={() => setPlanModal(null)}
+          >
+            <div
+              className="w-full max-w-lg rounded-[24px] bg-[#1A0B2E] border border-[#C9A040]/20 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-br from-[#2D0A28] to-[#1A0B2E] px-7 pt-7 pb-5 border-b border-white/[0.06]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="fa-eyebrow text-[0.65rem]">{planModal.label.toUpperCase()} PLAN</span>
+                      {planModal.savings && (
+                        <span className="fa-eyebrow bg-emerald-500/15 text-emerald-400 rounded-full px-2.5 py-0.5 text-[0.58rem]">
+                          {planModal.savings}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-end gap-1.5">
+                      <p className="font-display text-[2rem] text-white leading-none">${planModal.perMonth}</p>
+                      <p className="text-white/40 text-[0.7rem] font-mono mb-1">/mo</p>
+                    </div>
+                    {planModal.months > 1 && (
+                      <p className="text-white/35 text-[0.68rem] font-mono mt-0.5">
+                        ${planModal.upfront} billed upfront · {planModal.months} mo
+                      </p>
+                    )}
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#FF6B1F]/10 px-2.5 py-1">
+                      <span className="font-bold text-[0.78rem] text-[#FF6B1F]">{planModal.credits} cr</span>
+                      <span className="text-[0.65rem] font-mono text-white/35">delivered upfront</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPlanModal(null)}
+                    aria-label="Close"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-white/40 hover:bg-white/[0.12] hover:text-white/70 transition-colors mt-0.5"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="mt-3 text-[0.78rem] text-white/50 leading-relaxed">
+                  {planModal.tagline[planRole]}
+                </p>
+              </div>
+
+              <div className="overflow-y-auto px-7 py-6 flex flex-col gap-6">
+                {/* Features */}
+                <div>
+                  <span className="fa-eyebrow text-[0.6rem]">WHAT&apos;S INCLUDED</span>
+                  <ul className="mt-3 flex flex-col gap-2 list-none p-0">
+                    {planModal.features[planRole].map((f) => (
+                      <li key={f} className="flex gap-2 text-sm text-white/75">
+                        <span className="text-[#C9A040] shrink-0">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Credit usage breakdown */}
+                <div>
+                  <span className="fa-eyebrow text-[0.6rem]">WHAT {planModal.credits} CREDITS BUYS YOU</span>
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    {freeActions.map((c) => (
+                      <div key={c.action} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-white/60 truncate">{c.action}</span>
+                        <span className="shrink-0 text-emerald-400 font-mono text-[0.72rem]">free</span>
+                      </div>
+                    ))}
+                    {paidActions.map((c) => (
+                      <div key={c.action} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-white/60 truncate">{c.action}</span>
+                        <span className="shrink-0 text-white/40 font-mono text-[0.72rem]">
+                          ~{Math.floor(planModal.credits / c.cost)}× <span className="text-white/25">({c.cost} cr ea)</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CTA */}
+                {isCurrent ? (
+                  <div className="py-3 rounded-[12px] bg-[#FF6B1F]/10 text-center text-sm font-bold text-[#FF6B1F]">
+                    Current plan
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full py-3 rounded-[12px] fa-gradient-primary text-white text-sm font-bold border-none cursor-not-allowed opacity-40 transition-opacity"
+                  >
+                    Coming soon
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Page header ── */}
       <section className="fa-gradient-hero border-b border-[#C9A040]/15 px-4 sm:px-6 py-14">
@@ -437,7 +506,7 @@ export default function PaymentsPage() {
           <div className="mb-8">
             <span className="fa-eyebrow">SUBSCRIPTION PLANS</span>
             <h2 className="font-display mt-1 text-[1.6rem] text-white">Commit Longer. Save More.</h2>
-            <p className="text-white/50 text-sm mt-1">One plan. Five commitment lengths. All features unlock from month one.</p>
+            <p className="text-white/50 text-sm mt-1">All features from day one. Credits delivered upfront — use them at your pace.</p>
           </div>
 
           {/* ── Free tier — full-width banner ── */}
@@ -482,7 +551,14 @@ export default function PaymentsPage() {
           </div>
 
           {/* ── 4 paid plan cards ── */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/*
+            On lg (4-col desktop) this grid defines 6 explicit row tracks shared across
+            all 4 columns. Each card spans all 6 tracks via grid-row:span-6 and uses
+            grid-template-rows:subgrid to align its children to those tracks, so every
+            section (badges, price, billing, credits, spacer, CTA) sits at exactly the
+            same baseline across all four cards.
+          */}
+          <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-0 lg:[grid-template-rows:auto_auto_auto_auto_1fr_auto]">
 
             {/* ── Duration plan cards ── */}
             {DURATION_PLANS.map((plan) => {
@@ -491,87 +567,92 @@ export default function PaymentsPage() {
               return (
                 <div
                   key={plan.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setPlanModal(plan)}
+                  onKeyDown={(e) => e.key === "Enter" && setPlanModal(plan)}
                   className={[
-                    "rounded-[20px] p-5 flex flex-col relative",
-                    isFeatured ? "fa-gradient-featured ring-[1.5px] ring-[#FF6B1F]/60" : "bg-[#2D0A28]",
-                    !isFeatured && isCurrent  ? "ring-[1.5px] ring-[#FF6B1F]"  : "",
-                    !isFeatured && !isCurrent ? "border border-white/[0.08]"   : "",
+                    "group rounded-[20px] relative cursor-pointer transition-all duration-150",
+                    "flex flex-col p-5",
+                    "lg:p-0 lg:grid lg:[grid-row:span_6] lg:[grid-template-rows:subgrid]",
+                    "bg-[#2D0A28] hover:bg-[#341030]",
+                    isFeatured
+                      ? "ring-2 ring-[#FF6B1F] shadow-[0_0_22px_rgba(255,107,31,0.22)] hover:shadow-[0_0_30px_rgba(255,107,31,0.32)]"
+                      : isCurrent
+                        ? "ring-[1.5px] ring-[#FF6B1F]"
+                        : "border border-white/[0.08] hover:border-white/[0.18]",
                   ].join(" ")}
                 >
-                  {/* Badge row */}
-                  <div className="flex items-center justify-between mb-3 min-h-[1.4rem]">
+                  {/* Expand affordance — appears on hover */}
+                  <svg
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
+                    className="absolute top-4 right-4 w-3.5 h-3.5 text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="21" y1="3" x2="10" y2="14" />
+                  </svg>
+
+                  {/* Track 1 — Status badges */}
+                  <div className="flex items-center gap-1.5 min-h-[1.25rem] mb-4 lg:mb-0 lg:px-5 lg:pt-6">
                     {isFeatured ? (
-                      <span className="fa-eyebrow bg-[#FF6B1F] text-white rounded-full px-2.5 py-0.5 text-[0.6rem]">
-                        BEST VALUE
-                      </span>
+                      <span className="fa-eyebrow bg-[#FF6B1F] !text-[#1A0B2E] rounded-full px-2.5 py-0.5 text-[0.58rem]">BEST VALUE</span>
                     ) : plan.savings ? (
-                      <span className="fa-eyebrow bg-emerald-500/15 text-emerald-400 rounded-full px-2.5 py-0.5 text-[0.58rem]">
-                        {plan.savings}
-                      </span>
-                    ) : <span />}
+                      <span className="fa-eyebrow bg-emerald-500/15 text-emerald-400 rounded-full px-2.5 py-0.5 text-[0.58rem]">{plan.savings}</span>
+                    ) : null}
                     {isCurrent && (
-                      <span className={[
-                        "fa-eyebrow rounded-full px-2.5 py-0.5 text-[0.58rem]",
-                        isFeatured ? "bg-white/20 text-white" : "bg-[#FF6B1F]/15 text-[#FF6B1F]",
-                      ].join(" ")}>
+                      <span className="fa-eyebrow bg-[#FF6B1F]/15 text-[#FF6B1F] rounded-full px-2.5 py-0.5 text-[0.58rem]">
                         CURRENT
                       </span>
                     )}
                   </div>
 
-                  <span className={["fa-eyebrow text-[0.62rem]", isFeatured ? "text-white/70" : ""].join(" ")}>
-                    {plan.label.toUpperCase()}
-                  </span>
-
-                  {/* Effective rate — hero number */}
-                  <div className="mt-1 flex items-end gap-1 leading-none">
-                    <p className="font-display text-[2.2rem] text-white leading-none">${plan.perMonth}</p>
-                    <p className={["text-[0.68rem] font-mono mb-1", isFeatured ? "text-white/60" : "text-white/40"].join(" ")}>/mo</p>
+                  {/* Track 2 — Duration label + Price (grouped so they move as one unit) */}
+                  <div className="lg:px-5 lg:pt-4">
+                    <span className="fa-eyebrow text-[0.6rem] text-white/35">
+                      {plan.label.toUpperCase()}
+                    </span>
+                    <div className="mt-0.5 flex items-end gap-1 leading-none">
+                      <p className="font-display text-[2.6rem] text-white leading-none">${plan.perMonth}</p>
+                      <p className="text-[0.63rem] font-mono mb-1.5 text-white/25">/mo</p>
+                    </div>
                   </div>
 
-                  {/* Upfront cost — transparent secondary line */}
-                  {plan.months > 1 ? (
-                    <p className={["text-[0.68rem] font-mono mt-0.5", isFeatured ? "text-white/55" : "text-white/30"].join(" ")}>
-                      ${plan.upfront} billed upfront · {plan.months} mo
-                    </p>
-                  ) : (
-                    <p className={["text-[0.68rem] font-mono mt-0.5", "text-white/30"].join(" ")}>
-                      billed monthly · no contract
-                    </p>
-                  )}
-
-                  {/* Tagline */}
-                  <p className={["text-[0.72rem] mt-3 leading-snug", isFeatured ? "text-white/70" : "text-white/45"].join(" ")}>
-                    {plan.tagline}
+                  {/* Track 3 — Billing note */}
+                  <p className="text-[0.62rem] font-mono mt-0.5 lg:mt-0 lg:pt-1 lg:px-5 text-white/22">
+                    {plan.months > 1 ? `$${plan.upfront} billed upfront` : "billed monthly"}
                   </p>
 
-                  <ul className="mt-3 flex flex-col gap-1.5 flex-1 list-none p-0">
-                    {plan.features.map((f) => (
-                      <li key={f} className={["flex gap-2 text-xs", isFeatured ? "text-white/85" : "text-white/60"].join(" ")}>
-                        <span className={isFeatured ? "text-white shrink-0" : "text-[#C9A040] shrink-0"}>✓</span> {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {isCurrent ? (
-                    <div className={[
-                      "mt-5 text-center py-2.5 rounded-[10px] text-sm font-bold",
-                      isFeatured ? "bg-white/20 text-white" : "bg-[#FF6B1F]/10 text-[#FF6B1F]",
-                    ].join(" ")}>
-                      Current plan
+                  {/* Track 4 — Credits */}
+                  <div className="mt-5 lg:mt-0 lg:px-5 lg:pt-5">
+                    <div className="rounded-[12px] px-4 py-3 bg-[#FF6B1F]/[0.08] border border-[#FF6B1F]/[0.12]">
+                      <p className="font-display text-[1.9rem] leading-none text-[#FF6B1F]">
+                        {plan.credits}
+                      </p>
+                      <p className="text-[0.58rem] font-mono mt-0.5 tracking-wide text-white/30">
+                        CREDITS · DELIVERED UPFRONT
+                      </p>
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleUpgrade(plan.id)}
-                      className={[
-                        "mt-5 w-full py-2.5 rounded-[10px] text-sm font-bold text-white border-none cursor-pointer hover:opacity-90 transition-opacity",
-                        isFeatured ? "bg-[#1A0B2E]" : "fa-gradient-primary",
-                      ].join(" ")}
-                    >
-                      Get started
-                    </button>
-                  )}
+                  </div>
+
+                  {/* Track 5 — Spacer */}
+                  <div className="flex-1 min-h-[1.5rem]" />
+
+                  {/* Track 6 — CTA */}
+                  <div className="lg:px-5 lg:pb-6">
+                    {isCurrent ? (
+                      <div className="mt-4 lg:mt-0 text-center py-2.5 rounded-[10px] text-sm font-bold bg-[#FF6B1F]/10 text-[#FF6B1F]">
+                        Current plan
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="mt-4 lg:mt-0 w-full py-2.5 rounded-[10px] text-sm font-bold text-white border-none cursor-not-allowed opacity-40 fa-gradient-primary"
+                      >
+                        Coming soon
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -613,13 +694,10 @@ export default function PaymentsPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => handleBuyPack(pkg.id)}
-                    className={[
-                      "mt-5 w-full py-2.5 rounded-[10px] text-sm font-bold text-white border-none cursor-pointer hover:opacity-90 transition-opacity",
-                      isBest ? "fa-gradient-primary" : "border border-white/20 bg-transparent hover:border-white/35",
-                    ].join(" ")}
+                    disabled
+                    className="mt-5 w-full py-2.5 rounded-[10px] text-sm font-bold text-white border-none cursor-not-allowed opacity-40 border border-white/20 bg-transparent"
                   >
-                    Buy now
+                    Coming soon
                   </button>
                 </div>
               );
@@ -730,37 +808,49 @@ export default function PaymentsPage() {
         <section>
           <span className="fa-eyebrow">TRANSACTION LOG</span>
           <h2 className="font-display mt-1 text-[1.6rem] text-white mb-6">Credit History</h2>
-          <div className="rounded-[16px] overflow-hidden border border-white/[0.07]">
-            {MOCK_HISTORY.map((tx, i) => (
-              <div
-                key={tx.id}
-                className={[
-                  "flex items-center gap-4 px-5 py-4",
-                  i < MOCK_HISTORY.length - 1 ? "border-b border-white/[0.05]" : "",
-                  i % 2 === 0 ? "bg-[#2D0A28]" : "bg-[#1A0B2E]",
-                ].join(" ")}
-              >
-                <div className={[
-                  "flex items-center justify-center w-9 h-9 rounded-full shrink-0",
-                  tx.amount > 0 ? "bg-emerald-500/15" : "bg-[#FF6B1F]/12",
-                ].join(" ")}>
-                  <span className={tx.amount > 0 ? "text-emerald-400 text-sm" : "text-[#FF6B1F] text-sm"}>
-                    {tx.amount > 0 ? "↓" : "↑"}
+          {loadingProfile ? (
+            <div className="rounded-[16px] border border-white/[0.07] bg-[#2D0A28] px-5 py-8 text-center text-white/30 text-sm">
+              Loading…
+            </div>
+          ) : creditHistory.length === 0 ? (
+            <div className="rounded-[16px] border border-white/[0.07] bg-[#2D0A28] px-5 py-8 text-center text-white/30 text-sm">
+              No transactions yet
+            </div>
+          ) : (
+            <div className="rounded-[16px] overflow-hidden border border-white/[0.07]">
+              {creditHistory.map((tx, i) => (
+                <div
+                  key={tx.id}
+                  className={[
+                    "flex items-center gap-4 px-5 py-4",
+                    i < creditHistory.length - 1 ? "border-b border-white/[0.05]" : "",
+                    i % 2 === 0 ? "bg-[#2D0A28]" : "bg-[#1A0B2E]",
+                  ].join(" ")}
+                >
+                  <div className={[
+                    "flex items-center justify-center w-9 h-9 rounded-full shrink-0",
+                    tx.change_amount > 0 ? "bg-emerald-500/15" : "bg-[#FF6B1F]/12",
+                  ].join(" ")}>
+                    <span className={tx.change_amount > 0 ? "text-emerald-400 text-sm" : "text-[#FF6B1F] text-sm"}>
+                      {tx.change_amount > 0 ? "↓" : "↑"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white/85 font-semibold text-sm">{tx.reason ?? "Credit transaction"}</p>
+                    <p className="text-white/30 text-[0.7rem] font-mono mt-0.5">
+                      {new Date(tx.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                    </p>
+                  </div>
+                  <span className={[
+                    "font-bold text-sm shrink-0",
+                    tx.change_amount > 0 ? "text-emerald-400" : "text-[#FF6B1F]",
+                  ].join(" ")}>
+                    {tx.change_amount > 0 ? "+" : ""}{tx.change_amount} cr
                   </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white/85 font-semibold text-sm">{tx.description}</p>
-                  <p className="text-white/30 text-[0.7rem] font-mono mt-0.5">{tx.date}</p>
-                </div>
-                <span className={[
-                  "font-bold text-sm shrink-0",
-                  tx.amount > 0 ? "text-emerald-400" : "text-[#FF6B1F]",
-                ].join(" ")}>
-                  {tx.amount > 0 ? "+" : ""}{tx.amount} cr
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ── Payment info ── */}

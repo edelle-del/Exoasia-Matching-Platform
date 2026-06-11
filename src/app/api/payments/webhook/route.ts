@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyWebhookSignature } from "@/lib/paymongo";
-import { SUBSCRIPTION_PLANS, CREDIT_PACKAGES } from "@/types/constants";
+import { SUBSCRIPTION_PLANS, CREDIT_PACKAGES, DURATION_PLANS } from "@/types/constants";
 
 // Webhook uses service role — no user session available
 function getServiceClient() {
@@ -56,11 +56,15 @@ export async function POST(request: Request) {
     .eq("paymongo_session_id", sessionId);
 
   if (metadata.type === "subscription") {
-    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === metadata.plan_id);
+    const durPlan = DURATION_PLANS.find((p) => p.id === metadata.plan_id);
+    const legacyPlan = SUBSCRIPTION_PLANS.find((p) => p.id === metadata.plan_id);
+    const plan = durPlan ?? legacyPlan;
     if (!plan) return NextResponse.json({ received: true });
 
+    const months = durPlan ? durPlan.months : 1;
+    const planLabel = durPlan ? durPlan.label : legacyPlan!.name;
     const endsAt = new Date();
-    endsAt.setMonth(endsAt.getMonth() + 1);
+    endsAt.setMonth(endsAt.getMonth() + months);
 
     await supabase
       .from("profiles")
@@ -73,7 +77,7 @@ export async function POST(request: Request) {
     await supabase.from("ad_credit_ledger").insert({
       member_id: memberId,
       change_amount: plan.credits,
-      reason: `Subscription ${plan.name}: ${plan.credits} credits`,
+      reason: `Subscription ${planLabel}: ${plan.credits} credits`,
     });
   } else if (metadata.type === "credits") {
     const pkg = CREDIT_PACKAGES.find((p) => p.id === metadata.package_id);

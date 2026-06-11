@@ -398,6 +398,22 @@ export default function DashboardPage() {
                 : `You're a member at Stage ${summary.profile?.stage || "0"} · Verification ${summary.profile?.verification_status || "unverified"}`
               }
             </p>
+            {isEcosystemPartner && (
+              <Link
+                href="/payments"
+                className="mt-4 pt-4 border-t border-(--color-hairline) flex items-center justify-between group"
+              >
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.1em] text-(--color-muted)">Credits</p>
+                  <p className="font-mono mt-0.5 text-2xl font-semibold text-(--color-primary)">
+                    {isLoading ? "..." : summary.credits}
+                  </p>
+                </div>
+                <span className="text-xs font-medium text-(--color-primary)/50 group-hover:text-(--color-primary) transition-colors">
+                  Top up →
+                </span>
+              </Link>
+            )}
           </div>
         </section>
 
@@ -428,6 +444,7 @@ export default function DashboardPage() {
                   label="Credits"
                   value={isLoading ? "..." : String(summary.credits)}
                   valueColor="text-(--color-primary)"
+                  href="/payments"
                 />
                 <MetricCard
                   label={isInvestor ? "Opportunities" : "Projects"}
@@ -535,17 +552,31 @@ function MetricCard({
   label,
   value,
   valueColor = "text-(--color-primary)",
+  href,
 }: {
   label: string;
   value: string;
   valueColor?: string;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) px-4 py-3">
+  const inner = (
+    <div className={[
+      "rounded-[16px] border bg-(--color-canvas) px-4 py-3 transition-colors",
+      href
+        ? "border-(--color-hairline) hover:border-(--color-primary)/40 cursor-pointer"
+        : "border-(--color-hairline)",
+    ].join(" ")}>
       <p className="text-xs font-medium uppercase tracking-[0.1em] text-(--color-muted)">
         {label}
       </p>
       <p className={`font-mono mt-1 text-2xl font-semibold ${valueColor}`}>{value}</p>
+      {href && (
+        <p className="mt-1 text-[0.65rem] font-medium text-(--color-primary)/60">Top up →</p>
+      )}
     </div>
   );
+  if (href) {
+    return <Link href={href}>{inner}</Link>;
+  }
+  return inner;
 }

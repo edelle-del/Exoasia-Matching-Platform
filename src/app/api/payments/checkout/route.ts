@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createCheckoutSession, USD_TO_PHP_RATE } from "@/lib/paymongo";
-import { SUBSCRIPTION_PLANS, CREDIT_PACKAGES } from "@/types/constants";
+import { SUBSCRIPTION_PLANS, CREDIT_PACKAGES, DURATION_PLANS } from "@/types/constants";
 
 export async function POST(request: Request) {
   try {
@@ -43,14 +43,18 @@ export async function POST(request: Request) {
     let packageId: string | null = null;
 
     if (type === "subscription") {
-      const plan = SUBSCRIPTION_PLANS.find((p) => p.id === id);
+      const durPlan = DURATION_PLANS.find((p) => p.id === id);
+      const legacyPlan = SUBSCRIPTION_PLANS.find((p) => p.id === id);
+      const plan = durPlan ?? legacyPlan;
       if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 400 });
 
-      // plan.price is in USD — convert to PHP centavos for PayMongo
-      const phpAmount = Math.round(plan.price * USD_TO_PHP_RATE * 100);
+      // durPlan.upfront / legacyPlan.price both in USD — convert to PHP centavos
+      const usd = durPlan ? durPlan.upfront : (legacyPlan!.price);
+      const planLabel = durPlan ? durPlan.label : legacyPlan!.name;
+      const phpAmount = Math.round(usd * USD_TO_PHP_RATE * 100);
       lineItem = {
-        name: `${plan.name} Plan`,
-        description: `$${plan.price}/mo · ${plan.credits} credits/month · charged in PHP at ₱${USD_TO_PHP_RATE}/$`,
+        name: `${planLabel} Subscription`,
+        description: `${plan.credits} credits · $${usd} charged in PHP at ₱${USD_TO_PHP_RATE}/$`,
         amount: phpAmount,
         currency: "PHP",
         quantity: 1,

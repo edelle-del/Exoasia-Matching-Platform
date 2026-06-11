@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const UNLOCK_COST = 3;
+import { deductCredits, InsufficientCreditsError, CREDIT_COSTS } from "@/lib/credits";
 
 export async function POST(request: Request) {
   try {
@@ -19,44 +18,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "investorProfileId required" }, { status: 400 });
     }
 
-    // Idempotent — if already unlocked, return success without charging again
+    // Idempotent — 0-amount entries (paid subscribers) and negative entries (free tier)
+    // both satisfy this check, so we never double-charge
     const { data: existing } = await admin
       .from("ad_credit_ledger")
       .select("id")
       .eq("member_id", user.id)
-      .eq("reason", `Unlock investor profile: ${investorProfileId}`)
+      .eq("reason", `${CREDIT_COSTS.UNLOCK_INVESTOR_PROFILE.reason}: ${investorProfileId}`)
       .maybeSingle();
 
     if (existing) {
       return NextResponse.json({ success: true, alreadyUnlocked: true });
     }
 
-    // Check balance
-    const { data: ledgerRows } = await admin
-      .from("ad_credit_ledger")
-      .select("change_amount")
-      .eq("member_id", user.id);
-
-    const balance = (ledgerRows ?? []).reduce(
-      (sum, r) => sum + Number(r.change_amount ?? 0),
-      0,
-    );
-
-    if (balance < UNLOCK_COST) {
-      return NextResponse.json(
-        { error: `Insufficient credits. You need ${UNLOCK_COST} credits but have ${balance}.`, needed: UNLOCK_COST, balance },
-        { status: 402 },
-      );
-    }
-
-    const { error: deductError } = await admin.from("ad_credit_ledger").insert({
-      member_id: user.id,
-      change_amount: -UNLOCK_COST,
-      reason: `Unlock investor profile: ${investorProfileId}`,
-    });
-
-    if (deductError) {
-      return NextResponse.json({ error: deductError.message }, { status: 500 });
+    try {
+      await deductCredits(user.id, "UNLOCK_INVESTOR_PROFILE", investorProfileId);
+    } catch (err) {
+      if (err instanceof InsufficientCreditsError) {
+        return NextResponse.json(
+          { error: `Insufficient credits. You need ${err.required} credits but have ${err.balance}.`, needed: err.required, balance: err.balance },
+          { status: 402 },
+        );
+      }
+      throw err;
     }
 
     return NextResponse.json({ success: true, alreadyUnlocked: false });

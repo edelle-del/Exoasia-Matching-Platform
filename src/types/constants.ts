@@ -7,6 +7,154 @@ export interface CreditPackage {
   price: number;
 }
 
+export interface DurationPlan {
+  id: string;
+  label: string;
+  months: number;
+  upfront: number;   // USD total billed upfront
+  perMonth: number;  // USD effective monthly rate
+  credits: number;   // total credits delivered on payment
+  savings: string | null;
+  tagline: {
+    startup: string;
+    investor: string;
+    ecosystem_partner: string;
+  };
+  featured: boolean;
+  features: {
+    startup: string[];
+    investor: string[];
+    ecosystem_partner: string[];
+  };
+}
+
+export const DURATION_PLANS: DurationPlan[] = [
+  {
+    id: "1mo",
+    label: "1 Month",
+    months: 1,
+    upfront: 29,
+    perMonth: 29,
+    credits: 60,
+    savings: null,
+    tagline: {
+      startup: "For founders on a single-month active sprint.",
+      investor: "For investors on a focused deal sourcing sprint.",
+      ecosystem_partner: "For partners running a focused program sprint.",
+    },
+    featured: false,
+    features: {
+      startup: [
+        "Investor profiles & breakdowns — free, no cr",
+        "Request intros to matched investors",
+        "Unlock community member profiles",
+      ],
+      investor: [
+        "View startup pitch decks",
+        "Unlock compatibility scores",
+        "Request intros to founders",
+      ],
+      ecosystem_partner: [
+        "Post opportunities to matched startups",
+        "Send partnership invites via email",
+        "Send community intro requests",
+      ],
+    },
+  },
+  {
+    id: "3mo",
+    label: "3 Months",
+    months: 3,
+    upfront: 60,
+    perMonth: 20,
+    credits: 180,
+    savings: "Save 30% vs. monthly",
+    tagline: {
+      startup: "For founders exploring the market over a quarter.",
+      investor: "For investors building a pipeline over a quarter.",
+      ecosystem_partner: "For partners scouting cohort candidates over a quarter.",
+    },
+    featured: false,
+    features: {
+      startup: [
+        "Everything in 1-Month",
+        "Regenerate investor match reports",
+        "Send community intro requests",
+      ],
+      investor: [
+        "Everything in 1-Month",
+        "Unlock startup financial snapshots",
+        "Unlock community member profiles",
+      ],
+      ecosystem_partner: [
+        "Everything in 1-Month",
+        "Access cohort analytics reports",
+      ],
+    },
+  },
+  {
+    id: "6mo",
+    label: "6 Months",
+    months: 6,
+    upfront: 96,
+    perMonth: 16,
+    credits: 360,
+    savings: "Save 45% vs. monthly",
+    tagline: {
+      startup: "For serious startups executing an active funding round.",
+      investor: "For investors running an active deal cycle.",
+      ecosystem_partner: "For partners managing an active cohort or program.",
+    },
+    featured: true,
+    features: {
+      startup: [
+        "Everything in 3-Month",
+        "Invite cofounders via email",
+        "Run multiple active intro campaigns",
+      ],
+      investor: [
+        "Everything in 3-Month",
+        "Export deal pipeline reports",
+        "Send community intro requests",
+      ],
+      ecosystem_partner: [
+        "Everything in 3-Month",
+        "Bulk AI match startups to program",
+        "Feature startups in partner digest",
+      ],
+    },
+  },
+  {
+    id: "12mo",
+    label: "12 Months",
+    months: 12,
+    upfront: 144,
+    perMonth: 12,
+    credits: 720,
+    savings: "Save 58% — deepest discount",
+    tagline: {
+      startup: "For high-growth companies seeking long-term backing.",
+      investor: "For investors committed to a long-term deal flow strategy.",
+      ecosystem_partner: "For partners building a long-term startup ecosystem.",
+    },
+    featured: false,
+    features: {
+      startup: [
+        "Everything in 6-Month",
+        "Full platform access · 12-month runway",
+      ],
+      investor: [
+        "Everything in 6-Month",
+        "Full deal sourcing · 12-month runway",
+      ],
+      ecosystem_partner: [
+        "Everything in 6-Month",
+        "Full program toolkit · 12-month runway",
+      ],
+    },
+  },
+];
+
 export const CREDIT_PACKAGES: CreditPackage[] = [
   { id: "credits-20", name: "Starter Pack", credits: 20, price: 5 },
   { id: "credits-75", name: "Growth Pack", credits: 75, price: 15 },

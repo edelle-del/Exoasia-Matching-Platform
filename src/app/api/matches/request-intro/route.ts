@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deductCredits, InsufficientCreditsError } from "@/lib/credits";
 
 function canonicalizePair(idA: string, idB: string) {
   return idA < idB
@@ -48,9 +49,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Startups pay 7 cr, investors pay 5 cr per intro request
-    const INTRO_COST = isStartup ? 7 : 5;
-
     // Idempotent — don't charge if match already exists
     const { data: existingMatch } = await admin
       .from("matches")
@@ -61,33 +59,20 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (!existingMatch) {
-      const { data: ledgerRows } = await admin
-        .from("ad_credit_ledger")
-        .select("change_amount")
-        .eq("member_id", user.id);
-
-      const balance = (ledgerRows ?? []).reduce(
-        (sum, r) => sum + Number(r.change_amount ?? 0),
-        0,
-      );
-
-      if (balance < INTRO_COST) {
-        return NextResponse.json(
-          { error: `Insufficient credits. You need ${INTRO_COST} credits but have ${balance}.`, needed: INTRO_COST, balance },
-          { status: 402 },
+      try {
+        await deductCredits(
+          user.id,
+          isStartup ? "REQUEST_INTRO_INVESTOR" : "REQUEST_FOUNDER_INTRO",
+          isStartup ? investor_profile_id : project.owner_id,
         );
-      }
-
-      const { error: deductError } = await admin.from("ad_credit_ledger").insert({
-        member_id: user.id,
-        change_amount: -INTRO_COST,
-        reason: isStartup
-          ? `Intro request to investor: ${investor_profile_id}`
-          : `Intro request to startup: ${project.owner_id}`,
-      });
-
-      if (deductError) {
-        return NextResponse.json({ error: deductError.message }, { status: 500 });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          return NextResponse.json(
+            { error: `Insufficient credits. You need ${err.required} credits but have ${err.balance}.`, needed: err.required, balance: err.balance },
+            { status: 402 },
+          );
+        }
+        throw err;
       }
     }
 

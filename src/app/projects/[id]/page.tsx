@@ -801,7 +801,7 @@ export default function ProjectDetailPage({
         scores?: InvestorMatch[];
       };
       const scores = data.scores ?? [];
-      setInvestorMatches(scores);
+      if (scores.length > 0) setInvestorMatches(scores);
       setMatchesGenerated(true);
     } finally {
       setGenerating(false);

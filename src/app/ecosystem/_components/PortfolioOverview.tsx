@@ -58,7 +58,7 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
               </svg>
-              Export analytics · 8 cr
+              Export for free (beta)
             </>
           )}
         </button>
@@ -214,7 +214,7 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
                       e.stopPropagation();
                       onFeatureStartup(company.startup_id);
                     }}
-                    title="Feature in partner digest · 10 cr"
+                    title="Feature for free (beta)"
                     className={`shrink-0 rounded-lg px-2 py-1.5 text-[11px] font-bold transition ${
                       featuringId === company.startup_id
                         ? "cursor-wait bg-amber-500/10 text-amber-400"

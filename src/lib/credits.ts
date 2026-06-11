@@ -1,5 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// ─── Bypass switch ────────────────────────────────────────────────────────────
+// TEMPORARY — payment gateway integration is on hold for this deployment cycle.
+// While true, ALL credit gates are disabled: no user is ever blocked and every
+// action is deducted at 0 cost. A 0-amount ledger row is still written so
+// idempotency checks remain operational throughout.
+//
+// To restore the full credit economy:  set BYPASS_CREDIT_GATES = false
+// ─────────────────────────────────────────────────────────────────────────────
+export const BYPASS_CREDIT_GATES = true;
+
 export class InsufficientCreditsError extends Error {
   readonly balance: number;
   readonly required: number;
@@ -90,6 +100,11 @@ export async function isPayingSubscriber(memberId: string): Promise<boolean> {
  * member's balance is insufficient. For actions in FREE_FOR_PAID_SUBSCRIBERS,
  * active paid subscribers are charged 0 credits but a 0-amount ledger entry
  * is still written so ledger-based idempotency checks keep working.
+ *
+ * When BYPASS_CREDIT_GATES is true, cost is forced to 0 for every action and
+ * no InsufficientCreditsError is ever thrown. The existing balance check and
+ * error class are left intact — they simply never fire in bypass mode since
+ * cost is always 0 and `cost > 0` is never satisfied.
  */
 export async function deductCredits(
   memberId: string,
@@ -102,13 +117,19 @@ export async function deductCredits(
 
   let cost: number = config.base;
 
-  if (FREE_FOR_PAID_SUBSCRIBERS.has(action)) {
-    const isPaid = await isPayingSubscriber(memberId);
-    if (isPaid) cost = 0;
+  if (BYPASS_CREDIT_GATES) {
+    // Gates disabled — force cost to 0, skip subscriber and balance checks.
+    cost = 0;
+  } else {
+    if (FREE_FOR_PAID_SUBSCRIBERS.has(action)) {
+      const isPaid = await isPayingSubscriber(memberId);
+      if (isPaid) cost = 0;
+    }
   }
 
   const balance = await getBalance(memberId);
 
+  // Never fires when BYPASS_CREDIT_GATES is true (cost is always 0 above).
   if (cost > 0 && balance < cost) {
     throw new InsufficientCreditsError(balance, cost);
   }

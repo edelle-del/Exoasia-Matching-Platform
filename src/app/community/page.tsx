@@ -638,7 +638,7 @@ function MemberDetailModal({
                 disabled={unlocking}
                 className="w-full rounded-xl bg-(--color-primary) px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {unlocking ? "Unlocking…" : "Unlock full profile · 2 credits"}
+                {unlocking ? "Unlocking…" : "Unlock for free (beta)"}
               </button>
             </div>
           )}
@@ -800,7 +800,7 @@ function MemberDetailModal({
                   ) : introConfirm ? (
                     <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-4 flex flex-col gap-3">
                       <p className="text-sm text-(--color-body)">
-                        This will deduct <span className="font-semibold text-(--color-ink)">2 credits</span> to send a connection request to this member.
+                        Send a connection request to this member. Free during beta.
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -816,7 +816,7 @@ function MemberDetailModal({
                           disabled={introStatus === "loading"}
                           className="flex-1 rounded-xl bg-(--color-primary) py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                         >
-                          {introStatus === "loading" ? "Sending…" : "Confirm · 2 credits"}
+                          {introStatus === "loading" ? "Sending…" : "Confirm"}
                         </button>
                       </div>
                     </div>
@@ -827,7 +827,7 @@ function MemberDetailModal({
                       disabled={introStatus === "loading"}
                       className="w-full rounded-xl bg-(--color-primary) px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e55919] disabled:opacity-60"
                     >
-                      {introStatus === "error" ? "Failed — try again" : "Request introduction"}
+                      {introStatus === "error" ? "Failed — try again" : "Request for free (beta)"}
                     </button>
                   )}
                 </div>

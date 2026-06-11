@@ -268,7 +268,7 @@ function InvestorDataRoom() {
                               )
                             ) : pitchConfirm === project.project_id ? (
                               <div className="space-y-2">
-                                <p className="text-xs text-(--color-muted)">This will deduct <strong>3 credits</strong> from your balance.</p>
+                                <p className="text-xs text-(--color-muted)">Unlock the pitch deck link. Free during beta.</p>
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
@@ -276,7 +276,7 @@ function InvestorDataRoom() {
                                     onClick={() => void handleUnlockPitchDeck(project.project_id)}
                                     className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 transition-colors disabled:opacity-50"
                                   >
-                                    {pitchUnlocking[project.project_id] ? "Unlocking…" : "Confirm · 3 cr"}
+                                    {pitchUnlocking[project.project_id] ? "Unlocking…" : "Confirm"}
                                   </button>
                                   <button
                                     type="button"
@@ -296,7 +296,7 @@ function InvestorDataRoom() {
                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
-                                Unlock pitch deck · 3 credits
+                                Unlock for free (beta)
                               </button>
                             )}
                           </div>

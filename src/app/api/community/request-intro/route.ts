@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BYPASS_CREDIT_GATES } from "@/lib/credits";
 
 function canonicalizePair(idA: string, idB: string) {
   return idA < idB
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
       0,
     );
 
-    if (balance < INTRO_COST) {
+    if (!BYPASS_CREDIT_GATES && balance < INTRO_COST) {
       return NextResponse.json(
         { error: `Insufficient credits. You need ${INTRO_COST} credits but have ${balance}.`, needed: INTRO_COST, balance },
         { status: 402 },

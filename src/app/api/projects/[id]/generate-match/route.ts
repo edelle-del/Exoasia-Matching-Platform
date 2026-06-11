@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BYPASS_CREDIT_GATES } from "@/lib/credits";
 import {
   GEMINI_INVESTOR_SCORES_PROJECT_INSTRUCTIONS,
   GEMINI_STARTUP_FINDS_INVESTORS_INSTRUCTIONS,
@@ -281,7 +282,7 @@ export async function POST(
         0,
       );
 
-      if (balance < REGEN_COST) {
+      if (!BYPASS_CREDIT_GATES && balance < REGEN_COST) {
         return NextResponse.json(
           { error: `Insufficient credits. You need ${REGEN_COST} credits but have ${balance}.`, needed: REGEN_COST, balance },
           { status: 402 },
@@ -392,8 +393,16 @@ export async function POST(
       }
     }
 
+    // Always return the full current set of scores for this project so the
+    // client never ends up with an empty list when the AI produces no new rows.
+    const { data: allScoreRows } = await admin
+      .from("project_match_scores")
+      .select("project_id, investor_profile_id, fit_score, summary, rationale, generated_at")
+      .eq("project_id", projectId)
+      .order("fit_score", { ascending: false });
+
     const investorMap = new Map(investors.map((i) => [i.id, i]));
-    const scores = rows.map((r) => {
+    const scores = (allScoreRows ?? []).map((r) => {
       const inv = investorMap.get(r.investor_profile_id);
       return {
         ...r,

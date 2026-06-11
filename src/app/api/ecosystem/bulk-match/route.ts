@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BYPASS_CREDIT_GATES } from "@/lib/credits";
 
 const BULK_MATCH_COST = 15;
 
@@ -34,7 +35,7 @@ export async function POST() {
       0,
     );
 
-    if (balance < BULK_MATCH_COST) {
+    if (!BYPASS_CREDIT_GATES && balance < BULK_MATCH_COST) {
       return NextResponse.json(
         { error: `Insufficient credits. You need ${BULK_MATCH_COST} credits but have ${balance}.`, needed: BULK_MATCH_COST, balance },
         { status: 402 },

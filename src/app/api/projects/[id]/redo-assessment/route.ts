@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BYPASS_CREDIT_GATES } from "@/lib/credits";
 
 const REDO_COST = 15;
 
@@ -43,7 +44,7 @@ export async function POST(
       0,
     );
 
-    if (balance < REDO_COST) {
+    if (!BYPASS_CREDIT_GATES && balance < REDO_COST) {
       return NextResponse.json(
         { error: `Insufficient credits. You need ${REDO_COST} credits but have ${balance}.` },
         { status: 402 },

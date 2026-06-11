@@ -12,6 +12,8 @@ type Props = {
 };
 
 export function InsufficientCreditsModal({ needed, balance, onClose }: Props) {
+  if (process.env.NEXT_PUBLIC_BYPASS_CREDIT_GATES === "true") return null;
+
   const shortfall = needed - balance;
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [error, setError] = useState("");

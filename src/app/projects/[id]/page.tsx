@@ -445,8 +445,10 @@ export default function ProjectDetailPage({
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
+        const validPlans = ["6mo", "12mo"];
         const isActive =
           !!data?.subscription_plan &&
+          validPlans.includes(data.subscription_plan) &&
           (!data.subscription_ends_at ||
             new Date(data.subscription_ends_at) > new Date());
         setSubscriptionPlan(
@@ -917,14 +919,11 @@ export default function ProjectDetailPage({
     setProfileUnlocking(false);
   };
 
-  const hasActivePlan = !!subscriptionPlan;
+  const hasActivePlan = subscriptionPlan === "6mo" || subscriptionPlan === "12mo";
 
-  const visibleMatchLimit =
-    subscriptionPlan === "premium"
-      ? Infinity
-      : subscriptionPlan === "starter" || subscriptionPlan === "professional"
-        ? 10
-        : 2;
+  // Free tier shows first 2 matches. Additional matches can be unlocked 1 credit each
+  // (via Match Bundle add-on) OR by subscribing to a paid plan.
+  const FREE_TIER_MATCH_LIMIT = 2;
 
   const report = useMemo(
     () =>
@@ -1087,7 +1086,7 @@ export default function ProjectDetailPage({
               <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Confirm Action</p>
               <h2 className="mt-1 text-base font-semibold text-(--color-ink)">Request investor intro</h2>
               <p className="mt-2 text-sm text-(--color-body)">
-                This will deduct <span className="font-semibold text-(--color-ink)">7 credits</span> from your balance and send a warm intro request to this investor. A deal card will be created in your board.
+                This will deduct <span className="font-semibold text-(--color-ink)">1 credit</span> from your balance and send a warm intro request to this investor. A deal card will be created in your board.
               </p>
             </div>
             <div className="flex gap-3">
@@ -1107,7 +1106,7 @@ export default function ProjectDetailPage({
                 }}
                 className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
               >
-                Confirm · 7 credits
+                Confirm · 1 credit
               </button>
             </div>
           </div>
@@ -1125,7 +1124,10 @@ export default function ProjectDetailPage({
                 View full investor profile
               </h2>
               <p className="mt-2 text-sm text-(--color-body)">
-                This will deduct <span className="font-semibold text-(--color-ink)">3 credits</span> from your balance. You get the full profile — thesis, portfolio, contact signals — plus the compatibility breakdown explaining why this investor matches your startup. Once unlocked, it&apos;s permanent.
+                {hasActivePlan
+                  ? "Included free with your subscription. You get the full profile — thesis, portfolio, contact signals — plus the compatibility breakdown. Once unlocked, it's permanent."
+                  : <>This will deduct <span className="font-semibold text-(--color-ink)">1 credit</span> from your balance. You get the full profile — thesis, portfolio, contact signals — plus the compatibility breakdown. Once unlocked, it&apos;s permanent.</>
+                }
               </p>
             </div>
             {profileUnlockError && (
@@ -1148,7 +1150,7 @@ export default function ProjectDetailPage({
                 disabled={profileUnlocking}
                 className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {profileUnlocking ? "Unlocking…" : "Unlock · 3 credits"}
+                {profileUnlocking ? "Unlocking…" : hasActivePlan ? "View Profile — Free" : "Unlock · 1 credit"}
               </button>
             </div>
           </div>
@@ -1160,13 +1162,20 @@ export default function ProjectDetailPage({
           <div className="w-full max-w-sm rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-7 shadow-xl flex flex-col gap-5">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
-                Confirm Action
+                Premium Action
               </p>
               <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
                 Redo Venture Assessment
               </h2>
               <p className="mt-2 text-sm text-(--color-body)">
-                This will deduct <span className="font-semibold text-(--color-ink)">15 credits</span> from your balance and start a new assessment session. Your previous report will be replaced once you upload the new PDF.
+                Your first assessment was free. Regenerating costs{" "}
+                <span className="font-semibold text-(--color-ink)">$99 · 100 credits</span>{" "}
+                — one full Match Bundle add-on.
+              </p>
+              <p className="mt-2 text-sm text-(--color-body)">
+                Once confirmed, you&apos;ll be redirected to{" "}
+                <span className="font-semibold text-(--color-ink)">confidence.exoasia.org</span>{" "}
+                to complete the new assessment. Your previous report will be replaced when the new one is uploaded.
               </p>
             </div>
             {redoError && (
@@ -1189,7 +1198,7 @@ export default function ProjectDetailPage({
                 disabled={redoTaking}
                 className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {redoTaking ? "Starting…" : "Confirm · 15 credits"}
+                {redoTaking ? "Redirecting…" : "Confirm · $99 / 100 cr"}
               </button>
             </div>
           </div>
@@ -2050,7 +2059,7 @@ export default function ProjectDetailPage({
                 </div>
               ) : snapshotUnlockConfirm ? (
                 <div className="mt-3 space-y-2">
-                  <p className="text-sm text-(--color-body)">This will deduct <strong>5 credits</strong> from your balance to view this startup&apos;s revenue, burn rate, and runway.</p>
+                  <p className="text-sm text-(--color-body)">{hasActivePlan ? "Included free with your subscription." : <>This will deduct <strong>1 credit</strong> from your balance.</>} Unlocks this startup&apos;s revenue, burn rate, and runway.</p>
                   {snapshotUnlockError && <p className="text-xs text-red-600">{snapshotUnlockError}</p>}
                   <div className="flex items-center gap-2">
                     <button
@@ -2059,7 +2068,7 @@ export default function ProjectDetailPage({
                       onClick={() => void handleUnlockSnapshot()}
                       className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
                     >
-                      {snapshotUnlocking ? "Unlocking…" : "Confirm · 5 credits"}
+                      {snapshotUnlocking ? "Unlocking…" : hasActivePlan ? "View — Free" : "Unlock · 1 credit"}
                     </button>
                     <button
                       type="button"
@@ -2081,7 +2090,7 @@ export default function ProjectDetailPage({
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    Unlock financial snapshot · 5 credits
+                    {hasActivePlan ? "View financial snapshot — Free" : "Unlock financial snapshot · 1 credit"}
                   </button>
                 </div>
               )}
@@ -2435,7 +2444,8 @@ export default function ProjectDetailPage({
           ) : (
             <div className="space-y-3">
               {investorMatches.map((m, idx) => {
-                const locked = idx >= visibleMatchLimit;
+                // Locked = beyond free limit AND not a subscriber AND not individually unlocked via credit
+                const locked = idx >= FREE_TIER_MATCH_LIMIT && !hasActivePlan && !unlockedProfiles.has(m.investor_profile_id);
                 const profileUnlocked = hasActivePlan || unlockedProfiles.has(m.investor_profile_id);
                 const isExpanded =
                   !locked && profileUnlocked && expandedInvestorId === m.investor_profile_id;
@@ -2558,7 +2568,7 @@ export default function ProjectDetailPage({
                         </p>
                         {!locked && !profileUnlocked && (
                           <p className="mt-1 text-[11px] text-(--color-muted)">
-                            🔒 <span className="font-semibold text-(--color-primary)">Unlock full profile + breakdown · 3 cr</span> — thesis, portfolio, compatibility
+                            🔒 <span className="font-semibold text-(--color-primary)">Unlock full profile + breakdown · 1 credit</span> — thesis, portfolio, compatibility
                           </p>
                         )}
                       </button>
@@ -2818,51 +2828,43 @@ export default function ProjectDetailPage({
                     </div>
                     {locked && (
                       <div className="absolute inset-0 flex items-center justify-center rounded-xl">
-                        <div className="flex items-center gap-2 rounded-full border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 shadow-sm">
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            className="h-3.5 w-3.5 text-(--color-muted)"
-                          >
-                            <rect
-                              x="3"
-                              y="11"
-                              width="18"
-                              height="11"
-                              rx="2"
-                              ry="2"
-                            />
+                        <div className="flex flex-col items-center gap-2 rounded-2xl border border-(--color-hairline) bg-(--color-canvas) px-5 py-4 shadow-sm text-center">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 text-(--color-muted)">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                           </svg>
-                          <span className="text-xs font-semibold text-(--color-ink)">
-                            {subscriptionPlan
-                              ? "Premium — Upgrade to unlock"
-                              : "Upgrade to unlock"}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => { setProfileUnlockConfirm(m.investor_profile_id); }}
+                            className="text-xs font-bold text-(--color-primary) hover:opacity-70 transition-opacity"
+                          >
+                            Unlock this match · 1 credit
+                          </button>
+                          <span className="text-[10px] text-(--color-muted)">or</span>
+                          <Link
+                            href="/payments"
+                            className="text-[10px] font-semibold text-(--color-muted) hover:text-(--color-ink) underline underline-offset-2 transition-colors"
+                          >
+                            Subscribe for full access →
+                          </Link>
                         </div>
                       </div>
                     )}
                   </div>
                 );
               })}
-              {visibleMatchLimit < Infinity &&
-                investorMatches.length > visibleMatchLimit && (
-                  <p className="pt-1 text-center text-xs text-(--color-muted)">
-                    {investorMatches.length - visibleMatchLimit} more match
-                    {investorMatches.length - visibleMatchLimit !== 1
-                      ? "es"
-                      : ""}{" "}
-                    hidden.{" "}
-                    <span className="font-semibold text-(--color-primary)">
-                      {subscriptionPlan
-                        ? "Upgrade to Premium"
-                        : "Upgrade your plan"}
-                    </span>{" "}
-                    to see all.
-                  </p>
-                )}
+              {!hasActivePlan && investorMatches.length > FREE_TIER_MATCH_LIMIT && (
+                <p className="pt-1 text-center text-xs text-(--color-muted)">
+                  {investorMatches.filter((_, i) => i >= FREE_TIER_MATCH_LIMIT && !unlockedProfiles.has(_.investor_profile_id)).length} match
+                  {investorMatches.filter((_, i) => i >= FREE_TIER_MATCH_LIMIT && !unlockedProfiles.has(_.investor_profile_id)).length !== 1 ? "es" : ""}{" "}
+                  locked.{" "}
+                  <span className="font-semibold text-(--color-primary)">Unlock for 1 credit each</span>
+                  {" "}or{" "}
+                  <Link href="/payments" className="font-semibold text-(--color-primary) underline underline-offset-2">
+                    subscribe for full access
+                  </Link>.
+                </p>
+              )}
             </div>
           )}
         </div>

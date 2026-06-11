@@ -9,156 +9,166 @@ import { CREDIT_PACKAGES, DURATION_PLANS, type CreditPackage } from "@/types/con
 
 type CreditRole = "startup" | "investor" | "ecosystem_partner";
 
+// All costs reflect free-tier pricing (1 cr each).
+// includedWithPlan: true = free for paid subscribers; false = costs credits on all tiers.
 const CREDIT_COSTS: {
   action: string;
   cost: number;
   note: string;
   reason: string;
+  includedWithPlan: boolean;
   roles: CreditRole[];
   href: string;
 }[] = [
-  // ── Startup ──────────────────────────────────────────────────────────────
+  // ── Startup ───────────────────────────────────────────────────────────────
   {
-    action: "Regenerate investor match report",
-    cost: 3,
-    note: "Per project · first match report is free",
-    reason: "Your first investor match report is free. Regeneration costs 3 credits — for when you've updated your project details and want a fresh set of matches that reflects where your startup is now. The small credit cost prevents founders from regenerating repeatedly without making meaningful updates, which keeps the match data accurate and relevant for investors on the other side.",
-    roles: ["startup"],
-    href: "/matches",
-  },
-  {
-    action: "View full investor profile + compatibility breakdown",
-    cost: 0,
-    note: "Free on any paid plan · 3 cr on free tier",
-    reason: "On any paid subscription, investor profiles and compatibility breakdowns are fully unlocked at no credit cost — this is the core benefit of subscribing. On the free tier, each unlock costs 3 credits. Either way, the unlock is permanent: once you've accessed a profile, it stays open with no repeat charges.",
-    roles: ["startup"],
-    href: "/matches",
-  },
-  {
-    action: "Request intro to investor",
-    cost: 7,
-    note: "Creates a deal card · investors pay 5 cr",
-    reason: "When a startup requests an intro, the platform vouches for your profile, attaches your match score, and surfaces the request to an investor who has opted into deal flow — that warm context is what makes investors respond. Startups pay 7 credits (vs. 5 for investors) because you are the demand side: you're the one seeking access to capital. Investors are the scarce supply that makes the platform valuable, so slightly lower friction for them keeps deal flow healthy for everyone. The asymmetry isn't a penalty — it's how two-sided marketplaces stay balanced.",
-    roles: ["startup"],
-    href: "/matches",
-  },
-  {
-    action: "Send cofounder invite (email)",
+    action: "Investor profiles & compatibility breakdowns",
     cost: 1,
-    note: "Free for existing platform users",
-    reason: "Inviting someone already on the platform is free — no credit needed. The 1-credit cost applies only to external email invites, which trigger a server-side outreach email and onboarding flow. The nominal cost prevents invite abuse (mass-spamming non-users) while keeping team-building accessible for founders who genuinely need to bring in co-founders.",
+    note: "1 cr on free tier · free with plan",
+    reason: "On any paid subscription, investor profiles and compatibility breakdowns are fully unlocked at no credit cost — this is the core benefit of subscribing. On the free tier, each unlock costs 1 credit. Either way, the unlock is permanent: once you've accessed a profile, it stays open with no repeat charges.",
+    includedWithPlan: true,
+    roles: ["startup"],
+    href: "/matches",
+  },
+  {
+    action: "Investor match report regeneration",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "Your first investor match report is free. On a paid plan, regeneration is also free — for when you've updated your project and want a fresh set of matches. On the free tier, regeneration costs 1 credit to prevent repeated runs without meaningful project updates, keeping match data accurate and relevant for investors on the other side.",
+    includedWithPlan: true,
+    roles: ["startup"],
+    href: "/matches",
+  },
+  {
+    action: "Cofounder email invite",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "Inviting someone already on the platform is free — no credit needed. The 1-credit cost on the free tier applies only to external email invites, which trigger a server-side outreach email and onboarding flow. The nominal cost prevents invite abuse while keeping team-building accessible. Paid subscribers send these for free.",
+    includedWithPlan: true,
     roles: ["startup"],
     href: "/requests",
   },
   {
-    action: "Unlock full community profile",
-    cost: 2,
-    note: "Bio, asks & offers, experience, financials",
-    reason: "Community member cards show name, role, location, and sector for free — enough to decide if someone is worth a closer look. The 2-credit unlock opens the full profile: bio, what they're asking for, what they're offering, team size, revenue, and contact details. The cost prevents bulk-scraping of member data while keeping meaningful discovery accessible.",
+    action: "Request intro to investor",
+    cost: 1,
+    note: "1 cr ea · from $99 match-bundle add-on",
+    reason: "When a startup requests an intro, the platform vouches for your profile, attaches your match score, and surfaces the request to an investor who has opted into deal flow — that warm context is what makes investors respond. Each intro costs 1 credit drawn from a purchased match-bundle add-on ($99 = 100 credits). This applies across all tiers: the cost ensures founders are intentional about each outreach, keeping investor inboxes signal-rich.",
+    includedWithPlan: false,
+    roles: ["startup"],
+    href: "/matches",
+  },
+  // ── Shared ────────────────────────────────────────────────────────────────
+  {
+    action: "Community member profile unlock",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "Community member cards show name, role, location, and sector for free — enough to decide if someone is worth a closer look. The 1-credit unlock on free tier opens the full profile: bio, what they're asking for, what they're offering, and contact details. The cost prevents bulk-scraping of member data. Paid subscribers get unlimited community profile unlocks at no credit cost.",
+    includedWithPlan: true,
     roles: ["startup", "investor"],
     href: "/community",
   },
   {
-    action: "Request community introduction",
-    cost: 2,
-    note: "Sends a connection request to any member",
-    reason: "A community intro request creates a two-sided connection — both parties are notified and either can accept. The 2-credit cost ensures members only reach out when there's genuine intent, keeping inboxes signal-rich. It's intentionally low enough not to block networking, but high enough to prevent blanket connection spam that degrades everyone's experience.",
+    action: "Community introduction request",
+    cost: 1,
+    note: "1 cr ea · from $99 match-bundle add-on",
+    reason: "A community intro request creates a two-sided connection — both parties are notified and either can accept. At 1 credit per request across all tiers, the cost ensures members only reach out when there's genuine intent, keeping inboxes signal-rich. It's intentionally low enough not to block networking, but enough to prevent blanket connection spam that degrades everyone's experience.",
+    includedWithPlan: false,
     roles: ["startup", "investor", "ecosystem_partner"],
     href: "/community",
   },
-  // ── Investor ─────────────────────────────────────────────────────────────
+  // ── Investor ──────────────────────────────────────────────────────────────
   {
-    action: "View full startup pitch deck",
-    cost: 3,
-    note: "Unlocks attached documents per startup",
-    reason: "Pitch decks are the most sensitive assets a startup uploads. The 3-credit unlock gates casual browsing and signals serious investor intent — startups see who accessed their deck, creating accountability on both sides. Pricing is intentionally low enough not to block due diligence, but high enough to filter out non-serious views.",
+    action: "Startup pitch deck access",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "Pitch decks are the most sensitive assets a startup uploads. The 1-credit unlock on free tier gates casual browsing and signals serious investor intent — startups see who accessed their deck, creating accountability on both sides. On any paid subscription, pitch deck access is fully unlocked with no credit cost as part of the deal-sourcing toolkit.",
+    includedWithPlan: true,
     roles: ["investor"],
     href: "/data-room",
+  },
+  {
+    action: "Startup financial snapshot",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "Financial snapshots include self-reported revenue estimates, burn rate, and runway — data startups share only with serious potential investors. The 1-credit cost on free tier creates a natural filter so founders only share sensitive data with investors who have real intent. Paid subscribers access financial snapshots for free as a standard due-diligence tool.",
+    includedWithPlan: true,
+    roles: ["investor"],
+    href: "/data-room",
+  },
+  {
+    action: "Startup compatibility score",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "The compatibility score breaks down thesis alignment, stage fit, sector overlap, and potential red flags for a specific startup–investor pairing. At 1 credit on free tier it's accessible enough to use during active deal sourcing, while still ensuring investors evaluate fit deliberately rather than skimming every startup on the platform. Paid subscribers get unlimited compatibility views.",
+    includedWithPlan: true,
+    roles: ["investor"],
+    href: "/matches",
+  },
+  {
+    action: "Deal pipeline PDF export",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "The pipeline export compiles your tracked startups into a structured PDF with scores, notes, and status — useful for sharing with co-investors or internal investment committees. Costs 1 credit on the free tier; included at no cost on any paid subscription because investors running active deal cycles need this regularly.",
+    includedWithPlan: true,
+    roles: ["investor"],
+    href: "/deal-board",
   },
   {
     action: "Request intro to startup founder",
-    cost: 5,
-    note: "Creates a deal card · startups pay 7 cr",
-    reason: "When an investor initiates contact, it triggers a managed warm intro flow — the startup is notified, a deal card is opened, and both parties are placed in a structured pipeline. Investors pay 5 credits (vs. 7 for startups) because investors are the supply side — the capital and credibility that makes the platform worth joining. Slightly lower friction keeps deal flow active and ensures founders see quality inbound, not silence. The gap isn't a discount for the wealthy — it's a deliberate design choice to keep the marketplace liquid on both sides.",
+    cost: 1,
+    note: "1 cr ea · from $99 match-bundle add-on",
+    reason: "When an investor initiates contact, it triggers a managed warm intro flow — the startup is notified, a deal card is opened, and both parties are placed in a structured pipeline. At 1 credit per intro (drawn from a purchased match-bundle add-on, $99 = 100 credits), this applies across all tiers. The credit cost ensures investors are intentional about each outreach, keeping founder inboxes signal-rich rather than flooded with unqualified interest.",
+    includedWithPlan: false,
     roles: ["investor"],
     href: "/matches",
-  },
-  {
-    action: "Unlock startup financial snapshot",
-    cost: 5,
-    note: "Revenue, burn rate, runway data",
-    reason: "Financial snapshots include self-reported revenue estimates, burn rate, and runway — data startups share only with serious potential investors. The 5-credit cost mirrors the seriousness of the ask, creating a natural filter so founders only share sensitive data with investors who have real intent.",
-    roles: ["investor"],
-    href: "/data-room",
-  },
-  {
-    action: "Unlock startup–investor compatibility score",
-    cost: 2,
-    note: "Per startup–investor pair",
-    reason: "The compatibility score breaks down thesis alignment, stage fit, sector overlap, and potential red flags for a specific startup–investor pairing. At 2 credits it's low enough to use regularly during deal sourcing, but ensures investors are evaluating fit deliberately rather than skimming every startup on the platform.",
-    roles: ["investor"],
-    href: "/matches",
-  },
-  {
-    action: "Export deal pipeline report",
-    cost: 8,
-    note: "PDF summary of your tracked startups",
-    reason: "The pipeline export compiles your tracked startups into a structured PDF with scores, notes, and status — useful for sharing with co-investors or internal investment committees. The 8-credit cost reflects the value of the aggregated, curated output and discourages exporting as a substitute for actually reviewing deals.",
-    roles: ["investor"],
-    href: "/deal-board",
   },
   // ── Ecosystem Partner ─────────────────────────────────────────────────────
   {
     action: "Post opportunity or program call",
-    cost: 5,
-    note: "Broadcast to matched startups",
-    reason: "Posting an accelerator call, grant opportunity, or program opening broadcasts to a curated list of startups that match your criteria. The 5-credit cost prevents spam postings and ensures partners only publish opportunities they intend to actively manage — protecting startups from wasted applications.",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "Posting an accelerator call, grant opportunity, or program opening broadcasts to a curated list of matched startups. Costs 1 credit on the free tier to prevent spam postings and ensure partners only publish opportunities they intend to actively manage — protecting startups from wasted applications. Paid subscribers post for free as a core program management tool.",
+    includedWithPlan: true,
     roles: ["ecosystem_partner"],
     href: "/events",
   },
   {
-    action: "Feature startup in partner digest",
-    cost: 10,
-    note: "Highlights startup to your network",
-    reason: "Featuring a startup amplifies their visibility across your partner network and newsletter, which can surface them to investors and other partners outside the platform. The 10-credit cost ensures this spotlight is used for startups that genuinely deserve the exposure, not as a default action for every startup in a cohort.",
-    roles: ["ecosystem_partner"],
-    href: "/ecosystem",
-  },
-  {
-    action: "Access cohort analytics dashboard",
-    cost: 8,
-    note: "Aggregated data across tracked startups",
-    reason: "The cohort analytics view shows aggregated readiness scores, funding stage distributions, and sector breakdowns across all startups you're tracking — useful for program reporting and portfolio health checks. The 8-credit cost is set per report generation, not per startup, reflecting the computational cost of aggregating live data.",
+    action: "Cohort analytics dashboard access",
+    cost: 1,
+    note: "1 cr on free tier · free with plan",
+    reason: "The cohort analytics view shows aggregated readiness scores, funding stage distributions, and sector breakdowns across all startups you're tracking — useful for program reporting and portfolio health checks. Costs 1 credit on the free tier per generation; included free for paid subscribers as an essential program reporting tool.",
+    includedWithPlan: true,
     roles: ["ecosystem_partner"],
     href: "/ecosystem",
   },
   {
     action: "Bulk AI match startups to program",
-    cost: 15,
-    note: "AI scores your pipeline against program criteria",
-    reason: "This runs an AI matching pass across your entire tracked pipeline, scoring each startup against your program's specific criteria (stage, sector, geography, team size). At 15 credits it's the most expensive partner action because it's the most computationally intensive — and the output is a ranked shortlist that directly informs cohort selection.",
+    cost: 1,
+    note: "1 cr per run · applies on all tiers",
+    reason: "This runs an AI matching pass across your entire tracked pipeline, scoring each startup against your program's specific criteria (stage, sector, geography, team size). At 1 credit per run it costs across all tiers — the output is a ranked shortlist that directly informs cohort selection, making it a transactional action rather than a subscription benefit that would incentivise over-running it without reviewing results.",
+    includedWithPlan: false,
     roles: ["ecosystem_partner"],
     href: "/matches",
   },
   {
+    action: "Feature startup in partner digest",
+    cost: 1,
+    note: "1 cr per feature · applies on all tiers",
+    reason: "Featuring a startup amplifies their visibility across your partner network and newsletter, surfacing them to investors and other partners outside the platform. At 1 credit per feature across all tiers, the cost ensures this spotlight is used for startups that genuinely deserve the exposure, not as a default action for every startup in a cohort.",
+    includedWithPlan: false,
+    roles: ["ecosystem_partner"],
+    href: "/ecosystem",
+  },
+  {
     action: "Send partnership invite (email)",
     cost: 1,
-    note: "Free for existing platform users",
-    reason: "Inviting a startup or investor already on the platform is free. The 1-credit cost applies only to external email invites, covering the server-side outreach and onboarding flow. The nominal cost prevents bulk-invite abuse while keeping ecosystem-building accessible for partners actively growing their network.",
+    note: "1 cr per invite · applies on all tiers",
+    reason: "Inviting a startup or investor already on the platform is free. The 1-credit cost applies to external email invites across all tiers, covering the server-side outreach and onboarding flow. The nominal cost prevents bulk-invite abuse while keeping ecosystem-building accessible for partners actively growing their network.",
+    includedWithPlan: false,
     roles: ["ecosystem_partner"],
     href: "/requests",
   },
 ];
-
-const FREE_FEATURES = [
-  "10 welcome credits",
-  "1 project slot",
-  "Top 3 matches visible",
-  "Basic profile",
-  "Invitation to Networking Events",
-];
-
-
 
 const PAYMENT_INFO = [
   "Prices shown in USD · charged in PHP at a fixed rate of ₱56 per $1",
@@ -331,8 +341,6 @@ export default function PaymentsPage() {
           memberRole === "investor" || memberRole === "ecosystem_partner" ? memberRole : "startup";
         const isCurrent = subscriptionPlan === planModal.id;
         const roleActions = CREDIT_COSTS.filter((c) => c.roles.includes(planRole));
-        const freeActions = roleActions.filter((c) => c.cost === 0);
-        const paidActions = roleActions.filter((c) => c.cost > 0);
         return (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
@@ -358,14 +366,12 @@ export default function PaymentsPage() {
                       <p className="font-display text-[2rem] text-white leading-none">${planModal.perMonth}</p>
                       <p className="text-white/40 text-[0.7rem] font-mono mb-1">/mo</p>
                     </div>
-                    {planModal.months > 1 && (
-                      <p className="text-white/35 text-[0.68rem] font-mono mt-0.5">
-                        ${planModal.upfront} billed upfront · {planModal.months} mo
-                      </p>
-                    )}
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#FF6B1F]/10 px-2.5 py-1">
-                      <span className="font-bold text-[0.78rem] text-[#FF6B1F]">{planModal.credits} cr</span>
-                      <span className="text-[0.65rem] font-mono text-white/35">delivered upfront</span>
+                    <p className="text-white/35 text-[0.68rem] font-mono mt-0.5">
+                      ${planModal.upfront} billed {planModal.months === 12 ? "annually" : "bi-annually"}
+                    </p>
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1">
+                      <span className="font-bold text-[0.78rem] text-emerald-400">All features</span>
+                      <span className="text-[0.65rem] font-mono text-white/35">free with subscription</span>
                     </div>
                   </div>
                   <button
@@ -397,26 +403,25 @@ export default function PaymentsPage() {
                   </ul>
                 </div>
 
-                {/* Credit usage breakdown */}
-                <div>
-                  <span className="fa-eyebrow text-[0.6rem]">WHAT {planModal.credits} CREDITS BUYS YOU</span>
-                  <div className="mt-3 flex flex-col gap-1.5">
-                    {freeActions.map((c) => (
-                      <div key={c.action} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="text-white/60 truncate">{c.action}</span>
-                        <span className="shrink-0 text-emerald-400 font-mono text-[0.72rem]">free</span>
-                      </div>
-                    ))}
-                    {paidActions.map((c) => (
-                      <div key={c.action} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="text-white/60 truncate">{c.action}</span>
-                        <span className="shrink-0 text-white/40 font-mono text-[0.72rem]">
-                          ~{Math.floor(planModal.credits / c.cost)}× <span className="text-white/25">({c.cost} cr ea)</span>
-                        </span>
-                      </div>
-                    ))}
+                {/* Credit usage breakdown — free-tier reference */}
+                {roleActions.length > 0 && (
+                  <div>
+                    <span className="fa-eyebrow text-[0.6rem]">WHAT CREDITS BUY (FREE TIER)</span>
+                    <p className="text-white/30 text-[0.68rem] font-mono mt-1 mb-3">1 credit per action · $99 add-on = 100 credits</p>
+                    <div className="flex flex-col gap-1.5">
+                      {roleActions.map((c) => (
+                        <div key={c.action} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="text-white/60 truncate">{c.action}</span>
+                          {c.includedWithPlan ? (
+                            <span className="shrink-0 text-emerald-400 font-mono text-[0.72rem]">free with plan</span>
+                          ) : (
+                            <span className="shrink-0 text-white/40 font-mono text-[0.72rem]">1 cr ea</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* CTA */}
                 {isCurrent ? (
@@ -506,59 +511,68 @@ export default function PaymentsPage() {
           <div className="mb-8">
             <span className="fa-eyebrow">SUBSCRIPTION PLANS</span>
             <h2 className="font-display mt-1 text-[1.6rem] text-white">Commit Longer. Save More.</h2>
-            <p className="text-white/50 text-sm mt-1">All features from day one. Credits delivered upfront — use them at your pace.</p>
+            <p className="text-white/50 text-sm mt-1">All platform features from day one. Intros and premium actions use credits — purchased separately as $99 add-on bundles.</p>
           </div>
 
-          {/* ── Free tier — full-width banner ── */}
-          <div className={[
-            "rounded-[20px] bg-[#2D0A28] px-6 py-5 mb-4",
-            !hasActivePlan ? "ring-[1.5px] ring-[#FF6B1F]" : "border border-white/[0.08]",
-          ].join(" ")}>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          {/* ── 3 plan cards (free + 2 paid) ── */}
+          {/*
+            On lg (3-col desktop) this grid defines 6 explicit row tracks shared across
+            all 3 columns. Each card spans all 6 tracks via grid-row:span-6 and uses
+            grid-template-rows:subgrid to align its children to those tracks, so every
+            section (badges, price, billing, credits, spacer, CTA) sits at exactly the
+            same baseline across all three cards.
+          */}
+          <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-y-0 lg:[grid-template-rows:auto_auto_auto_auto_1fr_auto]">
 
-              {/* Price block */}
-              <div className="shrink-0">
+            {/* ── Free plan card ── */}
+            <div className={[
+              "rounded-[20px] relative transition-all duration-150",
+              "flex flex-col p-5",
+              "lg:p-0 lg:grid lg:[grid-row:span_6] lg:[grid-template-rows:subgrid]",
+              "bg-[#2D0A28]",
+              !hasActivePlan
+                ? "ring-[1.5px] ring-[#FF6B1F]"
+                : "border border-white/[0.08]",
+            ].join(" ")}>
+              {/* Track 1 — Status badges */}
+              <div className="flex items-center gap-1.5 min-h-[1.25rem] mb-4 lg:mb-0 lg:px-5 lg:pt-6">
                 {!hasActivePlan && (
-                  <span className="fa-eyebrow bg-[#FF6B1F]/15 text-[#FF6B1F] rounded-full px-3 py-0.5 text-[0.6rem] mb-2 inline-block">
-                    CURRENT
-                  </span>
+                  <span className="fa-eyebrow bg-[#FF6B1F]/15 text-[#FF6B1F] rounded-full px-2.5 py-0.5 text-[0.58rem]">CURRENT</span>
                 )}
-                <div className="flex items-baseline gap-1">
-                  <span className="fa-eyebrow text-white/50 mr-1">FREE</span>
-                  <p className="font-display text-[2.4rem] text-white leading-none">$0</p>
-                </div>
-                <p className="text-white/35 text-[0.7rem] font-mono mt-0.5">for casual exploration</p>
               </div>
 
-              <div className="hidden sm:block w-px self-stretch bg-white/[0.07]" />
+              {/* Track 2 — Label + Price */}
+              <div className="lg:px-5 lg:pt-4">
+                <span className="fa-eyebrow text-[0.6rem] text-white/35">FREE</span>
+                <div className="mt-0.5 flex items-end gap-1 leading-none">
+                  <p className="font-display text-[2.6rem] text-white leading-none">$0</p>
+                  <p className="text-[0.63rem] font-mono mb-1.5 text-white/25">/mo</p>
+                </div>
+              </div>
 
-              {/* Features — horizontal wrap */}
-              <ul className="flex flex-wrap gap-x-6 gap-y-2 flex-1 list-none p-0">
-                {FREE_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-1.5 text-sm text-white/55">
-                    <span className="text-[#C9A040] text-xs shrink-0">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
+              {/* Track 3 — Billing note */}
+              <p className="text-[0.62rem] font-mono mt-0.5 lg:mt-0 lg:pt-1 lg:px-5 text-white/22">
+                for casual exploration
+              </p>
 
-              {/* CTA */}
-              <div className="shrink-0">
-                <div className="py-2 px-5 rounded-[10px] border border-white/10 text-white/30 text-sm font-semibold text-center whitespace-nowrap">
+              {/* Track 4 — Credits */}
+              <div className="mt-5 lg:mt-0 lg:px-5 lg:pt-5">
+                <div className="rounded-[12px] px-4 py-3 bg-[#FF6B1F]/[0.08] border border-[#FF6B1F]/[0.12]">
+                  <p className="font-display text-[1.9rem] leading-none text-[#FF6B1F]">10</p>
+                  <p className="text-[0.58rem] font-mono mt-0.5 tracking-wide text-white/30">WELCOME CREDITS INCLUDED</p>
+                </div>
+              </div>
+
+              {/* Track 5 — Spacer */}
+              <div className="flex-1 min-h-[1.5rem]" />
+
+              {/* Track 6 — CTA */}
+              <div className="lg:px-5 lg:pb-6">
+                <div className="mt-4 lg:mt-0 text-center py-2.5 rounded-[10px] text-sm font-bold border border-white/10 text-white/30">
                   {!hasActivePlan ? "Current plan" : "Free forever"}
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* ── 4 paid plan cards ── */}
-          {/*
-            On lg (4-col desktop) this grid defines 6 explicit row tracks shared across
-            all 4 columns. Each card spans all 6 tracks via grid-row:span-6 and uses
-            grid-template-rows:subgrid to align its children to those tracks, so every
-            section (badges, price, billing, credits, spacer, CTA) sits at exactly the
-            same baseline across all four cards.
-          */}
-          <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-0 lg:[grid-template-rows:auto_auto_auto_auto_1fr_auto]">
 
             {/* ── Duration plan cards ── */}
             {DURATION_PLANS.map((plan) => {
@@ -619,17 +633,15 @@ export default function PaymentsPage() {
 
                   {/* Track 3 — Billing note */}
                   <p className="text-[0.62rem] font-mono mt-0.5 lg:mt-0 lg:pt-1 lg:px-5 text-white/22">
-                    {plan.months > 1 ? `$${plan.upfront} billed upfront` : "billed monthly"}
+                    {`$${plan.upfront} billed ${plan.months === 12 ? "annually" : "bi-annually"}`}
                   </p>
 
-                  {/* Track 4 — Credits */}
+                  {/* Track 4 — Free access highlight */}
                   <div className="mt-5 lg:mt-0 lg:px-5 lg:pt-5">
                     <div className="rounded-[12px] px-4 py-3 bg-[#FF6B1F]/[0.08] border border-[#FF6B1F]/[0.12]">
-                      <p className="font-display text-[1.9rem] leading-none text-[#FF6B1F]">
-                        {plan.credits}
-                      </p>
+                      <p className="font-display text-[1.9rem] leading-none text-[#FF6B1F]">ALL</p>
                       <p className="text-[0.58rem] font-mono mt-0.5 tracking-wide text-white/30">
-                        CREDITS · DELIVERED UPFRONT
+                        FEATURES INCLUDED FREE
                       </p>
                     </div>
                   </div>
@@ -659,49 +671,54 @@ export default function PaymentsPage() {
           </div>
         </section>
 
-        {/* ── Credit packs ── */}
+        {/* ── Credit add-on ── */}
         <section id="credit-packs">
-          <span className="fa-eyebrow">TOP UP ANYTIME</span>
+          <span className="fa-eyebrow">PREMIUM ADD-ON</span>
           <h2 className="font-display mt-1 text-[1.6rem] text-white mb-6">
-            Buy Credits. No Subscription Needed.
+            Credits for Intros &amp; Outreach.
           </h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {CREDIT_PACKAGES.map((pkg, i) => {
-              const isBest = i === 1;
-              return (
-                <div
-                  key={pkg.id}
-                  className={[
-                    "rounded-[20px] bg-[#2D0A28] p-6 flex flex-col relative",
-                    isBest ? "ring-[1.5px] ring-[#C9A040]/50" : "border border-white/[0.08]",
-                  ].join(" ")}
-                >
-                  {isBest && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 fa-eyebrow bg-[#C9A040]/15 text-[#C9A040] rounded-full px-3 py-1 border border-[#C9A040]/40 whitespace-nowrap text-[0.6rem]">
-                      BEST VALUE
-                    </span>
-                  )}
-                  <span className="fa-eyebrow">{pkg.name.toUpperCase()}</span>
-                  <p className="font-display text-[2.4rem] leading-none text-[#FF6B1F] mt-2">
-                    {pkg.credits}
-                  </p>
-                  <span className="fa-eyebrow text-[0.62rem]">CREDITS</span>
-                  <p className="font-display text-[1.4rem] text-white mt-3">
-                    ${pkg.price}
-                  </p>
-                  <p className="text-white/30 text-[0.7rem] font-mono mt-0.5">
-                    ${(pkg.price / pkg.credits).toFixed(2)}/credit
-                  </p>
-                  <button
-                    type="button"
-                    disabled
-                    className="mt-5 w-full py-2.5 rounded-[10px] text-sm font-bold text-white border-none cursor-not-allowed opacity-40 border border-white/20 bg-transparent"
-                  >
-                    Coming soon
-                  </button>
+          <div className="rounded-[20px] bg-[#2D0A28] border border-[#C9A040]/20 p-7 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-8">
+            {/* Left — pricing */}
+            <div className="shrink-0">
+              <span className="fa-eyebrow text-[0.6rem] text-white/35">MATCH BUNDLE</span>
+              <div className="mt-2 flex items-end gap-3">
+                <p className="font-display text-[3.2rem] leading-none text-[#FF6B1F]">100</p>
+                <div className="mb-1.5">
+                  <p className="fa-eyebrow text-[0.62rem]">CREDITS</p>
+                  <p className="text-white/30 text-[0.68rem] font-mono">$0.99 / credit</p>
                 </div>
-              );
-            })}
+              </div>
+              <p className="font-display text-[1.5rem] text-white mt-3">$99</p>
+              <p className="text-white/30 text-[0.68rem] font-mono mt-0.5">one-time purchase · credits never expire</p>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px self-stretch bg-white/[0.07]" />
+            <div className="sm:hidden h-px w-full bg-white/[0.07]" />
+
+            {/* Right — what it covers */}
+            <div className="flex-1 flex flex-col gap-4">
+              <ul className="flex flex-col gap-2 list-none p-0 m-0">
+                {[
+                  "Unlock additional investor or founder matches (1 cr each)",
+                  "Request intros to matched investors or founders",
+                  "Send community introduction requests",
+                  "Retake your venture readiness assessment on confidence.exoasia.org (uses full 100 cr)",
+                  "Works on free tier and paid subscriptions",
+                ].map((line) => (
+                  <li key={line} className="flex gap-2 text-sm text-white/65">
+                    <span className="text-[#C9A040] shrink-0 mt-px">✓</span> {line}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                disabled
+                className="self-start px-6 py-2.5 rounded-[10px] text-sm font-bold text-white border border-white/15 bg-transparent cursor-not-allowed opacity-40"
+              >
+                Coming soon
+              </button>
+            </div>
           </div>
         </section>
 

@@ -30,76 +30,13 @@ export interface DurationPlan {
 
 export const DURATION_PLANS: DurationPlan[] = [
   {
-    id: "1mo",
-    label: "1 Month",
-    months: 1,
-    upfront: 29,
-    perMonth: 29,
-    credits: 60,
-    savings: null,
-    tagline: {
-      startup: "For founders on a single-month active sprint.",
-      investor: "For investors on a focused deal sourcing sprint.",
-      ecosystem_partner: "For partners running a focused program sprint.",
-    },
-    featured: false,
-    features: {
-      startup: [
-        "Investor profiles & breakdowns — free, no cr",
-        "Request intros to matched investors",
-        "Unlock community member profiles",
-      ],
-      investor: [
-        "View startup pitch decks",
-        "Unlock compatibility scores",
-        "Request intros to founders",
-      ],
-      ecosystem_partner: [
-        "Post opportunities to matched startups",
-        "Send partnership invites via email",
-        "Send community intro requests",
-      ],
-    },
-  },
-  {
-    id: "3mo",
-    label: "3 Months",
-    months: 3,
-    upfront: 60,
-    perMonth: 20,
-    credits: 180,
-    savings: "Save 30% vs. monthly",
-    tagline: {
-      startup: "For founders exploring the market over a quarter.",
-      investor: "For investors building a pipeline over a quarter.",
-      ecosystem_partner: "For partners scouting cohort candidates over a quarter.",
-    },
-    featured: false,
-    features: {
-      startup: [
-        "Everything in 1-Month",
-        "Regenerate investor match reports",
-        "Send community intro requests",
-      ],
-      investor: [
-        "Everything in 1-Month",
-        "Unlock startup financial snapshots",
-        "Unlock community member profiles",
-      ],
-      ecosystem_partner: [
-        "Everything in 1-Month",
-        "Access cohort analytics reports",
-      ],
-    },
-  },
-  {
     id: "6mo",
     label: "6 Months",
     months: 6,
-    upfront: 96,
-    perMonth: 16,
-    credits: 360,
-    savings: "Save 45% vs. monthly",
+    upfront: 120,
+    perMonth: 20,
+    credits: 0,
+    savings: null,
     tagline: {
       startup: "For serious startups executing an active funding round.",
       investor: "For investors running an active deal cycle.",
@@ -108,19 +45,25 @@ export const DURATION_PLANS: DurationPlan[] = [
     featured: true,
     features: {
       startup: [
-        "Everything in 3-Month",
-        "Invite cofounders via email",
-        "Run multiple active intro campaigns",
+        "Free investor profiles & compatibility breakdowns",
+        "Free investor match report regeneration",
+        "Free cofounder email invites",
+        "Free community member profile unlocks",
+        "Request investor intros (1 credit ea · add-ons sold separately)",
       ],
       investor: [
-        "Everything in 3-Month",
-        "Export deal pipeline reports",
-        "Send community intro requests",
+        "Free startup pitch deck access",
+        "Free financial snapshot & compatibility score views",
+        "Free deal pipeline PDF exports",
+        "Free community member profile unlocks",
+        "Request founder intros (1 credit ea · add-ons sold separately)",
       ],
       ecosystem_partner: [
-        "Everything in 3-Month",
-        "Bulk AI match startups to program",
+        "Free opportunity & program call posts",
+        "Free cohort analytics dashboard access",
+        "Bulk AI startup-to-program matching",
         "Feature startups in partner digest",
+        "Send partnership invites via email",
       ],
     },
   },
@@ -128,10 +71,10 @@ export const DURATION_PLANS: DurationPlan[] = [
     id: "12mo",
     label: "12 Months",
     months: 12,
-    upfront: 144,
-    perMonth: 12,
-    credits: 720,
-    savings: "Save 58% — deepest discount",
+    upfront: 204,
+    perMonth: 17,
+    credits: 0,
+    savings: "Save 15% vs bi-annual",
     tagline: {
       startup: "For high-growth companies seeking long-term backing.",
       investor: "For investors committed to a long-term deal flow strategy.",
@@ -156,9 +99,7 @@ export const DURATION_PLANS: DurationPlan[] = [
 ];
 
 export const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: "credits-20", name: "Starter Pack", credits: 20, price: 5 },
-  { id: "credits-75", name: "Growth Pack", credits: 75, price: 15 },
-  { id: "credits-200", name: "Scale Pack", credits: 200, price: 35 },
+  { id: "match-bundle", name: "Match Bundle", credits: 100, price: 99 },
 ];
 
 // Stage Configuration

@@ -3,10 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // ─── Bypass switch ────────────────────────────────────────────────────────────
 // TEMPORARY — payment gateway integration is on hold for this deployment cycle.
 // While true, ALL credit gates are disabled: no user is ever blocked and every
-// action is deducted at 0 cost. A 0-amount ledger row is still written so
-// idempotency checks remain operational throughout.
+// action is deducted at 0 cost. isPayingSubscriber also short-circuits to true
+// so subscriber-only features are accessible to everyone during staging.
 //
-// To restore the full credit economy:  set BYPASS_CREDIT_GATES = false
+// To restore the full Hybrid SaaS + Premium Add-On model: set to false.
 // ─────────────────────────────────────────────────────────────────────────────
 export const BYPASS_CREDIT_GATES = true;
 
@@ -23,54 +23,64 @@ export class InsufficientCreditsError extends Error {
 }
 
 export const CREDIT_COSTS = {
-  // ── Startup actions ──────────────────────────────────────────────────────
-  UNLOCK_INVESTOR_PROFILE:  { base: 3,  reason: "Unlock investor profile" },
-  REQUEST_INTRO_INVESTOR:   { base: 7,  reason: "Intro request to investor" },
-  REGENERATE_MATCH_REPORT:  { base: 3,  reason: "Investor match report regeneration" },
+  // ── Startup: workflow utilities (free for paid subscribers) ───────────────
+  UNLOCK_INVESTOR_PROFILE:  { base: 1,  reason: "Unlock investor profile" },
+  REGENERATE_MATCH_REPORT:  { base: 1,  reason: "Investor match report regeneration" },
   SEND_COFOUNDER_INVITE:    { base: 1,  reason: "Cofounder email invite" },
 
   // ── Investor: data screening (free for paid subscribers) ─────────────────
-  VIEW_PITCH_DECK:          { base: 3,  reason: "View startup pitch deck" },
-  VIEW_FINANCIALS:          { base: 5,  reason: "View startup financial snapshot" },
-  VIEW_COMPATIBILITY:       { base: 2,  reason: "View compatibility score" },
+  VIEW_PITCH_DECK:          { base: 1,  reason: "View startup pitch deck" },
+  VIEW_FINANCIALS:          { base: 1,  reason: "View startup financial snapshot" },
+  VIEW_COMPATIBILITY:       { base: 1,  reason: "View compatibility score" },
+  EXPORT_PIPELINE_REPORT:   { base: 1,  reason: "Deal pipeline export" },
 
-  // ── Investor: transactional / outreach (always costs credits) ────────────
-  REQUEST_FOUNDER_INTRO:    { base: 5,  reason: "Intro request to founder" },
-  EXPORT_PIPELINE_REPORT:   { base: 8,  reason: "Deal pipeline export" },
+  // ── Outreach: 1 credit = 1 match / introduction (drawn from match bundle) ─
+  REQUEST_INTRO_INVESTOR:   { base: 1,  reason: "Intro request to investor" },
+  REQUEST_FOUNDER_INTRO:    { base: 1,  reason: "Intro request to founder" },
+  REQUEST_COMMUNITY_INTRO:  { base: 1,  reason: "Community intro request" },
 
   // ── Shared / community ────────────────────────────────────────────────────
-  UNLOCK_COMMUNITY_PROFILE: { base: 2,  reason: "Unlock community profile" },
-  REQUEST_COMMUNITY_INTRO:  { base: 2,  reason: "Community intro request" },
+  UNLOCK_COMMUNITY_PROFILE: { base: 1,  reason: "Unlock community profile" },
 
   // ── Ecosystem partner: platform tooling (free for paid subscribers) ──────
-  POST_OPPORTUNITY:         { base: 5,  reason: "Post opportunity/program call" },
-  VIEW_COHORT_DASHBOARD:    { base: 8,  reason: "View cohort analytics dashboard" },
+  POST_OPPORTUNITY:         { base: 1,  reason: "Post opportunity/program call" },
+  VIEW_COHORT_DASHBOARD:    { base: 1,  reason: "View cohort analytics dashboard" },
 
-  // ── Ecosystem partner: transactional / premium (always costs credits) ────
-  BULK_AI_MATCH_STARTUPS:   { base: 15, reason: "Bulk AI match startups to program" },
-  FEATURE_STARTUP_DIGEST:   { base: 10, reason: "Feature startup in digest" },
+  // ── Ecosystem partner: transactional ─────────────────────────────────────
+  BULK_AI_MATCH_STARTUPS:   { base: 1,  reason: "Bulk AI match startups to program" },
+  FEATURE_STARTUP_DIGEST:   { base: 1,  reason: "Feature startup in digest" },
   SEND_PARTNERSHIP_INVITE:  { base: 1,  reason: "Partnership email invite" },
 
-  // ── Other ─────────────────────────────────────────────────────────────────
-  REDO_ASSESSMENT:          { base: 15, reason: "AI venture readiness assessment (redo)" },
+  // ── Premium flat-rate add-on ($99 purchase = 100-credit block) ───────────
+  // OPEN_MATCH_BUNDLE costs 1 credit per match (100-credit block = 100 matches).
+  // VCR generation is handled on confidence.exoasia.org, not this platform.
+  OPEN_MATCH_BUNDLE:        { base: 1,   reason: "Open match bundle (1 match)" },
+
+  // ── Redo assessment ───────────────────────────────────────────────────────
+  // Costs a full 100-credit block ($99 add-on) — equivalent to one VCR on confidence.exoasia.org.
+  REDO_ASSESSMENT:          { base: 100, reason: "AI venture readiness assessment (redo)" },
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
-// These actions cost 0 credits for any active paid subscriber.
-// deductCredits still writes a change_amount: 0 ledger row so that
-// idempotency checks (e.g. "has this investor already viewed this deck?")
-// continue to work without modification to calling routes.
+// Actions that cost 0 credits for any active paid subscriber (6-month or 12-month).
+// deductCredits still writes a change_amount: 0 ledger row so idempotency checks
+// (e.g. "has this investor already viewed this deck?") continue to work unchanged.
 const FREE_FOR_PAID_SUBSCRIBERS = new Set<CreditAction>([
-  // Startup
-  "UNLOCK_INVESTOR_PROFILE", // investor profile + compatibility breakdown
-  // Investor
-  "VIEW_PITCH_DECK",         // startup pitch deck
-  "VIEW_FINANCIALS",         // startup financial snapshot
-  "VIEW_COMPATIBILITY",      // compatibility score
-  // Ecosystem partner
-  "POST_OPPORTUNITY",        // post opportunity / program call
-  "VIEW_COHORT_DASHBOARD",   // cohort analytics dashboard
+  // Startup workflow utilities
+  "UNLOCK_INVESTOR_PROFILE",
+  "REGENERATE_MATCH_REPORT",
+  "SEND_COFOUNDER_INVITE",
+  // Investor data screening
+  "VIEW_PITCH_DECK",
+  "VIEW_FINANCIALS",
+  "VIEW_COMPATIBILITY",
+  "EXPORT_PIPELINE_REPORT",
+  // Community
+  "UNLOCK_COMMUNITY_PROFILE",
+  // Ecosystem partner tooling
+  "POST_OPPORTUNITY",
+  "VIEW_COHORT_DASHBOARD",
 ]);
 
 export async function getBalance(memberId: string): Promise<number> {
@@ -83,6 +93,8 @@ export async function getBalance(memberId: string): Promise<number> {
 }
 
 export async function isPayingSubscriber(memberId: string): Promise<boolean> {
+  if (BYPASS_CREDIT_GATES) return true;
+
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
@@ -95,17 +107,6 @@ export async function isPayingSubscriber(memberId: string): Promise<boolean> {
   return true;
 }
 
-/**
- * Deducts credits for an action. Throws InsufficientCreditsError if the
- * member's balance is insufficient. For actions in FREE_FOR_PAID_SUBSCRIBERS,
- * active paid subscribers are charged 0 credits but a 0-amount ledger entry
- * is still written so ledger-based idempotency checks keep working.
- *
- * When BYPASS_CREDIT_GATES is true, cost is forced to 0 for every action and
- * no InsufficientCreditsError is ever thrown. The existing balance check and
- * error class are left intact — they simply never fire in bypass mode since
- * cost is always 0 and `cost > 0` is never satisfied.
- */
 export async function deductCredits(
   memberId: string,
   action: CreditAction,
@@ -118,7 +119,6 @@ export async function deductCredits(
   let cost: number = config.base;
 
   if (BYPASS_CREDIT_GATES) {
-    // Gates disabled — force cost to 0, skip subscriber and balance checks.
     cost = 0;
   } else {
     if (FREE_FOR_PAID_SUBSCRIBERS.has(action)) {
@@ -129,7 +129,6 @@ export async function deductCredits(
 
   const balance = await getBalance(memberId);
 
-  // Never fires when BYPASS_CREDIT_GATES is true (cost is always 0 above).
   if (cost > 0 && balance < cost) {
     throw new InsufficientCreditsError(balance, cost);
   }

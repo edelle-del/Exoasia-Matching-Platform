@@ -1,44 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { CREDIT_PACKAGES, type CreditPackage } from "@/types/constants";
 
 type Props = {
   needed: number;
   balance: number;
   onClose: () => void;
-  onPurchased?: () => void;
 };
 
 export function InsufficientCreditsModal({ needed, balance, onClose }: Props) {
   if (process.env.NEXT_PUBLIC_BYPASS_CREDIT_GATES === "true") return null;
 
   const shortfall = needed - balance;
-  const [purchasing, setPurchasing] = useState<string | null>(null);
-  const [error, setError] = useState("");
-
-  const handleBuy = async (pkg: CreditPackage) => {
-    setPurchasing(pkg.id);
-    setError("");
-    try {
-      const res = await fetch("/api/payments/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "credits", id: pkg.id }),
-      });
-      const data = await res.json() as { checkoutUrl?: string; error?: string };
-      if (!res.ok || !data.checkoutUrl) {
-        setError(data.error ?? "Checkout failed. Please try again.");
-        setPurchasing(null);
-        return;
-      }
-      window.location.href = data.checkoutUrl;
-    } catch {
-      setError("Something went wrong. Please try again.");
-      setPurchasing(null);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
@@ -74,76 +47,42 @@ export function InsufficientCreditsModal({ needed, balance, onClose }: Props) {
         </div>
 
         <div className="px-7 py-6 flex flex-col gap-4">
-          <>
-            <p className="text-sm text-white/50">Top up your credits to continue. You&apos;ll be redirected to PayMongo to complete payment.</p>
+          <p className="text-sm text-white/50">
+            Top up with a Match Bundle add-on to continue. Credits work on any plan — free tier or paid subscription.
+          </p>
 
-            {error && (
-              <p className="rounded-[10px] bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-xs text-red-400">
-                {error}
+          {/* Match Bundle card — coming soon */}
+          <div className="rounded-[14px] border border-[#FF6B1F]/30 bg-[#FF6B1F]/08 px-5 py-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-white text-sm">Match Bundle</p>
+              <p className="text-[#FF6B1F] font-bold text-lg mt-0.5">
+                100
+                <span className="text-sm font-normal text-white/40 ml-1">credits</span>
               </p>
-            )}
-
-            <div className="flex flex-col gap-2.5">
-              {CREDIT_PACKAGES.map((pkg) => {
-                const covers = pkg.credits >= shortfall;
-                const isLoading = purchasing === pkg.id;
-                return (
-                  <button
-                    key={pkg.id}
-                    type="button"
-                    disabled={!!purchasing}
-                    onClick={() => void handleBuy(pkg)}
-                    className={[
-                      "relative flex items-center justify-between rounded-[14px] border px-5 py-4 text-left transition-all disabled:opacity-60",
-                      covers
-                        ? "border-[#FF6B1F]/40 bg-[#FF6B1F]/10 hover:bg-[#FF6B1F]/15"
-                        : "border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]",
-                    ].join(" ")}
-                  >
-                    {covers && (
-                      <span className="absolute -top-2.5 left-4 rounded-full bg-[#FF6B1F] px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">
-                        Recommended
-                      </span>
-                    )}
-                    <div>
-                      <p className="font-semibold text-white text-sm">{pkg.name}</p>
-                      <p className="text-[#FF6B1F] font-bold text-lg mt-0.5">
-                        {pkg.credits}
-                        <span className="text-sm font-normal text-white/40 ml-1">credits</span>
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-white/80 font-bold text-base">${pkg.price}</p>
-                      {isLoading ? (
-                        <svg className="animate-spin h-4 w-4 text-[#FF6B1F] ml-auto mt-1" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      ) : (
-                        <p className="text-white/30 text-xs mt-0.5">
-                          ${(pkg.price / pkg.credits).toFixed(2)}/cr
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
             </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <div className="flex-1 h-px bg-white/[0.06]" />
-              <span className="text-xs text-white/25">or</span>
-              <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="text-right shrink-0">
+              <p className="text-white/80 font-bold text-base">$99</p>
+              <p className="text-white/30 text-xs mt-0.5">$0.99 / cr</p>
             </div>
+          </div>
 
-            <Link
-              href="/payments"
-              onClick={onClose}
-              className="block text-center text-sm text-white/40 hover:text-white/70 transition-colors"
-            >
-              View all plans & packages →
-            </Link>
-          </>
+          <p className="text-center text-[0.72rem] font-mono text-white/25 -mt-1">
+            Credit purchases coming soon
+          </p>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/[0.06]" />
+            <span className="text-xs text-white/25">or</span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
+          </div>
+
+          <Link
+            href="/payments"
+            onClick={onClose}
+            className="block text-center text-sm text-white/40 hover:text-white/70 transition-colors"
+          >
+            View plans &amp; pricing →
+          </Link>
         </div>
       </div>
     </div>

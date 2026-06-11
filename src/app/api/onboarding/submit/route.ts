@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getRoleFromAccessToken } from "@/lib/auth/jwt";
-import { CREDIT_CONFIG } from "@/types/constants";
 
 type OnboardingPayload = {
   full_name: string;
@@ -158,22 +157,6 @@ export async function POST(request: Request) {
     await supabase.auth.updateUser({
       data: { full_name: body.full_name.trim() },
     });
-
-    // Grant welcome bonus credits on first onboarding only.
-    const { data: existing } = await supabase
-      .from("ad_credit_ledger")
-      .select("id")
-      .eq("member_id", user.id)
-      .eq("reason", CREDIT_CONFIG.WELCOME_BONUS.reason)
-      .maybeSingle();
-
-    if (!existing) {
-      await supabase.from("ad_credit_ledger").insert({
-        member_id: user.id,
-        change_amount: CREDIT_CONFIG.WELCOME_BONUS.credits,
-        reason: CREDIT_CONFIG.WELCOME_BONUS.reason,
-      });
-    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

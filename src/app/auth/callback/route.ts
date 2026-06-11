@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sendNewSignupNotification } from "@/lib/email";
+import { CREDIT_CONFIG } from "@/types/constants";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -45,14 +47,34 @@ export async function GET(request: Request) {
   // on OAuth re-logins where the user abandoned onboarding.
   const accountAgeMs = Date.now() - new Date(user.created_at).getTime();
   const isNewSignup = !profile?.full_name && accountAgeMs < 60 * 60 * 1000; // within 1 hour
-  if (isNewSignup && user.email) {
-    const meta = user.user_metadata as Record<string, string> | undefined;
-    void sendNewSignupNotification({
-      email: user.email,
-      createdAt: user.created_at,
-      location: meta?.signin_location,
-      browser: meta?.signin_browser,
-    });
+  if (isNewSignup) {
+    const admin = createAdminClient();
+
+    // Grant 10 welcome credits immediately on new account — idempotent.
+    const { data: existing } = await admin
+      .from("ad_credit_ledger")
+      .select("id")
+      .eq("member_id", user.id)
+      .eq("reason", CREDIT_CONFIG.WELCOME_BONUS.reason)
+      .maybeSingle();
+
+    if (!existing) {
+      await admin.from("ad_credit_ledger").insert({
+        member_id: user.id,
+        change_amount: CREDIT_CONFIG.WELCOME_BONUS.credits,
+        reason: CREDIT_CONFIG.WELCOME_BONUS.reason,
+      });
+    }
+
+    if (user.email) {
+      const meta = user.user_metadata as Record<string, string> | undefined;
+      void sendNewSignupNotification({
+        email: user.email,
+        createdAt: user.created_at,
+        location: meta?.signin_location,
+        browser: meta?.signin_browser,
+      });
+    }
   }
 
   if (needsOnboarding) {

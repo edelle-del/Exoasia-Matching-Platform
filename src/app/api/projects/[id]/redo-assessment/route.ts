@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BYPASS_CREDIT_GATES } from "@/lib/credits";
 
-const REDO_COST = 15;
+const REDO_COST = 100;
 
 export async function POST(
   _request: Request,

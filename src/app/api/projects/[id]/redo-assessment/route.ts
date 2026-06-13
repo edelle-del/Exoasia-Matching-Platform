@@ -73,7 +73,7 @@ export async function POST(
         project_id: projectId,
         expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         used: false,
-        session: null,
+        session: {},
       });
 
     if (insertError) {

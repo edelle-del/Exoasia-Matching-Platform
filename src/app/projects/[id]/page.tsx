@@ -1106,7 +1106,7 @@ export default function ProjectDetailPage({
                 }}
                 className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
               >
-                Confirm · 1 credit
+                Confirm for free (beta)
               </button>
             </div>
           </div>
@@ -1150,7 +1150,7 @@ export default function ProjectDetailPage({
                 disabled={profileUnlocking}
                 className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {profileUnlocking ? "Unlocking…" : hasActivePlan ? "View Profile — Free" : "Unlock · 1 credit"}
+                {profileUnlocking ? "Unlocking…" : hasActivePlan ? "View Profile — Free" : "Unlock for free (beta)"}
               </button>
             </div>
           </div>
@@ -2076,7 +2076,7 @@ export default function ProjectDetailPage({
                       onClick={() => void handleUnlockSnapshot()}
                       className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
                     >
-                      {snapshotUnlocking ? "Unlocking…" : hasActivePlan ? "View — Free" : "Unlock · 1 credit"}
+                      {snapshotUnlocking ? "Unlocking…" : hasActivePlan ? "View — Free" : "Unlock for free (beta)"}
                     </button>
                     <button
                       type="button"
@@ -2098,7 +2098,7 @@ export default function ProjectDetailPage({
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    {hasActivePlan ? "View financial snapshot — Free" : "Unlock financial snapshot · 1 credit"}
+                    {hasActivePlan ? "View financial snapshot — Free" : "Unlock financial snapshot for free (beta)"}
                   </button>
                 </div>
               )}
@@ -2576,7 +2576,7 @@ export default function ProjectDetailPage({
                         </p>
                         {!locked && !profileUnlocked && (
                           <p className="mt-1 text-[11px] text-(--color-muted)">
-                            🔒 <span className="font-semibold text-(--color-primary)">Unlock full profile + breakdown · 1 credit</span> — thesis, portfolio, compatibility
+                            🔒 <span className="font-semibold text-(--color-primary)">Unlock full profile + breakdown for free (beta)</span> — thesis, portfolio, compatibility
                           </p>
                         )}
                       </button>
@@ -2846,7 +2846,7 @@ export default function ProjectDetailPage({
                             onClick={() => { setProfileUnlockConfirm(m.investor_profile_id); }}
                             className="text-xs font-bold text-(--color-primary) hover:opacity-70 transition-opacity"
                           >
-                            Unlock this match · 1 credit
+                            Unlock this match for free (beta)
                           </button>
                           <span className="text-[10px] text-(--color-muted)">or</span>
                           <Link
@@ -2866,7 +2866,7 @@ export default function ProjectDetailPage({
                   {investorMatches.filter((_, i) => i >= FREE_TIER_MATCH_LIMIT && !unlockedProfiles.has(_.investor_profile_id)).length} match
                   {investorMatches.filter((_, i) => i >= FREE_TIER_MATCH_LIMIT && !unlockedProfiles.has(_.investor_profile_id)).length !== 1 ? "es" : ""}{" "}
                   locked.{" "}
-                  <span className="font-semibold text-(--color-primary)">Unlock for 1 credit each</span>
+                  <span className="font-semibold text-(--color-primary)">Unlock for free (beta)</span>
                   {" "}or{" "}
                   <Link href="/payments" className="font-semibold text-(--color-primary) underline underline-offset-2">
                     subscribe for full access

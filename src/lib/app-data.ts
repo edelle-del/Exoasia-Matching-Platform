@@ -197,10 +197,11 @@ export async function fetchDashboardSummary(
       .limit(20),
   ]);
 
-  const credits = (creditRows ?? []).reduce(
+  const rawCredits = (creditRows ?? []).reduce(
     (sum, row) => sum + Number(row.change_amount ?? 0),
     0,
   );
+  const credits = Math.max(0, rawCredits);
 
   // Attach counterpart names to recent matches
   const matches = rawMatches ?? [];
@@ -613,13 +614,14 @@ export type ProjectRecord = {
 export async function fetchUserProjects(
   supabase: SupabaseClient,
   userId: string,
+  includeArchived: boolean = false
 ): Promise<ProjectRecord[]> {
   const [{ data: owned }, { data: cofounderLinks }] = await Promise.all([
     supabase
       .from("projects")
       .select("id, owner_id, name, description, stage, sector, is_active, created_at, updated_at")
       .eq("owner_id", userId)
-      .eq("is_active", true)
+      .in("is_active", includeArchived ? [true, false] : [true])
       .order("created_at", { ascending: false }),
     supabase
       .from("cofounder_links")
@@ -637,7 +639,7 @@ export async function fetchUserProjects(
     .from("projects")
     .select("id, owner_id, name, description, stage, sector, is_active, created_at, updated_at")
     .in("id", cofounderProjectIds)
-    .eq("is_active", true)
+    .in("is_active", includeArchived ? [true, false] : [true])
     .order("created_at", { ascending: false });
 
   const seen = new Set<string>();

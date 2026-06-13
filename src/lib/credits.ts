@@ -25,7 +25,7 @@ export class InsufficientCreditsError extends Error {
 export const CREDIT_COSTS = {
   // ── Startup: workflow utilities (free for paid subscribers) ───────────────
   UNLOCK_INVESTOR_PROFILE:  { base: 1,  reason: "Unlock investor profile" },
-  REGENERATE_MATCH_REPORT:  { base: 1,  reason: "Investor match report regeneration" },
+  REGENERATE_MATCH_REPORT:  { base: 0,  reason: "Investor match report regeneration" },
   SEND_COFOUNDER_INVITE:    { base: 1,  reason: "Cofounder email invite" },
 
   // ── Investor: data screening (free for paid subscribers) ─────────────────
@@ -40,7 +40,7 @@ export const CREDIT_COSTS = {
   REQUEST_COMMUNITY_INTRO:  { base: 1,  reason: "Community intro request" },
 
   // ── Shared / community ────────────────────────────────────────────────────
-  UNLOCK_COMMUNITY_PROFILE: { base: 1,  reason: "Unlock community profile" },
+  UNLOCK_COMMUNITY_PROFILE: { base: 0,  reason: "Unlock community profile" },
 
   // ── Ecosystem partner: platform tooling (free for paid subscribers) ──────
   POST_OPPORTUNITY:         { base: 1,  reason: "Post opportunity/program call" },
@@ -89,7 +89,8 @@ export async function getBalance(memberId: string): Promise<number> {
     .from("ad_credit_ledger")
     .select("change_amount")
     .eq("member_id", memberId);
-  return (data ?? []).reduce((sum, r) => sum + Number(r.change_amount ?? 0), 0);
+  const rawBalance = (data ?? []).reduce((sum, r) => sum + Number(r.change_amount ?? 0), 0);
+  return Math.max(0, rawBalance);
 }
 
 export async function isPayingSubscriber(memberId: string): Promise<boolean> {

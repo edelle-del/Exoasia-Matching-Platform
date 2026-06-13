@@ -680,7 +680,16 @@ export default function ProjectDetailPage({
   const handleDelete = async () => {
     if (!window.confirm("Archive this project?")) return;
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    router.push("/matches");
+    setProject((p) => (p ? { ...p, is_active: false } : p));
+  };
+
+  const handleRestore = async () => {
+    await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: true }),
+    });
+    setProject((p) => (p ? { ...p, is_active: true } : p));
   };
 
   const handleReportReparseClick = () => {
@@ -1293,13 +1302,23 @@ export default function ProjectDetailPage({
                   >
                     {editing ? "Cancel" : "Edit"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    Archive
-                  </button>
+                  {project.is_active ? (
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      Archive
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleRestore}
+                      className="rounded-xl border border-(--color-hairline) px-3 py-2 text-sm text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+                    >
+                      Restore
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -1320,8 +1339,46 @@ export default function ProjectDetailPage({
         }
       />
 
-      {report && (
-        <section className="border-b border-(--color-hairline) bg-(--color-surface-soft) px-4 sm:px-6 py-8">
+      
+
+      {/* ── Team member tabs (owner + cofounder) ── */}
+      {isTeamMember && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">
+          <div role="tablist" aria-label="Project Views" className="flex gap-0 border-b border-(--color-hairline)">
+            {(["details", "matches"] as const).map((tab) => (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                aria-controls={`project-panel-${tab}`}
+                id={`project-tab-${tab}`}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                  activeTab === tab
+                    ? "border-(--color-primary) text-(--color-primary)"
+                    : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
+                }`}
+              >
+                {tab === "details" ? "Project Details" : "Investor Matches"}
+                {tab === "matches" &&
+                  matchesGenerated &&
+                  investorMatches.length > 0 && (
+                    <span className="rounded-full bg-(--color-primary) px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                      {investorMatches.length}
+                    </span>
+                  )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Project Details tab (always visible for non-team-members) ── */}
+      {(!isTeamMember || activeTab === "details") && (
+        <div role="tabpanel" id="project-panel-details" aria-labelledby="project-tab-details" className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          {report && (
+        <section className="mb-6">
           <div className="w-full">
             <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4 md:rounded-2xl md:p-6 lg:p-8">
               <div className="flex items-start justify-between gap-3">
@@ -1846,42 +1903,6 @@ export default function ProjectDetailPage({
         </section>
       )}
 
-      {/* ── Team member tabs (owner + cofounder) ── */}
-      {isTeamMember && (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">
-          <div role="tablist" aria-label="Project Views" className="flex gap-0 border-b border-(--color-hairline)">
-            {(["details", "matches"] as const).map((tab) => (
-              <button
-                key={tab}
-                role="tab"
-                aria-selected={activeTab === tab}
-                aria-controls={`project-panel-${tab}`}
-                id={`project-tab-${tab}`}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                  activeTab === tab
-                    ? "border-(--color-primary) text-(--color-primary)"
-                    : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
-                }`}
-              >
-                {tab === "details" ? "Project Details" : "Investor Matches"}
-                {tab === "matches" &&
-                  matchesGenerated &&
-                  investorMatches.length > 0 && (
-                    <span className="rounded-full bg-(--color-primary) px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
-                      {investorMatches.length}
-                    </span>
-                  )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Project Details tab (always visible for non-team-members) ── */}
-      {(!isTeamMember || activeTab === "details") && (
-        <div role="tabpanel" id="project-panel-details" aria-labelledby="project-tab-details" className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
           {isOwner && !report && (
             <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">

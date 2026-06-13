@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
     const startups = (data ?? []).map((p) => ({
       id: p.id,
       name: p.business_name || p.full_name || "Unnamed member",
+      full_name: p.full_name,
+      business_name: p.business_name,
       sector: p.sector ?? null,
     }));
 

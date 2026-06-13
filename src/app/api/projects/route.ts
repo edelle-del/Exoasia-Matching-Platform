@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -15,12 +15,14 @@ export async function GET() {
     const PROJECT_FIELDS =
       "id, owner_id, name, description, stage, sector, is_active, created_at, updated_at";
 
+    const archived = req.nextUrl.searchParams.get("archived") === "true";
+
     // Projects the user owns
     const { data: ownedProjects, error } = await supabase
       .from("projects")
       .select(PROJECT_FIELDS)
       .eq("owner_id", user.id)
-      .eq("is_active", true)
+      .in("is_active", archived ? [true, false] : [true])
       .order("created_at", { ascending: false });
 
     if (error)
@@ -43,7 +45,7 @@ export async function GET() {
         .from("projects")
         .select(PROJECT_FIELDS)
         .in("id", cofounderProjectIds)
-        .eq("is_active", true);
+        .in("is_active", archived ? [true, false] : [true]);
       cofounderProjects = cfp ?? [];
     }
 

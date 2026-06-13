@@ -124,6 +124,8 @@ export default function MatchesPage() {
 
   // Projects state (shared startup + investor)
   const [projects, setProjects] = useState<(ProjectRecord & { owner_name?: string })[]>([]);
+  const [scoring, setScoring] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   // Startup-specific
   const [projectScores, setProjectScores] = useState<ProjectScore[]>([]);
@@ -132,7 +134,6 @@ export default function MatchesPage() {
 
   // Investor-specific
   const [scoreMap, setScoreMap] = useState<Map<string, MatchScore>>(new Map());
-  const [scoring, setScoring] = useState<Set<string>>(new Set());
   const [view, setView] = useState<"all" | "top5">("all");
   const [generatingTop5, setGeneratingTop5] = useState(false);
   const [top5Progress, setTop5Progress] = useState(0);
@@ -185,7 +186,7 @@ export default function MatchesPage() {
 
       // ── Startup ──────────────────────────────────────────────────────────────
       if (role === "startup") {
-        const userProjects = await fetchUserProjects(supabase, user.id);
+        const userProjects = await fetchUserProjects(supabase, user.id, true);
         setProjects(userProjects);
 
         if (userProjects.length > 0) {
@@ -337,6 +338,21 @@ export default function MatchesPage() {
     }
   }, [supabase]);
 
+  const handleRestoreProject = async (projectId: string) => {
+    if (!hasActiveSub && activeProjects.length >= 1) {
+      window.alert("Free tier allows only 1 active project. Please archive your current active project before restoring this one.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: true }),
+      });
+      if (res.ok) setReloadKey((k) => k + 1);
+    } catch { /* ignore */ }
+  };
+
   const handleScoreProject = useCallback(async (projectId: string) => {
     setScoring((prev) => new Set(prev).add(projectId));
     try {
@@ -432,11 +448,6 @@ export default function MatchesPage() {
     [matches, user?.id],
   );
 
-  const existingMatchPartnerIds = useMemo(
-    () => new Set(matches.map((m) => (m.member_a_id === user?.id ? m.member_b_id : m.member_a_id))),
-    [matches, user?.id],
-  );
-
   const pendingMatches = matches.filter((m) => {
     const myStatus = m.member_a_id === user?.id ? m.member_a_status : m.member_b_status;
     return myStatus === "pending" && ["pending", "approved"].includes(m.status);
@@ -450,6 +461,10 @@ export default function MatchesPage() {
       .sort((a, b) => (scoreMap.get(b.id)?.fit_score ?? 0) - (scoreMap.get(a.id)?.fit_score ?? 0))
       .slice(0, 5);
   }, [projects, scoreMap, isInvestor]);
+
+  const activeProjects = projects.filter((p) => p.is_active);
+  const archivedProjects = projects.filter((p) => !p.is_active);
+  const displayedProjects = showArchived ? archivedProjects : activeProjects;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -537,6 +552,24 @@ export default function MatchesPage() {
             <section>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="ma-section-label">Your Projects</h2>
+                {(archivedProjects.length > 0 || showArchived) && (
+                  <div className="flex rounded-xl border border-(--color-hairline) overflow-hidden text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setShowArchived(false)}
+                      className={`px-4 py-2 transition-colors ${!showArchived ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
+                    >
+                      Active
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowArchived(true)}
+                      className={`px-4 py-2 transition-colors ${showArchived ? "bg-(--color-primary) text-white" : "bg-(--color-canvas) text-(--color-muted) hover:bg-(--color-surface-soft)"}`}
+                    >
+                      Archived ({archivedProjects.length})
+                    </button>
+                  </div>
+                )}
               </div>
 
               {isLoading ? (
@@ -548,17 +581,21 @@ export default function MatchesPage() {
                     </div>
                   ))}
                 </div>
-              ) : projects.length === 0 ? (
+              ) : displayedProjects.length === 0 ? (
                 <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) py-12 text-center">
-                  <p className="text-sm font-semibold text-(--color-ink)">No active projects</p>
-                  <p className="mt-1 text-xs text-(--color-muted)">Create a project to start getting matched with investors.</p>
-                  <Link href="/projects/new" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white hover:opacity-95">
-                    Create a project
-                  </Link>
+                  <p className="text-sm font-semibold text-(--color-ink)">No {showArchived ? "archived" : "active"} projects</p>
+                  {!showArchived && (
+                    <>
+                      <p className="mt-1 text-xs text-(--color-muted)">Create a project to start getting matched with investors.</p>
+                      <Link href="/projects/new" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-semibold text-white hover:opacity-95">
+                        Create a project
+                      </Link>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-8">
-                  {projects.map((project) => {
+                  {displayedProjects.map((project) => {
                     const scores = projectScores.filter((s) => s.project_id === project.id);
                     const bestScore = scores.length > 0 ? scores[0].fit_score : null;
                     const isGeneratingThis = generating.has(project.id);
@@ -603,24 +640,37 @@ export default function MatchesPage() {
                                 {scores.length} match{scores.length !== 1 ? "es" : ""}
                               </Link>
                             )}
-                            <button
-                              type="button"
-                              disabled={isGeneratingThis}
-                              onClick={(e) => { e.stopPropagation(); void handleFindInvestors(project.id); }}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-primary)/30 bg-(--color-primary)/5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
-                            >
-                              {isGeneratingThis ? (
-                                <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                              ) : (
-                                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
-                                  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                                </svg>
-                              )}
-                              {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate" : "Find investors"}
-                            </button>
+                            {showArchived ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); void handleRestoreProject(project.id); }}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-2.5 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3 shrink-0">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                    </svg>
+                                    Restore
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isGeneratingThis}
+                                    onClick={(e) => { e.stopPropagation(); void handleFindInvestors(project.id); }}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-primary)/30 bg-(--color-primary)/5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                                  >
+                                    {isGeneratingThis ? (
+                                      <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                      </svg>
+                                    ) : (
+                                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
+                                        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                                      </svg>
+                                    )}
+                                    {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate" : "Find investors"}
+                                  </button>
+                                )}
                           </div>
                         </div>
                       </div>

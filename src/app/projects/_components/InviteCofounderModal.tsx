@@ -7,6 +7,8 @@ type Option = "choose" | "existing" | "new";
 type MemberResult = {
   id: string;
   name: string;
+  full_name?: string | null;
+  business_name?: string | null;
   sector: string | null;
 };
 
@@ -217,7 +219,7 @@ function ExistingMemberStep({
                 {r.name.charAt(0)}
               </div>
               <div>
-                <p className="text-sm font-medium text-[#F4F4FF]">{r.name}</p>
+                <p className="text-sm font-medium text-[#F4F4FF]">{r.full_name || r.name}</p>
                 {r.sector && <p className="text-xs text-[#8B8BA7]">{r.sector}</p>}
               </div>
             </button>
@@ -231,7 +233,7 @@ function ExistingMemberStep({
             {selected.name.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[#F4F4FF] truncate">{selected.name}</p>
+            <p className="text-sm font-medium text-[#F4F4FF] truncate">{selected.full_name || selected.name}</p>
             {selected.sector && <p className="text-xs text-[#8B8BA7]">{selected.sector}</p>}
           </div>
           <button type="button" aria-label="Clear selection" onClick={() => setSelected(null)} className="text-[#8B8BA7] hover:text-[#F4F4FF]">

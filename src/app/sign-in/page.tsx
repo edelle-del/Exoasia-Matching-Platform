@@ -8,6 +8,7 @@ import { useAuth } from "../providers";
 import { getRoleFromAccessToken } from "@/lib/auth/jwt";
 import { getSignedInRedirectPath } from "@/lib/auth/access";
 import { FullPageLoader } from "../_components/FullPageLoader";
+import AuthNavBar from "../_components/AuthNavBar";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -170,7 +171,9 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden flex bg-[var(--color-canvas)]">
+    <div className="h-screen overflow-hidden flex flex-col bg-[var(--color-canvas)]">
+      <AuthNavBar />
+      <div className="flex flex-1 min-h-0">
 
       {/* ── Right panel: marketing ─────────────────────────────────────────── */}
       <div className="fa-panel hidden lg:flex lg:w-[52%] xl:w-[56%] relative overflow-hidden flex-col justify-between">
@@ -180,40 +183,33 @@ export default function SignInPage() {
           <div className="fa-panel-blob-3 absolute bottom-[20%] left-[10%] w-[40%] h-[40%] rounded-full opacity-25" />
         </div>
 
-        <div className="relative z-10 flex flex-col justify-center flex-1 px-12 xl:px-16 py-10">
-          <div className="fa-panel-badge mb-6 inline-flex items-center gap-2 self-start rounded-full px-4 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B1F] animate-pulse" />
-            <span className="font-mono text-[10px] font-medium tracking-widest uppercase text-[#FF6B1F]">
-              Live · Philippine Blockchain Week · June 2026
-            </span>
-          </div>
-
-          <h2 className="fa-panel-headline text-4xl xl:text-5xl font-black leading-[1.08] tracking-tight text-white mb-4">
+        <div className="relative z-10 flex flex-col justify-center flex-1 px-12 xl:px-16 py-6">
+          <h2 className="fa-panel-headline text-4xl xl:text-5xl font-black leading-[1.08] tracking-tight text-white mb-3">
             Stop Pitching<br />Blind.
           </h2>
-          <p className="fa-panel-headline text-2xl xl:text-3xl font-black leading-tight text-white mb-4">
+          <p className="fa-panel-headline text-2xl xl:text-3xl font-black leading-tight text-white mb-3">
             Your Next Investor Is<br />
             <span className="fa-panel-accent">Already Looking for You.</span>
           </p>
 
-          <div className="mb-5">
+          <div className="mb-3">
             <span className="fa-panel-tagline inline-block text-xs tracking-[0.18em] uppercase pb-1">
               Not by chance. By design.
             </span>
           </div>
 
-          <p className="fa-panel-body text-[15px] leading-relaxed mb-7 max-w-md">
+          <p className="fa-panel-body text-[15px] leading-relaxed mb-4 max-w-md">
             The right capital partner exists — Exoasia Intelligence finds them. Founders Arena connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
           </p>
 
-          <div className="grid grid-cols-2 gap-3 max-w-sm">
+          <div className="grid grid-cols-2 gap-2 max-w-sm">
             {[
               { icon: "🧠", stat: "AI-Powered", label: "Matching Engine" },
               { icon: "✅", stat: "500+", label: "Verified Investors" },
               { icon: "🌏", stat: "15+", label: "Countries" },
               { icon: "📂", stat: "27", label: "Sectors Covered" },
             ].map(({ icon, stat, label }) => (
-              <div key={stat} className="fa-panel-stat flex items-center gap-3 rounded-xl px-4 py-3">
+              <div key={stat} className="fa-panel-stat flex items-center gap-3 rounded-xl px-4 py-2">
                 <span className="text-base">{icon}</span>
                 <div>
                   <p className="text-sm font-bold text-white leading-none">{stat}</p>
@@ -224,7 +220,7 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <div className="fa-panel-footer relative z-10 px-12 xl:px-16 py-5">
+        <div className="fa-panel-footer relative z-10 px-12 xl:px-16 py-3">
           <p className="text-[10px] tracking-widest uppercase">
             Powered by <span className="fa-panel-accent">Exoasia Innovation Hub</span> · 21F 8 Rockwell, Makati City
           </p>
@@ -232,8 +228,8 @@ export default function SignInPage() {
       </div>
 
       {/* ── Left panel: sign-in form ───────────────────────────────────────── */}
-      <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-y-auto bg-[var(--color-canvas)]">
-        <div className="w-full max-w-[450px] space-y-6">
+      <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-hidden bg-[var(--color-canvas)]">
+        <div className="w-full max-w-[450px] mx-auto space-y-5">
           <div>
             <h1 className="font-display text-3xl font-bold text-[var(--color-ink)]">
               Welcome back
@@ -382,6 +378,7 @@ export default function SignInPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

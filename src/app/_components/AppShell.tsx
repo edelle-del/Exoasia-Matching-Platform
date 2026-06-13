@@ -1,13 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useAuth } from "../providers";
 import TopHeader from "./TopHeader";
 
 const NO_SIDEBAR_PATHS = ["/", "/sign-in", "/sign-up", "/accept-invite", "/get-invited", "/not-authorized", "/onboarding"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const noSidebar = NO_SIDEBAR_PATHS.includes(pathname);
+  const { signedIn } = useAuth();
+
+  let noSidebar = NO_SIDEBAR_PATHS.includes(pathname);
+  if (pathname === "/docs" && !signedIn) {
+    noSidebar = true;
+  }
 
   if (noSidebar) {
     return <>{children}</>;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getClientContext } from "@/lib/client-context";
+import AuthNavBar from "../_components/AuthNavBar";
 
 function MarketingPanel() {
   return (
@@ -14,36 +15,30 @@ function MarketingPanel() {
         <div className="fa-panel-blob-2 absolute bottom-0 right-0 w-[55%] h-[55%] rounded-full opacity-30" />
         <div className="fa-panel-blob-3 absolute bottom-[20%] left-[10%] w-[40%] h-[40%] rounded-full opacity-25" />
       </div>
-      <div className="relative z-10 flex flex-col justify-center flex-1 px-12 xl:px-16 py-10">
-        <div className="fa-panel-badge mb-6 inline-flex items-center gap-2 self-start rounded-full px-4 py-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B1F] animate-pulse" />
-          <span className="font-mono text-[10px] font-medium tracking-widest uppercase text-[#FF6B1F]">
-            Live · Philippine Blockchain Week · June 2026
-          </span>
-        </div>
-        <h2 className="fa-panel-headline text-4xl xl:text-5xl font-black leading-[1.08] tracking-tight text-white mb-4">
+      <div className="relative z-10 flex flex-col justify-center flex-1 px-12 xl:px-16 py-6">
+        <h2 className="fa-panel-headline text-4xl xl:text-5xl font-black leading-[1.08] tracking-tight text-white mb-3">
           Stop Pitching<br />Blind.
         </h2>
-        <p className="fa-panel-headline text-2xl xl:text-3xl font-black leading-tight text-white mb-4">
+        <p className="fa-panel-headline text-2xl xl:text-3xl font-black leading-tight text-white mb-3">
           Your Next Investor Is<br />
           <span className="fa-panel-accent">Already Looking for You.</span>
         </p>
-        <div className="mb-5">
+        <div className="mb-3">
           <span className="fa-panel-tagline inline-block text-xs tracking-[0.18em] uppercase pb-1">
             Not by chance. By design.
           </span>
         </div>
-        <p className="fa-panel-body text-[15px] leading-relaxed mb-7 max-w-md">
+        <p className="fa-panel-body text-[15px] leading-relaxed mb-4 max-w-md">
           The right capital partner exists — Exoasia Intelligence finds them. Founders Arena connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
         </p>
-        <div className="grid grid-cols-2 gap-3 max-w-sm">
+        <div className="grid grid-cols-2 gap-2 max-w-sm">
           {[
             { icon: "🧠", stat: "AI-Powered", label: "Matching Engine" },
             { icon: "✅", stat: "500+", label: "Verified Investors" },
             { icon: "🌏", stat: "15+", label: "Countries" },
             { icon: "📂", stat: "27", label: "Sectors Covered" },
           ].map(({ icon, stat, label }) => (
-            <div key={stat} className="fa-panel-stat flex items-center gap-3 rounded-xl px-4 py-3">
+            <div key={stat} className="fa-panel-stat flex items-center gap-3 rounded-xl px-4 py-2">
               <span className="text-base">{icon}</span>
               <div>
                 <p className="text-sm font-bold text-white leading-none">{stat}</p>
@@ -53,7 +48,7 @@ function MarketingPanel() {
           ))}
         </div>
       </div>
-      <div className="fa-panel-footer relative z-10 px-12 xl:px-16 py-5">
+      <div className="fa-panel-footer relative z-10 px-12 xl:px-16 py-3">
         <p className="text-[10px] tracking-widest uppercase">
           Powered by <span className="fa-panel-accent">Exoasia Innovation Hub</span> · 21F 8 Rockwell, Makati City
         </p>
@@ -182,10 +177,12 @@ export default function SignUpPage() {
 
   if (checkEmailStep) {
     return (
-      <div className="h-screen overflow-hidden flex bg-[var(--color-canvas)]">
-        <MarketingPanel />
-        <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-y-auto bg-[var(--color-canvas)]">
-          <div className="w-full max-w-[450px] space-y-5 text-center">
+    <div className="h-screen overflow-hidden flex flex-col bg-[var(--color-canvas)]">
+        <AuthNavBar />
+        <div className="flex flex-1 min-h-0">
+          <MarketingPanel />
+          <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-hidden bg-[var(--color-canvas)]">
+          <div className="w-full max-w-[450px] mx-auto space-y-5 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6 text-[var(--color-primary)]">
                 <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -232,15 +229,18 @@ export default function SignUpPage() {
             </p>
           </div>
         </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen overflow-hidden flex bg-[var(--color-canvas)]">
-      <MarketingPanel />
-      <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-y-auto bg-[var(--color-canvas)]">
-        <div className="w-full max-w-[450px] space-y-6 text-center">
+    <div className="h-screen overflow-hidden flex flex-col bg-[var(--color-canvas)]">
+      <AuthNavBar />
+      <div className="flex flex-1 min-h-0">
+        <MarketingPanel />
+      <main className="flex flex-1 items-center justify-center px-8 sm:px-10 py-8 overflow-hidden bg-[var(--color-canvas)]">
+        <div className="w-full max-w-[450px] mx-auto space-y-5 text-center">
           <div>
             <h1 className="font-display text-3xl font-bold text-[var(--color-ink)]">
               Create your account
@@ -324,6 +324,7 @@ export default function SignUpPage() {
           </p>
         </div>
       </main>
+      </div>
     </div>
   );
 }

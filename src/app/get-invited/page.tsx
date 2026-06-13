@@ -1,24 +1,24 @@
 import Link from "next/link";
 const inviteSteps = [
   {
-    title: "Receive invite",
+    title: "Create your account",
     detail:
-      "A Growth Advisor pre-defines your account and sends an invite link.",
+      "Sign up directly on the platform with your email address or Google account.",
   },
   {
-    title: "Sign in with invited email",
+    title: "Complete Onboarding",
     detail:
-      "Use the invited email from your advisor. Non-invited emails cannot self-register.",
+      "Fill in your profile details depending on your role (Startup, Investor, or Ecosystem Partner).",
   },
   {
-    title: "Accept invite and consents",
+    title: "Accept agreements and consents",
     detail:
-      "Complete the claim flow with PDPA-PH, NDA-light, and non-circumvention acceptance.",
+      "Review and accept PDPA-PH data privacy consent, NDA-light, and non-circumvention agreements.",
   },
   {
-    title: "Activate access",
+    title: "Explore the platform",
     detail:
-      "After claim, your account becomes active and you can access the member portal.",
+      "Access matches, project deal flow, data rooms, and start connecting with matching partners.",
   },
 ];
 
@@ -34,11 +34,10 @@ export default function GetInvitedPage() {
             ← Back to home
           </Link>
           <h1 className="mt-4 text-3xl font-700 text-[var(--color-ink)]">
-            Invite-only access
+            Get Started on Founders Arena
           </h1>
           <p className="mt-2 text-[var(--color-body)]">
-            Accounts are pre-provisioned by Growth Advisors. Self-signup is
-            disabled.
+            Registration is open to everyone. Sign up now to create your account.
           </p>
         </div>
       </section>
@@ -62,17 +61,16 @@ export default function GetInvitedPage() {
             </div>
           ))}
 
-          <div className="rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-6">
+          <div className="rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-6 text-center">
             <p className="text-sm text-[var(--color-body)]">
-              If you already have an invited email, go to the home page and sign
-              in to continue to invite claim.
+              Ready to join Founders Arena? Anyone can sign up directly.
             </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link href="/" className="gn-btn-secondary">
-                Go to Sign in
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              <Link href="/sign-in" className="gn-btn-secondary">
+                Sign In
               </Link>
-              <Link href="/accept-invite" className="gn-btn-primary">
-                Open Invite Claim
+              <Link href="/sign-up" className="gn-btn-primary">
+                Create Account
               </Link>
             </div>
           </div>

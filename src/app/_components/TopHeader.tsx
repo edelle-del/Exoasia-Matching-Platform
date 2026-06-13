@@ -28,6 +28,7 @@ const ICONS = {
   profile: "ri-user-3-line",
   signOut: "ri-logout-box-r-line",
   signIn: "ri-login-box-line",
+  docs: "ri-book-open-line",
 };
 
 function Icon({ name, className = "" }: { name: string; className?: string }) {
@@ -272,6 +273,14 @@ export default function TopHeader() {
                 />
               )}
             </>
+          )}
+
+          {signedIn && (
+            <NavLink
+              href="/docs"
+              label="Help Center"
+              icon={ICONS.docs}
+            />
           )}
         </nav>
 

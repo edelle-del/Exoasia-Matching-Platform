@@ -19,7 +19,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FOUNDERS ARENA Matching Platform",
+  title: {
+    template: "%s | FOUNDERS ARENA",
+    default: "FOUNDERS ARENA Matching Platform",
+  },
   description: "Where Philippine startups meet the capital that scales them.",
   icons: {
     icon: "/logo.ico",

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getRoleFromAccessToken } from "@/lib/auth/jwt";
 
 export async function DELETE(
   _request: Request,
@@ -9,9 +8,12 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const role = getRoleFromAccessToken(session?.access_token);
+    const admin = createAdminClient();
+    const { data: roleData } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
+    const role = roleData?.role;
     if (role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -22,12 +24,10 @@ export async function DELETE(
     }
 
     // Prevent admins from deleting themselves
-    const { data: { user } } = await supabase.auth.getUser();
     if (user?.id === id) {
       return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
     }
 
-    const admin = createAdminClient();
     const { error } = await admin.auth.admin.deleteUser(id);
 
     if (error) {

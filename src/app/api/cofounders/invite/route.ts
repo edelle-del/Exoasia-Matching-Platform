@@ -15,14 +15,14 @@ export async function POST(request: Request) {
     }
 
     const { uid_type, uid_value, project_id, client_context } = (await request.json()) as {
-      uid_type: "email" | "phone";
+      uid_type: "email";
       uid_value: string;
       project_id?: string | null;
       client_context?: { location?: string; browser?: string };
     };
 
-    if (!uid_type || !["email", "phone"].includes(uid_type)) {
-      return NextResponse.json({ error: "uid_type must be email or phone" }, { status: 400 });
+    if (uid_type !== "email") {
+      return NextResponse.json({ error: "uid_type must be email" }, { status: 400 });
     }
     if (!uid_value?.trim()) {
       return NextResponse.json({ error: "uid_value is required" }, { status: 400 });
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     // We look up the inviter name and project name so they are available
     // as {{ index .Data "invite_inviter_name" }} / {{ index .Data "invite_project_name" }}
     // inside the Supabase "Invite User" email template.
-    if (uid_type === "email" && data?.token) {
+    if (data?.token) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
       const acceptUrl = `${siteUrl}/accept-invite?token=${data.token}`;
 

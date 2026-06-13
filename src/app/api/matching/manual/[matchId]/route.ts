@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getRoleFromAccessToken } from "@/lib/auth/jwt";
 
 async function assertAdvisorRole() {
   const supabase = await createClient();
-  const { data: sessionData } = await supabase.auth.getSession();
-  const role = getRoleFromAccessToken(sessionData?.session?.access_token ?? null);
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Unauthorized");
+
+  const admin = createAdminClient();
+  const { data: roleData } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
+  const role = roleData?.role;
 
   if (!role || !["advisor", "staff", "admin"].includes(role)) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };

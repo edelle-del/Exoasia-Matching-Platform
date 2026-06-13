@@ -28,55 +28,78 @@ export async function POST(
       return NextResponse.json({ error: "Invalid decision" }, { status: 400 });
     }
 
-    // Fetch the match
-    const { data: match } = await admin
-      .from("matches")
-      .select("id, member_a_id, member_b_id, status, member_a_status, member_b_status")
-      .eq("id", matchId)
-      .single();
+    let match;
+    let bothAccepted = false;
+    let nextStatus = "pending";
+    let attempt = 0;
 
-    if (!match) {
-      return NextResponse.json({ error: "Match not found" }, { status: 404 });
-    }
+    while (attempt < 3) {
+      // Fetch the match
+      const { data: currentMatch } = await admin
+        .from("matches")
+        .select("id, member_a_id, member_b_id, status, member_a_status, member_b_status, updated_at")
+        .eq("id", matchId)
+        .single();
 
-    const isA = match.member_a_id === user.id;
-    const isB = match.member_b_id === user.id;
-    if (!isA && !isB) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+      if (!currentMatch) {
+        return NextResponse.json({ error: "Match not found" }, { status: 404 });
+      }
+      match = currentMatch;
 
-    const nextMemberAStatus = isA ? decision : match.member_a_status;
-    const nextMemberBStatus = isA ? match.member_b_status : decision;
+      const isA = match.member_a_id === user.id;
+      const isB = match.member_b_id === user.id;
+      if (!isA && !isB) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
 
-    let nextStatus: string = match.status;
-    if (nextMemberAStatus === "declined" || nextMemberBStatus === "declined") {
-      nextStatus = "declined";
-    } else if (
-      nextMemberAStatus === "accepted" &&
-      nextMemberBStatus === "accepted"
-    ) {
-      nextStatus = "accepted";
-    }
+      const nextMemberAStatus = isA ? decision : match.member_a_status;
+      const nextMemberBStatus = isA ? match.member_b_status : decision;
 
-    const bothAccepted = nextStatus === "accepted";
+      nextStatus = match.status;
+      if (nextMemberAStatus === "declined" || nextMemberBStatus === "declined") {
+        nextStatus = "declined";
+      } else if (
+        nextMemberAStatus === "accepted" &&
+        nextMemberBStatus === "accepted"
+      ) {
+        nextStatus = "accepted";
+      }
 
-    // Update match
-    const { error: updateError } = await admin
-      .from("matches")
-      .update({
-        member_a_status: nextMemberAStatus,
-        member_b_status: nextMemberBStatus,
-        status: nextStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", matchId);
+      bothAccepted = nextStatus === "accepted";
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      // Optimistic update
+      const { data: updatedMatch, error: updateError } = await admin
+        .from("matches")
+        .update({
+          member_a_status: nextMemberAStatus,
+          member_b_status: nextMemberBStatus,
+          status: nextStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", matchId)
+        .eq("updated_at", match.updated_at)
+        .select()
+        .maybeSingle();
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      if (updatedMatch) {
+        break; // Success!
+      }
+
+      // Concurrency collision, retry
+      attempt++;
+      if (attempt === 3) {
+        return NextResponse.json({ error: "Server busy. Please try again." }, { status: 409 });
+      }
+      
+      await new Promise((r) => setTimeout(r, 150));
     }
 
     // If both accepted, advance deal card from "Qualified" to "Intro & Scoping"
-    if (bothAccepted) {
+    if (bothAccepted && match) {
       await admin
         .from("deal_cards")
         .update({

@@ -126,8 +126,15 @@ function RequestsNavItem() {
 }
 
 export default function TopHeader() {
+  const pathname = usePathname();
   const { signedIn, signOut, role, memberRole, user, isLoading } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close menu on navigation
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const isAdminView =
     !isLoading && signedIn && ["advisor", "admin"].includes(role ?? "");
@@ -149,174 +156,214 @@ export default function TopHeader() {
     ? "Account"
     : displayName.split(" ")[0] || "Account";
 
+  const LogoContent = () => (
+    <div className="flex shrink-0 items-center gap-3">
+      <Image
+        src={logo}
+        alt="FOUNDERS ARENA"
+        width={28}
+        height={28}
+        className="shrink-0 rounded"
+      />
+      <span className="flex items-center gap-1.5 md:max-w-0 md:overflow-hidden md:whitespace-nowrap md:opacity-0 md:transition-all md:duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
+        <span className="block text-[11px] font-black tracking-widest text-white leading-tight uppercase">
+          FOUNDERS ARENA
+        </span>
+        <span className="fa-year-badge shrink-0 rounded-md px-1.5 py-0.5 text-[8px] font-semibold tracking-wider bg-white/10">
+          2026
+        </span>
+      </span>
+    </div>
+  );
+
+  const NavLinks = () => (
+    <>
+      {signedIn && (
+        <NavLink
+          href="/dashboard"
+          label="Dashboard"
+          icon={ICONS.dashboard}
+          exact
+        />
+      )}
+
+      {isEcosystemPartner && (
+        <>
+          <NavLink
+            href="/ecosystem"
+            label="Portfolio"
+            icon={ICONS.ecosystem}
+          />
+          <RequestsNavItem />
+          <NavLink href="/events" label="Events" icon={ICONS.events} />
+          <NavLink
+            href="/community"
+            label="Community"
+            icon={ICONS.community}
+          />
+        </>
+      )}
+
+      {isMemberView && (
+        <>
+          <NavLink
+            href="/deal-board"
+            label="Deal board"
+            icon={ICONS.dealBoard}
+          />
+          <NavLink
+            href="/matches"
+            label="Matches"
+            icon={ICONS.matches}
+          />
+          <RequestsNavItem />
+          <NavLink
+            href="/data-room"
+            label="Data Room"
+            icon={ICONS.dataRoom}
+          />
+          <NavLink href="/events" label="Events" icon={ICONS.events} />
+          <NavLink
+            href="/community"
+            label="Community"
+            icon={ICONS.community}
+          />
+        </>
+      )}
+
+      {isAdminView && (
+        <>
+          <NavLink
+            href="/advisor/introductions"
+            label="Introductions"
+            icon={ICONS.introductions}
+          />
+          <NavLink
+            href="/advisor/members"
+            label="Member management"
+            icon={ICONS.members}
+          />
+          <NavLink
+            href="/advisor/match-queue"
+            label="Match review queue"
+            icon={ICONS.matchQueue}
+          />
+          <NavLink
+            href="/advisor/documents"
+            label="Document review"
+            icon={ICONS.docReview}
+          />
+          <NavLink
+            href="/advisor/manual-match"
+            label="Manual match"
+            icon={ICONS.manualMatch}
+          />
+          <NavLink
+            href="/advisor/network-graph"
+            label="Network graph"
+            icon={ICONS.networkGraph}
+          />
+          {role === "admin" && (
+            <NavLink
+              href="/admin/users"
+              label="User management"
+              icon={ICONS.members}
+            />
+          )}
+        </>
+      )}
+
+      {signedIn && (
+        <NavLink
+          href="/docs"
+          label="Help Center"
+          icon={ICONS.docs}
+        />
+      )}
+    </>
+  );
+
+  const BottomProfile = () => (
+    <div className="space-y-1 border-t border-white/20 px-2 py-3">
+      {signedIn && (
+        <>
+          <Link
+            href="/profile"
+            className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white`}
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 text-[10px] font-semibold text-white">
+              {initials || "?"}
+            </div>
+            <Label>{firstName}</Label>
+          </Link>
+
+          <button
+            type="button"
+            onClick={async () => {
+              setIsSigningOut(true);
+              await signOut();
+              window.location.href = "/";
+            }}
+            className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white`}
+          >
+            <Icon name={ICONS.signOut} className="shrink-0" />
+            <Label>Sign out</Label>
+          </button>
+        </>
+      )}
+
+      {!signedIn && (
+        <NavLink href="/sign-in" label="Sign in" icon={ICONS.signIn} />
+      )}
+    </div>
+  );
+
   return (
     <>
       {isSigningOut && <FullPageLoader message="Signing out…" />}
-      <aside className="fa-sidebar group/sidebar fixed top-0 left-0 z-40 flex h-screen w-14 flex-col shadow-xl transition-all duration-300 hover:w-56">
+
+      {/* Mobile Top App Bar */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between bg-[#0a0a0f] border-b border-white/10 px-4">
+        <Link href="/">
+          <LogoContent />
+        </Link>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 -mr-2 text-white/80 hover:text-white focus:outline-none"
+          aria-label="Toggle menu"
+        >
+          <Icon name={isMobileMenuOpen ? "ri-close-line" : "ri-menu-3-line"} className="text-2xl" />
+        </button>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 top-14 z-40 bg-[#0a0a0f] overflow-y-auto pb-6">
+          <nav className="p-4 space-y-2">
+            <NavLinks />
+          </nav>
+          <div className="mt-auto">
+            <BottomProfile />
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Sidebar */}
+      <aside className="fa-sidebar group/sidebar hidden md:flex fixed top-0 left-0 z-40 h-screen w-14 flex-col bg-[#0a0a0f] border-r border-white/10 shadow-xl transition-all duration-300 hover:w-56">
         {/* Logo */}
         <div className="flex items-center gap-3 px-3 py-5">
           <Link href="/" className="flex shrink-0 items-center gap-3">
-            <Image
-              src={logo}
-              alt="FOUNDERS ARENA"
-              width={28}
-              height={28}
-              className="shrink-0 rounded"
-            />
-            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
-              <span className="flex items-center gap-1.5">
-                <span className="block text-[11px] font-black tracking-widest text-white leading-tight uppercase">
-                  FOUNDERS ARENA
-                </span>
-                <span className="fa-year-badge shrink-0 rounded-md px-1.5 py-0.5 text-[8px] font-semibold tracking-wider">
-                  2026
-                </span>
-              </span>
-              <span className="block text-[9px] text-white/40 tracking-wide">
-                by Exoasia
-              </span>
-            </span>
+            <LogoContent />
           </Link>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 space-y-2 overflow-y-auto px-2">
-          {signedIn && (
-            <NavLink
-              href="/dashboard"
-              label="Dashboard"
-              icon={ICONS.dashboard}
-              exact
-            />
-          )}
-
-          {isEcosystemPartner && (
-            <>
-              <NavLink
-                href="/ecosystem"
-                label="Portfolio"
-                icon={ICONS.ecosystem}
-              />
-              <NavLink href="/events" label="Events" icon={ICONS.events} />
-              <NavLink
-                href="/community"
-                label="Community"
-                icon={ICONS.community}
-              />
-            </>
-          )}
-
-          {isMemberView && (
-            <>
-              <NavLink
-                href="/deal-board"
-                label="Deal board"
-                icon={ICONS.dealBoard}
-              />
-              <NavLink
-                href="/matches"
-                label="Matches"
-                icon={ICONS.matches}
-              />
-              <RequestsNavItem />
-              <NavLink
-                href="/data-room"
-                label="Data Room"
-                icon={ICONS.dataRoom}
-              />
-              <NavLink href="/events" label="Events" icon={ICONS.events} />
-              <NavLink
-                href="/community"
-                label="Community"
-                icon={ICONS.community}
-              />
-            </>
-          )}
-
-          {isAdminView && (
-            <>
-              <NavLink
-                href="/advisor/introductions"
-                label="Introductions"
-                icon={ICONS.introductions}
-              />
-              <NavLink
-                href="/advisor/members"
-                label="Member management"
-                icon={ICONS.members}
-              />
-              <NavLink
-                href="/advisor/match-queue"
-                label="Match review queue"
-                icon={ICONS.matchQueue}
-              />
-              <NavLink
-                href="/advisor/documents"
-                label="Document review"
-                icon={ICONS.docReview}
-              />
-              <NavLink
-                href="/advisor/manual-match"
-                label="Manual match"
-                icon={ICONS.manualMatch}
-              />
-              <NavLink
-                href="/advisor/network-graph"
-                label="Network graph"
-                icon={ICONS.networkGraph}
-              />
-              {role === "admin" && (
-                <NavLink
-                  href="/admin/users"
-                  label="User management"
-                  icon={ICONS.members}
-                />
-              )}
-            </>
-          )}
-
-          {signedIn && (
-            <NavLink
-              href="/docs"
-              label="Help Center"
-              icon={ICONS.docs}
-            />
-          )}
+          <NavLinks />
         </nav>
 
         {/* Bottom: profile + sign out */}
-        <div className="space-y-1 border-t border-white/20 px-2 py-3">
-          {signedIn && (
-            <>
-              <Link
-                href="/profile"
-                className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white`}
-              >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 text-[10px] font-semibold text-white">
-                  {initials || "?"}
-                </div>
-                <Label>{firstName}</Label>
-              </Link>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  setIsSigningOut(true);
-                  await signOut();
-                  window.location.href = "/";
-                }}
-                className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white`}
-              >
-                <Icon name={ICONS.signOut} className="shrink-0" />
-                <Label>Sign out</Label>
-              </button>
-            </>
-          )}
-
-          {!signedIn && (
-            <NavLink href="/sign-in" label="Sign in" icon={ICONS.signIn} />
-          )}
-        </div>
+        <BottomProfile />
       </aside>
     </>
   );

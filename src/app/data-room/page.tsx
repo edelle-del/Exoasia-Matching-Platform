@@ -172,7 +172,7 @@ function InvestorDataRoom() {
     <div className="min-h-screen bg-(--color-canvas)">
       <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-7xl">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
           <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data Room</h1>
           <p className="mt-1 text-sm text-(--color-body)">
             Projects from startups you&apos;ve mutually matched with appear here. Request access to view their documents.
@@ -432,7 +432,7 @@ function StartupDataRoom() {
     <div className="min-h-screen bg-(--color-canvas)">
       <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-7xl">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
           <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Data Room</h1>
           <p className="mt-1 text-sm text-(--color-body)">
             Manage your project documents. Investors must request access before they can view your files.

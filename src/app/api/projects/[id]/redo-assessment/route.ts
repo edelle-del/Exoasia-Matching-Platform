@@ -63,7 +63,7 @@ export async function POST(
     }
 
     // Generate assessment token
-    const { data: sessionData } = await supabase.auth.getSession();
+
     const token = crypto.randomUUID();
 
     const { error: insertError } = await admin
@@ -73,7 +73,7 @@ export async function POST(
         project_id: projectId,
         expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         used: false,
-        session: sessionData.session ?? null,
+        session: null,
       });
 
     if (insertError) {

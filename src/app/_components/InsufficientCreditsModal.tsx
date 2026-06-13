@@ -15,7 +15,7 @@ export function InsufficientCreditsModal({ needed, balance, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-[24px] bg-[#1A0B2E] border border-[#C9A040]/25 shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-[24px] bg-[#1A0B2E] border border-[#C9A040]/25 shadow-2xl">
 
         {/* Header */}
         <div className="bg-gradient-to-br from-[#2D0A28] to-[#1A0B2E] px-7 pt-7 pb-5 border-b border-white/[0.06]">

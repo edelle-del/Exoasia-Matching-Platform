@@ -71,6 +71,8 @@ type RequestsData = {
   collabInvites: CollabInvite[];
   connectionRequests: ConnectionRequest[];
   totalPending: number;
+  yourPendingConnectionRequests: ConnectionRequest[];
+  totalYourPending: number;
   acceptedCofounderInvites: CofounderInvite[];
   acceptedDataRoomRequests: DataRoomRequest[];
   acceptedCollabInvites: CollabInvite[];
@@ -79,7 +81,7 @@ type RequestsData = {
   investorDataRoomNotifications?: InvestorDataRoomNotification[];
 };
 
-type Tab = "all" | "cofounder" | "collaboration" | "connections" | "data_room" | "accepted";
+type Tab = "all" | "cofounder" | "collaboration" | "connections" | "data_room" | "accepted" | "collab_request" | "collab_pending" | "collab_accepted" | "your_pending";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -450,6 +452,34 @@ function ConnectionRequestCard({ req, onRespond }: { req: ConnectionRequest; onR
   );
 }
 
+// ── Outbound connection card ──────────────────────────────────────────────────
+
+function OutboundConnectionCard({ req }: { req: ConnectionRequest }) {
+  const name = getName(req.counterpart);
+  const roleLabel = req.counterpart?.member_role === "investor" ? "Investor" : req.counterpart?.member_role === "startup" ? "Founder" : "Member";
+  return (
+    <CardShell
+      initials={getInitials(name)} avatarColor="bg-amber-500/20 text-amber-300"
+      name={name} roleTitle={req.counterpart?.role_title}
+      badge={roleLabel} badgeColor="bg-indigo-500/10 text-indigo-400"
+      metaTags={[
+        req.counterpart?.sector,
+        req.counterpart?.city,
+        req.fit_score != null ? `${req.fit_score}% fit` : null,
+      ].filter(Boolean) as string[]}
+      description={`You requested to connect with this ${roleLabel.toLowerCase()}.`}
+      note={"Waiting for their response..."} timestamp={req.created_at}
+    >
+      <span className="flex items-center gap-1.5 rounded-xl bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-500">
+        Pending
+      </span>
+      <Link href="/matches" className="ml-auto flex items-center gap-1 text-xs text-(--color-muted) hover:text-(--color-ink) transition">
+        View in Matches →
+      </Link>
+    </CardShell>
+  );
+}
+
 // ── Accepted connection card ──────────────────────────────────────────────────
 
 function AcceptedConnectionCard({ req }: { req: ConnectionRequest }) {
@@ -608,6 +638,7 @@ function InvestorDataRoomNotificationCard({
 export default function RequestsPage() {
   const { memberRole } = useAuth();
   const isInvestor = memberRole === "investor";
+  const isPartner = memberRole === "ecosystem_partner";
 
   const [data, setData] = useState<RequestsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -658,7 +689,9 @@ export default function RequestsPage() {
     (data?.dataRoomRequests.length ?? 0);
   const investorPendingCount =
     (data?.connectionRequests.length ?? 0) + unacknowledgedNotifications.length;
-  const pendingCount = isInvestor ? investorPendingCount : founderPendingCount;
+  const partnerPendingCount =
+    (data?.connectionRequests.length ?? 0) + (data?.collabInvites.length ?? 0);
+  const pendingCount = isInvestor ? investorPendingCount : isPartner ? partnerPendingCount : founderPendingCount;
 
   const founderAcceptedCount =
     (data?.acceptedCofounderInvites.length ?? 0) +
@@ -666,7 +699,9 @@ export default function RequestsPage() {
     (data?.acceptedConnectionRequests.length ?? 0) +
     (data?.acceptedDataRoomRequests.length ?? 0);
   const investorAcceptedCount = data?.acceptedConnectionRequests.length ?? 0;
-  const acceptedCount = isInvestor ? investorAcceptedCount : founderAcceptedCount;
+  const partnerAcceptedCount =
+    (data?.acceptedConnectionRequests.length ?? 0) + (data?.acceptedCollabInvites.length ?? 0);
+  const acceptedCount = isInvestor ? investorAcceptedCount : isPartner ? partnerAcceptedCount : founderAcceptedCount;
 
   const tabCounts: Record<Tab, number> = {
     all: pendingCount,
@@ -675,6 +710,10 @@ export default function RequestsPage() {
     connections: data?.connectionRequests.length ?? 0,
     data_room: isInvestor ? unacknowledgedNotifications.length : (data?.dataRoomRequests.length ?? 0),
     accepted: acceptedCount,
+    collab_request: data?.connectionRequests.length ?? 0,
+    collab_pending: data?.collabInvites.length ?? 0,
+    collab_accepted: partnerAcceptedCount,
+    your_pending: data?.totalYourPending ?? 0,
   };
 
   const founderTabs: { key: Tab; label: string }[] = [
@@ -683,6 +722,7 @@ export default function RequestsPage() {
     { key: "collaboration", label: "Collaboration" },
     { key: "connections", label: "Connections" },
     { key: "data_room", label: "Data Room" },
+    { key: "your_pending", label: "Your Pending" },
     { key: "accepted", label: "Accepted" },
   ];
 
@@ -690,13 +730,22 @@ export default function RequestsPage() {
     { key: "all", label: "All" },
     { key: "connections", label: "Founder Requests" },
     { key: "data_room", label: "Data Room" },
+    { key: "your_pending", label: "Your Pending" },
     { key: "accepted", label: "Accepted" },
   ];
 
-  const tabs = isInvestor ? investorTabs : founderTabs;
+  const partnerTabs: { key: Tab; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "collab_request", label: "Collab Request" },
+    { key: "collab_pending", label: "Collab Pending" },
+    { key: "your_pending", label: "Your Pending" },
+    { key: "collab_accepted", label: "Collab Accepted" },
+  ];
+
+  const tabs = isInvestor ? investorTabs : isPartner ? partnerTabs : founderTabs;
 
   const show = (tab: Tab) => activeTab === "all" || activeTab === tab;
-  const isAcceptedTab = activeTab === "accepted";
+  const isAcceptedTab = activeTab === "accepted" || activeTab === "collab_accepted";
 
   const currentCount = tabCounts[activeTab];
   const isEmpty = !loading && data && currentCount === 0;
@@ -707,7 +756,7 @@ export default function RequestsPage() {
       <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-3xl">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
-            {isInvestor ? "Investor Hub" : "Founders Arena"}
+            {isInvestor ? "Investor Hub" : "FOUNDERS ARENA"}
           </p>
           <div className="mt-1 flex items-baseline gap-3">
             <h1 className="text-4xl font-bold tracking-tight text-(--color-ink)">Requests</h1>
@@ -727,13 +776,20 @@ export default function RequestsPage() {
 
       <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-6 pb-8">
         {/* Tabs */}
-        <div className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
+        <div role="tablist" aria-label="Requests Filters" className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
           {tabs.map((tab) => {
             const count = tabCounts[tab.key];
             const isActive = activeTab === tab.key;
             const isAccepted = tab.key === "accepted";
             return (
-              <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}
+              <button 
+                key={tab.key} 
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`panel-${tab.key}`}
+                id={`tab-${tab.key}`}
+                type="button" 
+                onClick={() => setActiveTab(tab.key)}
                 className={`flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition whitespace-nowrap ${
                   isActive
                     ? "bg-(--color-canvas) text-(--color-ink) shadow-sm"
@@ -754,6 +810,7 @@ export default function RequestsPage() {
           })}
         </div>
 
+        <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`} className="space-y-4">
         {/* Loading skeletons */}
         {loading && (
           <div className="space-y-3">
@@ -784,6 +841,9 @@ export default function RequestsPage() {
                 if (activeTab === "collaboration") return "No collaboration invites";
                 if (activeTab === "connections") return isInvestor ? "No founder requests" : "No connection requests";
                 if (activeTab === "data_room") return isInvestor ? "No data room responses" : "No data room requests";
+                if (activeTab === "collab_request") return "No collab requests";
+                if (activeTab === "collab_pending") return "No pending collab invites";
+                if (activeTab === "your_pending") return "No outbound requests pending";
                 return "No pending requests";
               })()}
             </p>
@@ -794,6 +854,9 @@ export default function RequestsPage() {
                 if (activeTab === "collaboration") return "Ecosystem partner collaboration invites will appear here.";
                 if (activeTab === "connections") return isInvestor ? "When a founder requests to connect with you, it will appear here." : "When an investor requests to connect with your project, it will appear here.";
                 if (activeTab === "data_room") return isInvestor ? "Startup responses to your data room access requests will appear here." : "Investor requests to access your data room will appear here.";
+                if (activeTab === "collab_request") return "Inbound requests to collaborate will appear here.";
+                if (activeTab === "collab_pending") return "Pending portfolio invitations will appear here.";
+                if (activeTab === "your_pending") return "Requests you initiated that are waiting for a response will appear here.";
                 return isInvestor ? "Founder requests and data room responses will appear here." : "Invitations and connection requests will appear here.";
               })()}
             </p>
@@ -801,7 +864,7 @@ export default function RequestsPage() {
         )}
 
         {/* Pending lists — FOUNDER */}
-        {!loading && data && !isEmpty && !isAcceptedTab && !isInvestor && (
+        {!loading && data && !isEmpty && !isAcceptedTab && !isInvestor && !isPartner && (
           <div className="space-y-8">
             {show("cofounder") && data.cofounderInvites.length > 0 && (
               <div>
@@ -876,8 +939,51 @@ export default function RequestsPage() {
           </div>
         )}
 
+        {/* Pending lists — PARTNER */}
+        {!loading && data && !isEmpty && !isAcceptedTab && isPartner && (
+          <div className="space-y-8">
+            {show("collab_request") && data.connectionRequests.length > 0 && (
+              <div>
+                {activeTab === "all" && <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Collab Requests</p>}
+                <div className="space-y-3">
+                  {data.connectionRequests.map((req) => (
+                    <ConnectionRequestCard key={req.id} req={req} onRespond={handleConnectionRespond} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {show("collab_pending") && data.collabInvites.length > 0 && (
+              <div>
+                {activeTab === "all" && <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Collab Pending</p>}
+                <div className="space-y-3">
+                  {data.collabInvites.map((inv) => (
+                    <CollabInviteCard key={inv.id} invite={inv} onRespond={handleCollabRespond} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Your Pending lists — ALL ROLES */}
+        {!loading && data && !isEmpty && activeTab === "your_pending" && (
+          <div className="space-y-8">
+            {data.yourPendingConnectionRequests.length > 0 && (
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Outbound Requests</p>
+                <div className="space-y-3">
+                  {data.yourPendingConnectionRequests.map((req) => (
+                    <OutboundConnectionCard key={req.id} req={req} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Accepted tab — FOUNDER */}
-        {!loading && data && !isEmpty && isAcceptedTab && !isInvestor && (
+        {!loading && data && !isEmpty && isAcceptedTab && !isInvestor && !isPartner && (
           <div className="space-y-8">
             {data.acceptedCofounderInvites.length > 0 && (
               <div>
@@ -940,6 +1046,34 @@ export default function RequestsPage() {
             )}
           </div>
         )}
+
+        {/* Accepted tab — PARTNER */}
+        {!loading && data && !isEmpty && isAcceptedTab && isPartner && (
+          <div className="space-y-8">
+            {data.acceptedConnectionRequests.length > 0 && (
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Accepted Requests</p>
+                <div className="space-y-3">
+                  {data.acceptedConnectionRequests.map((req) => (
+                    <AcceptedConnectionCard key={req.id} req={req} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {data.acceptedCollabInvites.length > 0 && (
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Accepted Collaborations</p>
+                <div className="space-y-3">
+                  {data.acceptedCollabInvites.map((inv) => (
+                    <AcceptedCollabCard key={inv.id} invite={inv} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        </div>
       </div>
     </div>
   );

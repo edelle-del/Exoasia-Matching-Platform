@@ -93,10 +93,13 @@ function DocBlockRenderer({
         </div>
       );
 
-    case "screenshot":
+    case "screenshot": {
+      const slug = block.alt.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      // Fallback logic: if no explicit src, use a role-specific path automatically
+      const src = block.src || `/docs/screenshots/${role}/${slug}.png`;
       return (
         <figure className="docs-screenshot my-6">
-          {block.src ? (
+          {src ? (
             <div className="overflow-hidden rounded-xl border border-[#e8e0d0] shadow-md">
               {/* browser chrome bar */}
               <div className="flex items-center gap-1.5 border-b border-[#e8e0d0] bg-[#f5efe0] px-3 py-2">
@@ -106,7 +109,7 @@ function DocBlockRenderer({
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={block.src}
+                src={src}
                 alt={block.alt}
                 className="w-full object-cover object-top"
                 loading="lazy"
@@ -125,6 +128,7 @@ function DocBlockRenderer({
           )}
         </figure>
       );
+    }
 
     case "role-blocks": {
       const roleBlocks = block.blocks[role];

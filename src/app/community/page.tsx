@@ -149,7 +149,7 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-(--color-canvas)">
       <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto max-w-7xl">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
           <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Community</h1>
           <p className="mt-1 text-sm text-(--color-muted)">Browse all members in the network.</p>
         </div>

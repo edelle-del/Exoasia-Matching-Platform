@@ -7,9 +7,9 @@ export default function AuthNavBar() {
     <nav className="shrink-0 flex items-center justify-between border-b border-[var(--color-hairline)] bg-[var(--color-canvas)] px-6 sm:px-10 h-12">
       {/* Logo */}
       <Link href="/" className="flex items-center gap-2.5">
-        <Image src={logo} alt="Founders Arena" width={22} height={22} className="rounded" />
+        <Image src={logo} alt="FOUNDERS ARENA" width={22} height={22} className="rounded" />
         <span className="hidden sm:block text-[11px] font-black tracking-widest text-[var(--color-ink)] uppercase">
-          Founders Arena
+          FOUNDERS ARENA
         </span>
       </Link>
 

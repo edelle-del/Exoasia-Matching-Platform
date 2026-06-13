@@ -129,7 +129,7 @@ export default function DocsPageClient() {
             <header className="docs-page-header mb-6 max-w-3xl">
               <h1 className="docs-h1">Documentation</h1>
               <p className="docs-lead">
-                Everything you need to use Founders Arena to discover aligned partners,
+                Everything you need to use FOUNDERS ARENA to discover aligned partners,
                 manage introductions, and track deals with institutional discipline.
               </p>
             </header>
@@ -160,7 +160,7 @@ export default function DocsPageClient() {
           <footer className="docs-cta mt-16 rounded-2xl border border-[#e8e0d0] bg-white p-8 text-center shadow-sm">
             <h2 className="text-xl font-bold text-[#1a1028]">Ready to get started?</h2>
             <p className="mt-2 text-sm text-[#7a6a5a]">
-              Join Founders Arena and start making verified, advisor-governed introductions.
+              Join FOUNDERS ARENA and start making verified, advisor-governed introductions.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {signedIn ? (

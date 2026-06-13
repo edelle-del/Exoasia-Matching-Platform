@@ -199,7 +199,7 @@ export default function SignInPage() {
           </div>
 
           <p className="fa-panel-body text-[15px] leading-relaxed mb-4 max-w-md">
-            The right capital partner exists — Exoasia Intelligence finds them. Founders Arena connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
+            The right capital partner exists — Exoasia Intelligence finds them. FOUNDERS ARENA connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
           </p>
 
           <div className="grid grid-cols-2 gap-2 max-w-sm">

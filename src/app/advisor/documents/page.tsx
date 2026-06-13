@@ -202,8 +202,12 @@ export default function AdvisorDocumentsPage() {
         </section>
 
         {/* Tabs */}
-        <div className="flex gap-1 rounded-[12px] border border-(--color-hairline) bg-(--color-surface-soft) p-1">
+        <div role="tablist" aria-label="Advisor Documents Tabs" className="flex gap-1 rounded-[12px] border border-(--color-hairline) bg-(--color-surface-soft) p-1">
           <button
+            role="tab"
+            aria-selected={activeTab === "queue"}
+            aria-controls="panel-queue"
+            id="tab-queue"
             onClick={() => setActiveTab("queue")}
             className={`flex-1 rounded-[10px] py-2.5 text-sm font-semibold transition ${
               activeTab === "queue"
@@ -219,6 +223,10 @@ export default function AdvisorDocumentsPage() {
             )}
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === "history"}
+            aria-controls="panel-history"
+            id="tab-history"
             onClick={() => setActiveTab("history")}
             className={`flex-1 rounded-[10px] py-2.5 text-sm font-semibold transition ${
               activeTab === "history"
@@ -236,28 +244,32 @@ export default function AdvisorDocumentsPage() {
             Loading documents...
           </div>
         ) : activeTab === "queue" ? (
-          <QueueTab
-            documents={queueData.pending}
-            busyId={busyId}
-            rejectingId={rejectingId}
-            rejectReason={rejectReason}
-            actionMessage={actionMessage}
-            onApprove={(doc) => handleAction(doc, "approve")}
-            onUnderReview={(doc) => handleAction(doc, "under-review")}
-            onRejectOpen={(id) => {
-              setRejectingId(id);
-              setRejectReason("");
-              setActionMessage(null);
-            }}
-            onRejectCancel={() => {
-              setRejectingId(null);
-              setRejectReason("");
-            }}
-            onRejectConfirm={(doc) => handleAction(doc, "reject", rejectReason)}
-            onRejectReasonChange={setRejectReason}
-          />
+          <div role="tabpanel" id="panel-queue" aria-labelledby="tab-queue">
+            <QueueTab
+              documents={queueData.pending}
+              busyId={busyId}
+              rejectingId={rejectingId}
+              rejectReason={rejectReason}
+              actionMessage={actionMessage}
+              onApprove={(doc) => handleAction(doc, "approve")}
+              onUnderReview={(doc) => handleAction(doc, "under-review")}
+              onRejectOpen={(id) => {
+                setRejectingId(id);
+                setRejectReason("");
+                setActionMessage(null);
+              }}
+              onRejectCancel={() => {
+                setRejectingId(null);
+                setRejectReason("");
+              }}
+              onRejectConfirm={(doc) => handleAction(doc, "reject", rejectReason)}
+              onRejectReasonChange={setRejectReason}
+            />
+          </div>
         ) : (
-          <HistoryTab documents={queueData.processed} />
+          <div role="tabpanel" id="panel-history" aria-labelledby="tab-history">
+            <HistoryTab documents={queueData.processed} />
+          </div>
         )}
       </div>
     </div>

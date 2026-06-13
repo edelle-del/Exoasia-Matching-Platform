@@ -33,7 +33,7 @@ export async function sendNewSignupNotification(user: {
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
         <tr>
           <td style="background:#0f172a;padding:28px 36px">
-            <p style="margin:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8">Founders Arena</p>
+            <p style="margin:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8">FOUNDERS ARENA</p>
             <h1 style="margin:8px 0 0;font-size:20px;font-weight:700;color:#ffffff">New Member Signup</h1>
           </td>
         </tr>
@@ -71,7 +71,7 @@ export async function sendNewSignupNotification(user: {
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:20px 36px;border-top:1px solid #f1f5f9">
-            <p style="margin:0;font-size:12px;color:#94a3b8">Founders Arena &middot; Exoasia Innovation Hub &middot; 21F 8 Rockwell, Makati City</p>
+            <p style="margin:0;font-size:12px;color:#94a3b8">FOUNDERS ARENA &middot; Exoasia Innovation Hub &middot; 21F 8 Rockwell, Makati City</p>
           </td>
         </tr>
       </table>

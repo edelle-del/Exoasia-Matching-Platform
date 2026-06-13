@@ -265,7 +265,7 @@ export default function DealBoardPage() {
         <div className="db-header-inner">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
               <h1 className="db-header-title">Deal Pipeline</h1>
               <p className="db-header-desc">
                 Tracks your active deals from first introduction to close. Each card is generated from a matched introduction — move deals forward by logging your next action, and hit "Mark active" to reset the staleness timer.

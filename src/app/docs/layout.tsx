@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Documentation | Founders Arena",
+  title: "Documentation | FOUNDERS ARENA",
   description:
-    "Everything you need to use Founders Arena — guides for startups, investors, and ecosystem partners.",
+    "Everything you need to use FOUNDERS ARENA — guides for startups, investors, and ecosystem partners.",
 };
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {

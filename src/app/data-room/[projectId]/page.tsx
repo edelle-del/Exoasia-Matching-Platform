@@ -234,12 +234,16 @@ export default function ProjectDataRoomPage({
 
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
         {/* Tabs */}
-        <div className="mb-8 flex gap-1 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
+        <div role="tablist" aria-label="Data Room Sections" className="mb-8 flex gap-1 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-1">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`panel-${tab.key}`}
+                id={`tab-${tab.key}`}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
                 className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition whitespace-nowrap ${
@@ -259,7 +263,7 @@ export default function ProjectDataRoomPage({
 
         {/* ── Drive tab ─────────────────────────────────────────────────────── */}
         {activeTab === "drive" && (
-          <div className="space-y-6">
+          <div role="tabpanel" id="panel-drive" aria-labelledby="tab-drive" className="space-y-6">
             {/* How it works */}
             <section className="rounded-xl border border-(--color-hairline) border-dashed p-5">
               <p className="text-xs font-semibold uppercase tracking-widest text-(--color-muted) mb-3">How it works</p>
@@ -348,7 +352,7 @@ export default function ProjectDataRoomPage({
 
         {/* ── Pitch Deck tab ────────────────────────────────────────────────── */}
         {activeTab === "pitch" && (
-          <div className="space-y-6">
+          <div role="tabpanel" id="panel-pitch" aria-labelledby="tab-pitch" className="space-y-6">
             {/* How it works */}
             <section className="rounded-xl border border-(--color-hairline) border-dashed p-5">
               <p className="text-xs font-semibold uppercase tracking-widest text-(--color-muted) mb-3">How it works</p>
@@ -408,7 +412,7 @@ export default function ProjectDataRoomPage({
 
         {/* ── Financial Snapshot tab ────────────────────────────────────────── */}
         {activeTab === "snapshot" && (
-          <div className="space-y-6">
+          <div role="tabpanel" id="panel-snapshot" aria-labelledby="tab-snapshot" className="space-y-6">
             {/* How it works */}
             <section className="rounded-xl border border-(--color-hairline) border-dashed p-5">
               <p className="text-xs font-semibold uppercase tracking-widest text-(--color-muted) mb-3">How it works</p>

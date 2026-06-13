@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getRoleFromAccessToken } from "@/lib/auth/jwt";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type OnboardingPayload = {
   full_name: string;
@@ -39,8 +39,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const role = getRoleFromAccessToken(session?.access_token);
+    const admin = createAdminClient();
+    const { data: roleData } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
+    const role = roleData?.role;
     const isAdminView = ["advisor", "admin"].includes(role ?? "");
 
     const body = (await request.json()) as OnboardingPayload;

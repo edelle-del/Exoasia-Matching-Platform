@@ -34,7 +34,7 @@ export default function GetInvitedPage() {
             ← Back to home
           </Link>
           <h1 className="mt-4 text-3xl font-700 text-[var(--color-ink)]">
-            Get Started on Founders Arena
+            Get Started on FOUNDERS ARENA
           </h1>
           <p className="mt-2 text-[var(--color-body)]">
             Registration is open to everyone. Sign up now to create your account.
@@ -63,7 +63,7 @@ export default function GetInvitedPage() {
 
           <div className="rounded-lg border border-[var(--color-hairline)] bg-[var(--color-surface-soft)] p-6 text-center">
             <p className="text-sm text-[var(--color-body)]">
-              Ready to join Founders Arena? Anyone can sign up directly.
+              Ready to join FOUNDERS ARENA? Anyone can sign up directly.
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-3">
               <Link href="/sign-in" className="gn-btn-secondary">

@@ -123,27 +123,47 @@ export default function DashboardPage() {
           setAdvisorData(next);
         }
       } else {
-        const next = await fetchDashboardSummary(supabase, user.id);
-        if (!active) return;
-        setSummary(next);
-        const [stats, dealCards] = await Promise.all([
-          fetchProjectPipelineStats(
-            supabase,
-            user.id,
-            next.profile?.member_role ?? null,
-          ),
+        const role = memberRole ?? "";
+        
+        // Parallelize all requests
+        const promises: Promise<any>[] = [
+          fetchDashboardSummary(supabase, user.id),
+          fetchProjectPipelineStats(supabase, user.id, role),
           fetchDealCards(supabase, user.id),
-        ]);
+        ];
+
+        // Only fetch completeness if applicable
+        if (["startup", "investor", "ecosystem_partner"].includes(role)) {
+          promises.push(
+            fetch("/api/startup/completeness").then((r) => (r.ok ? r.json() : {}))
+          );
+        } else {
+          promises.push(Promise.resolve({}));
+        }
+
+        // Only fetch portfolio if applicable
+        if (role === "ecosystem_partner") {
+          promises.push(
+            fetch("/api/ecosystem/portfolio").then((r) => (r.ok ? r.json() : {}))
+          );
+        } else {
+          promises.push(Promise.resolve({}));
+        }
+
+        const [next, stats, dealCards, cData, pData] = await Promise.all(promises);
         if (!active) return;
+
+        setSummary(next);
         setPipelineStats(stats);
+
         // Map DB enum values → display labels used by the chart
         const DB_TO_LABEL: Record<string, string> = {
-          discover:    "Qualified",
-          intro:       "Intro & Scoping",
-          proposal:    "Proposal",
+          discover: "Qualified",
+          intro: "Intro & Scoping",
+          proposal: "Proposal",
           negotiation: "Negotiation",
-          won:         "Closed Won",
-          lost:        "On Hold",
+          won: "Closed Won",
+          lost: "On Hold",
         };
         const counts: Record<string, number> = {};
         for (const card of dealCards as { stage: string }[]) {
@@ -152,23 +172,13 @@ export default function DashboardPage() {
         }
         setDealStageCounts(counts);
 
-        if (["startup", "investor", "ecosystem_partner"].includes(next.profile?.member_role ?? "")) {
-          const cRes = await fetch("/api/startup/completeness");
-          if (active && cRes.ok) {
-            const cData = await cRes.json();
-            setMissingCount(cData.missingCount ?? 0);
-            if (typeof cData.completedCount === "number" && typeof cData.totalCount === "number" && cData.totalCount > 0) {
-              setCompletenessPercent(Math.round((cData.completedCount / cData.totalCount) * 100));
-            }
-          }
+        setMissingCount(cData.missingCount ?? 0);
+        if (typeof cData.completedCount === "number" && typeof cData.totalCount === "number" && cData.totalCount > 0) {
+          setCompletenessPercent(Math.round((cData.completedCount / cData.totalCount) * 100));
         }
 
-        if (next.profile?.member_role === "ecosystem_partner") {
-          const pRes = await fetch("/api/ecosystem/portfolio");
-          if (active && pRes.ok) {
-            const pData = await pRes.json();
-            setPartnerStats(pData.stats ?? null);
-          }
+        if (role === "ecosystem_partner") {
+          setPartnerStats(pData.stats ?? null);
         }
       }
       setIsLoading(false);

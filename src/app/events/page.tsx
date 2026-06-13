@@ -173,7 +173,7 @@ export default function EventsPage() {
       <section className="px-4 sm:px-6 pt-16 pb-0">
         <div className="mx-auto w-full max-w-7xl flex items-end justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
             <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Events</h1>
             <p className="mt-1 text-sm text-(--color-muted)">RSVP to upcoming events and meetups</p>
           </div>

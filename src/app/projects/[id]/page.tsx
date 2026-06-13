@@ -1415,7 +1415,7 @@ export default function ProjectDetailPage({
                 </div>
               ) : (
                 <div className="mt-5 space-y-5">
-                  <div className="flex flex-wrap gap-2">
+                  <div role="tablist" aria-label="Report Sections" className="flex flex-wrap gap-2">
                     {(
                       [
                         ["summary", "Summary"],
@@ -1427,6 +1427,10 @@ export default function ProjectDetailPage({
                       return (
                         <button
                           key={key}
+                          role="tab"
+                          aria-selected={active}
+                          aria-controls={`report-panel-${key}`}
+                          id={`report-tab-${key}`}
                           type="button"
                           onClick={() => setReportTab(key)}
                           className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${active ? "border-(--color-primary) bg-(--color-primary) text-white" : "border-(--color-hairline) bg-(--color-canvas) text-(--color-ink) hover:bg-(--color-surface-soft)"}`}
@@ -1438,7 +1442,7 @@ export default function ProjectDetailPage({
                   </div>
 
                   {reportTab === "summary" && (
-                    <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                    <div role="tabpanel" id="report-panel-summary" aria-labelledby="report-tab-summary" className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                       <section className="overflow-hidden rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft)">
                         <div className="border-b border-(--color-hairline) bg-(--color-canvas) p-4">
                           <SectionTitle>Executive Summary</SectionTitle>
@@ -1543,7 +1547,7 @@ export default function ProjectDetailPage({
                   )}
 
                   {reportTab === "profile" && (
-                    <section className="overflow-hidden rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft)">
+                    <section role="tabpanel" id="report-panel-profile" aria-labelledby="report-tab-profile" className="overflow-hidden rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft)">
                       <div className="border-b border-(--color-hairline) bg-(--color-canvas) p-5 md:p-6">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
@@ -1741,7 +1745,7 @@ export default function ProjectDetailPage({
                   )}
 
                   {reportTab === "conclusion" && (
-                    <section className="overflow-hidden rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft)">
+                    <section role="tabpanel" id="report-panel-conclusion" aria-labelledby="report-tab-conclusion" className="overflow-hidden rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft)">
                       <div className="border-b border-(--color-hairline) bg-(--color-canvas) p-4">
                         <SectionTitle>Conclusion</SectionTitle>
                         <p className="mt-2 text-sm text-(--color-body)">
@@ -1767,7 +1771,7 @@ export default function ProjectDetailPage({
                   )}
 
                   {reportTab === "details" && (
-                    <section className="space-y-4">
+                    <section role="tabpanel" id="report-panel-details" aria-labelledby="report-tab-details" className="space-y-4">
                       <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-4">
                         <SectionTitle>Detailed Sections</SectionTitle>
                         <p className="mt-2 text-sm text-(--color-body)">
@@ -1845,10 +1849,14 @@ export default function ProjectDetailPage({
       {/* ── Team member tabs (owner + cofounder) ── */}
       {isTeamMember && (
         <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">
-          <div className="flex gap-0 border-b border-(--color-hairline)">
+          <div role="tablist" aria-label="Project Views" className="flex gap-0 border-b border-(--color-hairline)">
             {(["details", "matches"] as const).map((tab) => (
               <button
                 key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                aria-controls={`project-panel-${tab}`}
+                id={`project-tab-${tab}`}
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
@@ -1873,7 +1881,7 @@ export default function ProjectDetailPage({
 
       {/* ── Project Details tab (always visible for non-team-members) ── */}
       {(!isTeamMember || activeTab === "details") && (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+        <div role="tabpanel" id="project-panel-details" aria-labelledby="project-tab-details" className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
           {isOwner && !report && (
             <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
@@ -2369,7 +2377,7 @@ export default function ProjectDetailPage({
 
       {/* ── Investor Matches tab ── */}
       {isTeamMember && activeTab === "matches" && (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 space-y-5">
+        <div role="tabpanel" id="project-panel-matches" aria-labelledby="project-tab-matches" className="mx-auto max-w-7xl px-4 sm:px-6 py-10 space-y-5">
           {/* Generate / regenerate header */}
           <div className="flex items-center justify-between">
             <div>

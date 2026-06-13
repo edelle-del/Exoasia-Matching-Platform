@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getRoleFromAccessToken } from "@/lib/auth/jwt";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const VALID_ACTIONS = ["approve", "reject", "under-review"] as const;
 type Action = (typeof VALID_ACTIONS)[number];
 
 async function assertAdvisorAccess() {
   const supabase = await createClient();
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData?.session?.access_token ?? null;
-  const role = getRoleFromAccessToken(accessToken);
-  const advisorId = sessionData?.session?.user?.id ?? null;
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Unauthorized");
+
+  const admin = createAdminClient();
+  const { data: roleData } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
+  const role = roleData?.role;
+  const advisorId = user.id;
 
   if (!role || !["advisor", "staff", "admin"].includes(role)) {
     return {

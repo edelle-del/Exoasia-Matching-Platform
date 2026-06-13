@@ -8,7 +8,7 @@ export const DOC_SECTIONS: DocSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Founders Arena is a private, invite-only matching platform for verified startups, investors, and ecosystem partners across the Philippines and Southeast Asia. Here's how to get started in four steps.",
+        text: "FOUNDERS ARENA is a private, invite-only matching platform for verified startups, investors, and ecosystem partners across the Philippines and Southeast Asia. Here's how to get started in four steps.",
       },
       { type: "h3", text: "1. Create Your Account" },
       {
@@ -22,7 +22,7 @@ export const DOC_SECTIONS: DocSection[] = [
           "If you already have an account, go to Sign In (/sign-in)",
         ],
       },
-      { type: "screenshot", alt: "Sign-in page", caption: "Sign-in page" },
+      { type: "screenshot", src: "/docs/screenshots/sign-in.png", alt: "Sign-in page", caption: "Sign-in page" },
       { type: "h3", text: "2. Accept Your Invite & Consents" },
       {
         type: "steps",
@@ -198,7 +198,7 @@ export const DOC_SECTIONS: DocSection[] = [
         type: "note",
         text: "Accounts created via Google Sign-In do not have a platform password. Use your Google account to sign in.",
       },
-      { type: "screenshot", alt: "Account settings", caption: "Account settings" },
+      { type: "screenshot", src: "/docs/screenshots/account-settings.png", alt: "Account settings", caption: "Account settings" },
     ],
   },
   // ── Startup + Investor matching ─────────────────────────────
@@ -209,7 +209,7 @@ export const DOC_SECTIONS: DocSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Founders Arena uses Exoasia Intelligence (powered by Google Gemini) to score structural compatibility between startup projects and investor profiles. Scores are signals — they do not create introductions on their own.",
+        text: "FOUNDERS ARENA uses Exoasia Intelligence (powered by Google Gemini) to score structural compatibility between startup projects and investor profiles. Scores are signals — they do not create introductions on their own.",
       },
       { type: "h3", text: "How Scoring Works" },
       {
@@ -310,6 +310,11 @@ export const DOC_SECTIONS: DocSection[] = [
                 "The button changes to Sent",
               ],
             },
+            {
+              type: "screenshot",
+              alt: "Express interest",
+              caption: "Express interest on a project",
+            },
           ],
         },
       },
@@ -317,16 +322,16 @@ export const DOC_SECTIONS: DocSection[] = [
       {
         type: "steps",
         items: [
-          "The counterpart sees the request in Matches and Requests Inbox",
+          "The counterpart sees the request in their Matches and Requests Inbox",
           "They accept or decline",
-          "If both accept, the match moves to Advisor Review",
-          "A Growth Advisor approves, modifies framing, or blocks the introduction",
-          "On approval, the advisor formally introduces both parties",
+          "If both accept, the match immediately becomes an active connection",
+          "Profile data, pitch decks, and contact info are unlocked based on your credits",
+          "The deal card moves to the Deal Board for tracking",
         ],
       },
       {
         type: "important",
-        text: "No profile data is shared with a counterpart until bilateral consent and advisor approval. The platform facilitates alignment — it does not guarantee outcomes.",
+        text: "Unlocking full profile data, pitch decks, or requesting introductions consumes credits based on your role. The platform facilitates alignment — it does not guarantee outcomes.",
       },
     ],
   },
@@ -345,9 +350,7 @@ export const DOC_SECTIONS: DocSection[] = [
         headers: ["Status", "What it means"],
         rows: [
           ["Pending", "One party initiated; the other has not responded"],
-          ["Approved", "A Growth Advisor reviewed and approved the introduction"],
-          ["Accepted", "Both parties accepted"],
-          ["Introduced", "The advisor formally connected both parties"],
+          ["Accepted", "Both parties accepted — contact info is unlocked"],
           ["Declined", "One party declined — does not persist in future cycles"],
         ],
       },
@@ -477,7 +480,7 @@ export const DOC_SECTIONS: DocSection[] = [
         items: [
           "Open the project page",
           "Click Invite Co-founder",
-          "Enter their email or phone number",
+          "Enter their email address",
           "An invite token is sent (valid 14 days)",
         ],
       },
@@ -644,7 +647,7 @@ export const DOC_SECTIONS: DocSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Founders Arena uses a credit economy for premium platform actions. Your balance appears on the dashboard.",
+        text: "FOUNDERS ARENA uses a credit economy for premium platform actions. Your balance appears on the dashboard.",
       },
       { type: "h3", text: "Earning Credits" },
       {
@@ -661,39 +664,64 @@ export const DOC_SECTIONS: DocSection[] = [
       },
       { type: "h3", text: "Spending Credits" },
       {
-        type: "table",
-        headers: ["Action", "Cost"],
-        rows: [
-          ["Match acceptance", "1 credit"],
-          ["Premium match report", "Variable"],
-          ["Profile unlock", "Variable"],
-          ["Premium introduction request", "Variable"],
-        ],
-      },
-      {
         type: "role-blocks",
         blocks: {
           startup: [
             {
-              type: "p",
-              text: "Manage subscriptions and purchases on Payments (/payments). Welcome credits cover your first few match acceptances.",
+              type: "table",
+              headers: ["Action", "Cost"],
+              rows: [
+                ["Unlock investor profile", "1 credit"],
+                ["Request intro to investor", "1 credit"],
+                ["Request intro to founder", "1 credit"],
+                ["Regenerate match report", "1 credit"],
+                ["Send co-founder invite", "1 credit"],
+              ],
             },
+            {
+              type: "p",
+              text: "Manage subscriptions and purchases on Payments (/payments). Welcome credits cover your first few actions.",
+            },
+            { type: "screenshot", alt: "Credits and plans", caption: "Credits & subscription plans" },
           ],
           investor: [
             {
-              type: "p",
-              text: "Manage subscriptions on Payments (/payments). Credits are consumed when you accept introduction requests from startups.",
+              type: "table",
+              headers: ["Action", "Cost"],
+              rows: [
+                ["View startup pitch deck", "1 credit"],
+                ["View startup financial snapshot", "1 credit"],
+                ["View compatibility score", "1 credit"],
+                ["Request intro to founder", "1 credit"],
+                ["Export deal pipeline report", "1 credit"],
+              ],
             },
+            {
+              type: "p",
+              text: "Manage subscriptions on Payments (/payments). Credits are consumed when unlocking data or requesting intros.",
+            },
+            { type: "screenshot", alt: "Credits and plans", caption: "Credits & subscription plans" },
           ],
           ecosystem_partner: [
             {
-              type: "p",
-              text: "Partners receive credits on signup. Platform access for verified ecosystem partners is free — credits support premium actions if needed.",
+              type: "table",
+              headers: ["Action", "Cost"],
+              rows: [
+                ["Post opportunity / program call", "1 credit"],
+                ["Bulk AI match startups to program", "1 credit"],
+                ["Feature startup in digest", "1 credit"],
+                ["Send partnership email invite", "1 credit"],
+                ["View cohort analytics dashboard", "1 credit"],
+              ],
             },
+            {
+              type: "p",
+              text: "Partners receive credits on signup. Platform access for verified ecosystem partners is free — credits support premium actions.",
+            },
+            { type: "screenshot", alt: "Credits partner", caption: "Partner credits" },
           ],
         },
       },
-      { type: "screenshot", alt: "Credits and plans", caption: "Credits & subscription plans" },
     ],
   },
   {
@@ -747,7 +775,7 @@ export const DOC_SECTIONS: DocSection[] = [
     blocks: [
       {
         type: "important",
-        text: "Founders Arena and The Growth Network do not offer securities, solicit investments, or provide financial advice. All investment decisions and transactions are initiated and executed solely by participating members. The Network provides structured facilitation, infrastructure, and verified introductions only. Participation does not guarantee capital allocation, partnership formation, or transaction completion.",
+        text: "FOUNDERS ARENA and The Growth Network do not offer securities, solicit investments, or provide financial advice. All investment decisions and transactions are initiated and executed solely by participating members. The Network provides structured facilitation, infrastructure, and verified introductions only. Participation does not guarantee capital allocation, partnership formation, or transaction completion.",
       },
       { type: "h3", text: "Approved Language" },
       {

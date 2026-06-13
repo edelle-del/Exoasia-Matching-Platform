@@ -9,7 +9,7 @@ import { getClientContext } from "@/lib/client-context";
 type CofounderInvite = {
   id: string;
   token: string;
-  uid_type: "email" | "phone";
+  uid_type: "email";
   uid_value: string;
   status: string;
   created_at: string;
@@ -233,9 +233,7 @@ export default function ProfilePage() {
   const [invites, setInvites] = useState<CofounderInvite[]>([]);
   const [cofounders, setCofounders] = useState<CofounderLink[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [inviteUidType, setInviteUidType] = useState<"email" | "phone">(
-    "email",
-  );
+  const [inviteUidType] = useState<"email">("email");
   const [inviteUidValue, setInviteUidValue] = useState("");
   const [inviteProjectId, setInviteProjectId] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -353,7 +351,7 @@ export default function ProfilePage() {
     setInviteError("");
     setInviteSuccess("");
     if (!inviteUidValue.trim()) {
-      setInviteError("Please enter an email or phone number.");
+      setInviteError("Please enter an email address.");
       return;
     }
     setInviteLoading(true);
@@ -424,7 +422,7 @@ export default function ProfilePage() {
         <div className="mx-auto max-w-7xl">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Founders Arena</p>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
               <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">
                 Profile
               </h1>
@@ -706,12 +704,10 @@ export default function ProfilePage() {
                   {inviteLoading ? "Sending..." : "Send invite"}
                 </button>
               </div>
-              {inviteUidType === "email" && (
-                <p className="text-xs text-(--color-muted)">
-                  An invite email will be sent. You can also copy the link from
-                  the pending invites list to share manually.
-                </p>
-              )}
+              <p className="text-xs text-(--color-muted)">
+                An invite email will be sent. You can also copy the link from
+                the pending invites list to share manually.
+              </p>
               {inviteError && (
                 <p className="text-xs text-red-600">{inviteError}</p>
               )}

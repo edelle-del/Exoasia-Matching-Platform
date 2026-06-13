@@ -29,7 +29,7 @@ function MarketingPanel() {
           </span>
         </div>
         <p className="fa-panel-body text-[15px] leading-relaxed mb-4 max-w-md">
-          The right capital partner exists — Exoasia Intelligence finds them. Founders Arena connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
+          The right capital partner exists — Exoasia Intelligence finds them. FOUNDERS ARENA connects founders, investors, and ecosystem partners by stage, sector, check size, and geography. Across Southeast Asia and beyond.
         </p>
         <div className="grid grid-cols-2 gap-2 max-w-sm">
           {[
@@ -246,7 +246,7 @@ export default function SignUpPage() {
               Create your account
             </h1>
             <p className="mt-2 text-base text-[var(--color-body)]">
-              Join Founders Arena
+              Join FOUNDERS ARENA
             </p>
           </div>
 

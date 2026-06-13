@@ -109,7 +109,7 @@ export default function AcceptNominationPage() {
             </div>
             <h1 className="text-center text-2xl font-700 text-[var(--color-ink)]">Invite verified</h1>
             <p className="mt-2 text-center text-sm text-[var(--color-body)]">
-              <strong>{partnerLabel}</strong> has invited your startup to the Founders Arena platform.
+              <strong>{partnerLabel}</strong> has invited your startup to the FOUNDERS ARENA platform.
             </p>
 
             {nomination.message && (

@@ -43,7 +43,7 @@ export function CofounderProfileModal({ cofounder, onClose }: Props) {
       onClick={handleBackdrop}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
     >
-      <div className="w-full max-w-sm rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6 shadow-2xl">
+      <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6 shadow-2xl">
         {/* Close */}
         <div className="flex justify-end mb-2">
           <button

@@ -150,7 +150,7 @@ export async function GET() {
         return {
           id: m.id,
           type: "connection_request" as const,
-          status: isAccepted ? "accepted" as const : myStatus === "accepted" ? "accepted" as const : "pending" as const,
+          status: isAccepted ? "accepted" as const : myStatus === "accepted" ? "your_pending" as const : "pending" as const,
           match_status: m.status,
           counterpart,
           fit_score: m.fit_score,
@@ -200,6 +200,7 @@ export async function GET() {
     const acceptedCollabInvites = allCollabInvites.filter((i) => i.status === "active");
 
     const connectionRequests        = allConnectionRequests.filter((r) => r.status === "pending");
+    const yourPendingConnectionRequests = allConnectionRequests.filter((r) => r.status === "your_pending");
     const acceptedConnectionRequests = allConnectionRequests.filter((r) => r.status === "accepted");
 
     const totalPending =
@@ -207,6 +208,8 @@ export async function GET() {
       dataRoomRequests.length +
       collabInvites.length +
       connectionRequests.length;
+
+    const totalYourPending = yourPendingConnectionRequests.length;
 
     const totalAccepted =
       acceptedCofounderInvites.length +
@@ -221,6 +224,9 @@ export async function GET() {
       collabInvites,
       connectionRequests,
       totalPending,
+      // your pending
+      yourPendingConnectionRequests,
+      totalYourPending,
       // accepted
       acceptedCofounderInvites,
       acceptedDataRoomRequests,

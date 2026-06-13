@@ -10,9 +10,9 @@ export default function DocsHeader({ signedIn }: { signedIn: boolean }) {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image src={logo} alt="Founders Arena" width={24} height={24} className="rounded" />
+            <Image src={logo} alt="FOUNDERS ARENA" width={24} height={24} className="rounded" />
             <span className="text-sm font-black tracking-widest text-[#1a1028] uppercase">
-              Founders Arena
+              FOUNDERS ARENA
             </span>
           </Link>
           <span className="hidden text-sm font-semibold text-[#ff6b1f] sm:inline">Docs</span>

@@ -30,7 +30,7 @@ export function InviteCofounderModal({ projectId, onClose, onSuccess }: Props) {
       onClick={handleBackdrop}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
     >
-      <div className="w-full max-w-md rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6 shadow-2xl">
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-[#2A2A3E] bg-[#12121A] p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Team</p>

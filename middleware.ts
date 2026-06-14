@@ -39,13 +39,18 @@ export async function middleware(request: NextRequest) {
     },
   );
 
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost ?? request.headers.get("host") ?? request.nextUrl.host;
+  const protocol = request.headers.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  const origin = `${protocol}://${host}`;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user && !isPublicPath(pathname)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/sign-in";
+    const redirectUrl = new URL("/sign-in", origin);
+    redirectUrl.search = request.nextUrl.search;
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -56,8 +61,8 @@ export async function middleware(request: NextRequest) {
     const role = getRoleFromAccessToken(session?.access_token);
 
     if (!canAccessPath(pathname, role)) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = getHomePathForRole(role);
+      const redirectUrl = new URL(getHomePathForRole(role), origin);
+      redirectUrl.search = request.nextUrl.search;
       return NextResponse.redirect(redirectUrl);
     }
 
@@ -65,8 +70,8 @@ export async function middleware(request: NextRequest) {
       ADMIN_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) &&
       role !== "admin"
     ) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/not-authorized";
+      const redirectUrl = new URL("/not-authorized", origin);
+      redirectUrl.search = request.nextUrl.search;
       return NextResponse.redirect(redirectUrl);
     }
 
@@ -93,8 +98,8 @@ export async function middleware(request: NextRequest) {
 
       const needsOnboarding = !profile?.full_name || !profile?.sector;
       if (needsOnboarding) {
-        const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/onboarding";
+        const redirectUrl = new URL("/onboarding", origin);
+        redirectUrl.search = request.nextUrl.search;
         return NextResponse.redirect(redirectUrl);
       }
     }

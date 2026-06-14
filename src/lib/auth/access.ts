@@ -10,6 +10,8 @@ export const PUBLIC_PATHS = [
   "/not-authorized",
   "/reset-password",
   "/docs",
+  "/privacy",
+  "/terms",
 ] as const;
 
 export const MEMBER_PATH_PREFIXES = [

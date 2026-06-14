@@ -313,6 +313,10 @@ export default function SignUpPage() {
             </button>
           </form>
 
+          <p className="text-xs text-[var(--color-muted)] leading-relaxed px-4">
+            By creating an account or continuing with Google, you agree to our <Link href="/terms" className="underline hover:text-[var(--color-ink)] transition-colors">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-[var(--color-ink)] transition-colors">Privacy Policy</Link>.
+          </p>
+
           <p className="text-sm text-[var(--color-muted)]">
             Already have an account?{" "}
             <Link href="/sign-in" className="text-[var(--color-primary)] hover:underline">

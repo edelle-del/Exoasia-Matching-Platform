@@ -306,6 +306,10 @@ export default function SignInPage() {
             </button>
           </form>
 
+          <p className="text-xs text-[var(--color-muted)] leading-relaxed px-4">
+            By signing in or continuing with Google, you agree to our <Link href="/terms" className="underline hover:text-[var(--color-ink)] transition-colors">Terms of Service</Link> and <Link href="/privacy" className="underline hover:text-[var(--color-ink)] transition-colors">Privacy Policy</Link>.
+          </p>
+
           <p className="text-center text-sm text-[var(--color-muted)]">
             Don&apos;t have an account?{" "}
             <Link href="/sign-up" className="text-[var(--color-primary)] hover:underline">

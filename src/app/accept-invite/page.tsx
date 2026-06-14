@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../providers";
 import { getHomePathForRole } from "@/lib/auth/access";
 
+import { createClient } from "@/lib/supabase/client";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type InviteInfo = {
@@ -55,6 +57,25 @@ export default function AcceptInvitePage() {
 
   // Auto-load invite by token on mount
   useEffect(() => {
+    // If we have an access token in the hash (Supabase auth link), force apply it 
+    // This fixes the issue where clicking an invite link while logged in as an admin 
+    // ignores the new invite token.
+    if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      
+      if (accessToken && refreshToken) {
+        const supabase = createClient();
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
+          // Clear the hash so we don't loop, then reload to let providers pick up the new session cleanly
+          window.location.hash = "";
+          window.location.reload();
+        });
+        return;
+      }
+    }
+
     if (!token) {
       setInviteLoading(false);
       return;

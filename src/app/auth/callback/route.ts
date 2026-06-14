@@ -21,14 +21,12 @@ export async function GET(request: Request) {
 
   const supabase = await createClient();
   
-  // Force sign out of any existing session before exchanging the code.
-  // This is required because Supabase prevents session fixation: if you are logged in 
-  // as User A and click an invite link for User B, exchangeCodeForSession will fail silently.
-  await supabase.auth.signOut();
-
+  // Removed await supabase.auth.signOut() because it deletes the PKCE code_verifier cookie 
+  // which breaks Google OAuth and Magic Links.
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    console.error("Auth callback error exchanging code:", error.message);
     return NextResponse.redirect(`${origin}/sign-in?error=oauth_failed`);
   }
 

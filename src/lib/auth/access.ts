@@ -9,6 +9,7 @@ export const PUBLIC_PATHS = [
   "/get-invited",
   "/not-authorized",
   "/reset-password",
+  "/auth/callback",
   "/docs",
   "/privacy",
   "/terms",

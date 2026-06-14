@@ -46,7 +46,15 @@ export async function GET(request: Request) {
     .eq("id", user.id)
     .single();
 
-  const needsOnboarding = !profile || !profile.full_name || !profile.sector;
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const isAdminOrAdvisor = roleData?.role === "admin" || roleData?.role === "advisor";
+
+  const needsOnboarding = !isAdminOrAdvisor && (!profile || !profile.full_name || !profile.sector);
 
   // Brand-new signup: profile exists (from DB trigger) but full_name is still null,
   // meaning onboarding has never been completed. The time guard prevents re-firing

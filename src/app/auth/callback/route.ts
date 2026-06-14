@@ -27,7 +27,8 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("Auth callback error exchanging code:", error.message);
-    return NextResponse.redirect(`${origin}/sign-in?error=oauth_failed`);
+    const encodedError = encodeURIComponent(error.message);
+    return NextResponse.redirect(`${origin}/sign-in?error=oauth_failed&details=${encodedError}`);
   }
 
   // If a specific destination was requested (e.g. password reset), go there directly.

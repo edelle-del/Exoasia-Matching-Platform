@@ -5,9 +5,15 @@ import { sendNewSignupNotification } from "@/lib/email";
 import { CREDIT_CONFIG } from "@/types/constants";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
+  
+  // Construct origin safely to handle reverse proxies (Nginx, etc.)
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost ?? request.headers.get("host");
+  const protocol = request.headers.get("x-forwarded-proto") ?? (host?.includes("localhost") ? "http" : "https");
+  const origin = `${protocol}://${host}`;
 
   if (!code) {
     return NextResponse.redirect(`${origin}/sign-in?error=missing_code`);

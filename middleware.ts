@@ -80,6 +80,11 @@ export async function middleware(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
+      // Bypass onboarding for admins and advisors
+      if (role === "admin" || role === "advisor") {
+        return response;
+      }
+
       // Stage 4 = Guide/Advisor — bypass onboarding regardless of JWT role claim.
       // This handles cases where the custom_access_token_hook is not yet enabled.
       if (profile?.stage === "4") {

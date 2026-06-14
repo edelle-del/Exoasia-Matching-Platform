@@ -133,6 +133,14 @@ export default function MatchDetailPage() {
     );
   }
 
+  if (role !== "advisor" && role !== "admin") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-(--color-canvas)">
+        <p className="text-sm text-(--color-body)">Not authorized.</p>
+      </div>
+    );
+  }
+
   if (!match) {
     return (
       <div className="min-h-screen px-4 sm:px-6 py-12">

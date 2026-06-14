@@ -233,9 +233,16 @@ export default function AcceptInvitePage() {
   if (signedIn && isInvitedAccount && !inviteInfo) {
     return (
       <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-12">
-        <div className="mx-auto max-w-[600px] rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-8">
-          <p className="text-xs font-600 uppercase tracking-[0.14em] text-(--color-muted)">Platform Invitation</p>
+        <div className="mx-auto max-w-[600px] rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-8 shadow-sm">
+          <p className="text-xs font-600 uppercase tracking-[0.14em] text-(--color-muted)">
+            {role === "admin" ? "Admin Invitation" : "Platform Invitation"}
+          </p>
           <h1 className="mt-3 text-2xl font-700 text-(--color-ink)">Set up your account</h1>
+          {role === "admin" && (
+            <p className="mt-2 text-sm text-(--color-body)">
+              You have been invited to join Exoasia as a <span className="font-semibold text-(--color-ink)">Platform Administrator</span>. Please set your password to activate your access.
+            </p>
+          )}
           {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
           {SetupForm({ onSubmit: handleAdminClaim })}
         </div>

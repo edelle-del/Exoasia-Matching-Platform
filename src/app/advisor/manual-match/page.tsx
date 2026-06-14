@@ -44,7 +44,7 @@ export default function ManualMatchPage() {
     void load();
   }, [supabase]);
 
-  if (role !== "advisor" && role !== "staff" && role !== "admin") {
+  if (role !== "advisor" && role !== "admin") {
     return (
       <div className="min-h-screen px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-3xl">

@@ -105,11 +105,12 @@ export async function POST(req: Request) {
             status: "pending",
             member_a_status,
             member_b_status,
+            project_id: project_id,
             created_at: new Date().toISOString(),
           },
         ],
         // ignoreDuplicates: don't overwrite a match that already exists
-        { onConflict: "member_a_id,member_b_id", ignoreDuplicates: true },
+        { onConflict: "member_a_id,member_b_id,project_id", ignoreDuplicates: true },
       );
 
     if (upsertError) {
@@ -131,6 +132,7 @@ export async function POST(req: Request) {
         .select("id")
         .eq("buyer_member_id", startupId)
         .eq("provider_member_id", investorId)
+        .eq("project_id", project_id)
         .maybeSingle();
 
       if (!existingCard) {
@@ -147,6 +149,7 @@ export async function POST(req: Request) {
           stage: "discover",
           fit_score: scoreRow?.fit_score ?? null,
           confidence: "Medium",
+          project_id: project_id,
           last_updated_at: new Date().toISOString(),
         });
       }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { advanceDealCardStage, deleteDealCard, fetchDealCards, fetchUserMatches, nextDealStage, promoteIntroToDeal, revertDealCardStage, touchDealCard } from "@/lib/app-data";
+import { abortDealCard, advanceDealCardStage, deleteDealCard, fetchDealCards, fetchUserMatches, fetchUserProjects, nextDealStage, promoteIntroToDeal, revertDealCardStage, touchDealCard, type ProjectRecord } from "@/lib/app-data";
 import { useAuth } from "../providers";
 import type { PdfDealCard } from "@/components/deal-pipeline-pdf";
 
@@ -73,7 +73,11 @@ type DealCard = {
   close_reason_code: string | null;
   last_updated_at: string;
   counterpart_name: string;
+  counterpart_full_name: string | null;
+  counterpart_business: string | null;
+  counterpart_role: string | null;
   match_id?: string | null;
+  project_id?: string | null;
   buyer_member_id: string;
   provider_member_id: string;
 };
@@ -82,9 +86,13 @@ type ActiveIntro = {
   id: string;
   counterpart_id: string;
   counterpart_name: string;
+  counterpart_full_name: string | null;
+  counterpart_business: string | null;
+  counterpart_role: string | null;
   counterpart_sector: string | null;
   fit_score: number | null;
   status: "accepted" | "introduced";
+  project_id?: string | null;
 };
 
 export default function DealBoardPage() {
@@ -92,11 +100,17 @@ export default function DealBoardPage() {
   const { user } = useAuth();
   const [cards, setCards] = useState<DealCard[]>([]);
   const [activeIntros, setActiveIntros] = useState<ActiveIntro[]>([]);
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [isFounder, setIsFounder] = useState(false);
   const [touchingId, setTouchingId] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState<DealCard | null>(null);
   const [selectedIntro, setSelectedIntro] = useState<ActiveIntro | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [abortingId, setAbortingId] = useState<string | null>(null);
+  const [showAbortForm, setShowAbortForm] = useState(false);
+  const [abortReason, setAbortReason] = useState("");
   const [toast, setToast] = useState<{ message: string; onUndo: () => Promise<void> } | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -109,7 +123,12 @@ export default function DealBoardPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setSelectedCard(null); setSelectedIntro(null); }
+      if (e.key === "Escape") { 
+        setSelectedCard(null); 
+        setSelectedIntro(null);
+        setShowAbortForm(false);
+        setAbortReason("");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -129,10 +148,28 @@ export default function DealBoardPage() {
 
   const load = async () => {
     if (!user?.id) return;
-    const [next, rawMatches] = await Promise.all([
+    const [{ data: profile }, next, rawMatches, userProjects] = await Promise.all([
+      supabase.from("profiles").select("member_role").eq("id", user.id).single(),
       fetchDealCards(supabase, user.id) as Promise<DealCard[]>,
       fetchUserMatches(supabase, user.id),
+      fetchUserProjects(supabase, user.id, false)
     ]);
+    
+    const founder = profile?.member_role === "founder";
+    setIsFounder(founder);
+    setProjects(userProjects);
+    
+    // Check if there are any unassigned deals
+    const hasUnassigned = next.some(c => !c.project_id) || rawMatches.some(m => !m.project_id && ["accepted", "introduced"].includes(m.status));
+    
+    if (founder) {
+      if (userProjects.length > 0) {
+        setActiveProjectId(prev => prev || userProjects[0].id);
+      } else if (hasUnassigned) {
+        setActiveProjectId("unassigned");
+      }
+    }
+
     setCards(next);
 
     const existingMatchIds = new Set(next.map(c => c.match_id).filter(Boolean));
@@ -145,17 +182,20 @@ export default function DealBoardPage() {
       m.member_a_id === user.id ? m.member_b_id : m.member_a_id,
     ))];
 
-    let nameMap = new Map<string, { name: string; sector: string | null }>();
+    let nameMap = new Map<string, { name: string; full_name: string | null; business_name: string | null; role: string | null; sector: string | null }>();
     if (cpIds.length > 0) {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, business_name, sector")
+        .select("id, full_name, business_name, member_role, sector")
         .in("id", cpIds);
       nameMap = new Map(
         (data ?? []).map((p) => [
           p.id,
           {
             name: p.business_name || p.full_name || "Verified member",
+            full_name: p.full_name,
+            business_name: p.business_name,
+            role: p.member_role,
             sector: p.sector ?? null,
           },
         ]),
@@ -170,9 +210,13 @@ export default function DealBoardPage() {
           id: m.id,
           counterpart_id: cpId,
           counterpart_name: cp?.name ?? "Verified member",
+          counterpart_full_name: cp?.full_name ?? null,
+          counterpart_business: cp?.business_name ?? null,
+          counterpart_role: cp?.role ?? null,
           counterpart_sector: cp?.sector ?? null,
           fit_score: m.fit_score ?? null,
           status: m.status as "accepted" | "introduced",
+          project_id: m.project_id,
         };
       }),
     );
@@ -200,6 +244,7 @@ export default function DealBoardPage() {
       intro.counterpart_name,
       intro.id,
       intro.fit_score,
+      intro.project_id,
     );
     setPromotingId(null);
     if (error) { window.alert(error); return; }
@@ -238,6 +283,28 @@ export default function DealBoardPage() {
     }
   };
 
+  const handleAbort = async (card: DealCard) => {
+    if (!abortReason.trim()) return;
+    const previousStage = card.stage;
+    setAbortingId(card.id);
+    const { error } = await abortDealCard(supabase, card.id, abortReason.trim());
+    setAbortingId(null);
+    if (error) { window.alert(error); return; }
+    
+    setSelectedCard(null);
+    setShowAbortForm(false);
+    setAbortReason("");
+    await load();
+    setToast({
+      message: `${card.title || card.counterpart_name} aborted and moved to On Hold`,
+      onUndo: async () => {
+        await revertDealCardStage(supabase, card.id, previousStage);
+        await load();
+        setToast(null);
+      },
+    });
+  };
+
   const handleExportPDF = async () => {
     setExporting(true);
     try {
@@ -257,13 +324,21 @@ export default function DealBoardPage() {
     }
   };
 
+  const displayedCards = isFounder && activeProjectId
+    ? cards.filter(c => activeProjectId === "unassigned" ? !c.project_id : c.project_id === activeProjectId)
+    : cards;
+    
+  const displayedIntros = isFounder && activeProjectId
+    ? activeIntros.filter(i => activeProjectId === "unassigned" ? !i.project_id : i.project_id === activeProjectId)
+    : activeIntros;
+
   const grouped = BOARD_COLUMNS.map((stage) => ({
     stage,
-    cards: cards.filter((card) => card.stage === STAGE_DB[stage]),
+    cards: displayedCards.filter((card) => card.stage === STAGE_DB[stage]),
   }));
 
-  const totalCards = cards.length;
-  const staleCount = cards.filter((c) => {
+  const totalCards = displayedCards.length;
+  const staleCount = displayedCards.filter((c) => {
     const age = Math.floor(
       (Date.now() - new Date(c.last_updated_at).getTime()) / 86400000,
     );
@@ -324,7 +399,7 @@ export default function DealBoardPage() {
               const col = STAGE_COLORS[stage];
               const count =
                 stageCards.length +
-                (stage === "Intro & Scoping" ? activeIntros.length : 0);
+                (stage === "Intro & Scoping" ? displayedIntros.length : 0);
               if (count === 0) return null;
               return (
                 <div
@@ -339,6 +414,37 @@ export default function DealBoardPage() {
               );
             })}
           </div>
+
+          {/* Project Tabs */}
+          {isFounder && (projects.length > 0 || cards.some(c => !c.project_id)) && (
+            <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide border-b border-(--color-hairline)">
+              {projects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setActiveProjectId(p.id)}
+                  className={`px-4 py-2 -mb-[1px] text-sm font-semibold transition-colors whitespace-nowrap border-b-2 ${
+                    activeProjectId === p.id 
+                      ? "border-(--color-ink) text-(--color-ink)" 
+                      : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
+                  }`}
+                >
+                  {p.name}
+                </button>
+              ))}
+              {(cards.some(c => !c.project_id) || activeIntros.some(i => !i.project_id)) && (
+                <button
+                  onClick={() => setActiveProjectId("unassigned")}
+                  className={`px-4 py-2 -mb-[1px] text-sm font-semibold transition-colors whitespace-nowrap border-b-2 ${
+                    activeProjectId === "unassigned" 
+                      ? "border-(--color-ink) text-(--color-ink)" 
+                      : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
+                  }`}
+                >
+                  Unassigned Deals
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -347,8 +453,8 @@ export default function DealBoardPage() {
         <div className="db-board-inner">
           {grouped.map(({ stage, cards: stageCards }) => {
             const col = STAGE_COLORS[stage];
-            const hasIntros = stage === "Intro & Scoping" && activeIntros.length > 0;
-            const totalInColumn = stageCards.length + (hasIntros ? activeIntros.length : 0);
+            const hasIntros = stage === "Intro & Scoping" && displayedIntros.length > 0;
+            const totalInColumn = stageCards.length + (hasIntros ? displayedIntros.length : 0);
             const colVars = {
               "--db-dot": col.dot,
               "--db-glow": totalInColumn > 0 ? col.glow : "transparent",
@@ -374,15 +480,15 @@ export default function DealBoardPage() {
                 {/* Column body */}
                 <div className="db-col-body">
                   {/* Active intros rendered as uniform cards */}
-                  {hasIntros && activeIntros.map((intro) => (
+                  {hasIntros && displayedIntros.map((intro) => (
                     <article
                       key={intro.id}
                       className="db-card db-card--intro cursor-pointer"
                       onClick={() => setSelectedIntro(intro)}
                     >
                       <div className="mb-2">
-                        <h3 className="db-card-title">{intro.counterpart_name}</h3>
-                        <p className="db-card-counterpart">{intro.counterpart_sector ?? "—"}</p>
+                        <h3 className="db-card-title">{intro.counterpart_full_name || intro.counterpart_name}</h3>
+                        <p className="db-card-counterpart">{intro.counterpart_role === 'investor' ? intro.counterpart_business : (intro.counterpart_sector ?? "—")}</p>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
@@ -453,8 +559,8 @@ export default function DealBoardPage() {
                             onClick={() => setSelectedCard(card)}
                           >
                             <div className="mb-2">
-                              <h3 className="db-card-title">{card.title || card.counterpart_name}</h3>
-                              <p className="db-card-counterpart">{card.counterpart_name}</p>
+                              <h3 className="db-card-title">{card.counterpart_full_name || card.counterpart_name}</h3>
+                              <p className="db-card-counterpart">{card.counterpart_role === 'investor' ? card.counterpart_business : card.title}</p>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
@@ -514,7 +620,7 @@ export default function DealBoardPage() {
       {selectedCard && (
         <div
           className="db-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedCard(null)}
+          onClick={() => { setSelectedCard(null); setShowAbortForm(false); setAbortReason(""); }}
         >
           <div
             className="w-full max-w-md rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-6 shadow-2xl"
@@ -529,7 +635,7 @@ export default function DealBoardPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedCard(null)}
+                onClick={() => { setSelectedCard(null); setShowAbortForm(false); setAbortReason(""); }}
                 className="shrink-0 mt-0.5 rounded-lg p-1.5 text-(--color-muted) hover:text-(--color-ink) hover:bg-(--color-canvas) transition-colors"
                 aria-label="Close"
               >
@@ -585,37 +691,82 @@ export default function DealBoardPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-(--color-hairline)">
-              <div className="flex flex-col gap-2 min-w-0">
-                <p className="text-xs text-(--color-muted)">
-                  Last updated {Math.floor((Date.now() - new Date(selectedCard.last_updated_at).getTime()) / 86400000)}d ago
-                </p>
-                {selectedCard.match_id && (
-                  <Link
-                    href={`/matches/breakdown?a=${selectedCard.buyer_member_id}&b=${selectedCard.provider_member_id}&score=${selectedCard.fit_score || 0}`}
-                    onClick={() => setSelectedCard(null)}
-                    className="text-xs font-semibold text-(--color-primary) hover:underline"
-                  >
-                    View match details &rarr;
-                  </Link>
-                )}
+            {showAbortForm ? (
+              <div className="mt-5 pt-4 border-t border-(--color-hairline)">
+                <div className="flex flex-col gap-3 w-full border border-red-400/20 bg-red-400/5 rounded-xl p-4">
+                  <p className="text-xs font-bold text-[#f87171]">Abort Deal</p>
+                  <p className="text-[11px] text-(--color-muted)">This will move the deal to the On Hold / Closed-Lost stage. Please provide a reason code before aborting.</p>
+                  <input
+                    type="text"
+                    placeholder="Enter reason code (e.g. Budget, Timing, Fit)"
+                    value={abortReason}
+                    onChange={(e) => setAbortReason(e.target.value)}
+                    className="w-full rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) focus:border-red-400/50 focus:outline-none"
+                    autoFocus
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAbortForm(false); setAbortReason(""); }}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-(--color-muted) hover:text-(--color-ink) transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleAbort(selectedCard)}
+                      disabled={!abortReason.trim() || abortingId === selectedCard.id}
+                      className="rounded-lg bg-[#f87171] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {abortingId === selectedCard.id ? "Aborting…" : "Confirm Abort"}
+                    </button>
+                  </div>
+                </div>
               </div>
-              {nextDealStage(selectedCard.stage) && (
-                <button
-                  type="button"
-                  onClick={() => void handleAdvance(selectedCard)}
-                  disabled={advancingId === selectedCard.id}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {advancingId === selectedCard.id ? "Moving…" : `Move to ${STAGE_LABEL[nextDealStage(selectedCard.stage)!]}`}
-                  {advancingId !== selectedCard.id && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+            ) : (
+              <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-(--color-hairline)">
+                <div className="flex flex-col gap-2 min-w-0">
+                  <p className="text-xs text-(--color-muted)">
+                    Last updated {Math.floor((Date.now() - new Date(selectedCard.last_updated_at).getTime()) / 86400000)}d ago
+                  </p>
+                  {selectedCard.project_id && (
+                    <Link
+                      href={`/matches/breakdown?a=${selectedCard.buyer_member_id}&b=${selectedCard.provider_member_id}&score=${selectedCard.fit_score || 0}&project=${selectedCard.project_id}`}
+                      onClick={() => { setSelectedCard(null); setShowAbortForm(false); setAbortReason(""); }}
+                      className="text-xs font-semibold text-(--color-primary) hover:underline"
+                    >
+                      View match details &rarr;
+                    </Link>
                   )}
-                </button>
-              )}
-            </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedCard.stage !== "lost" && selectedCard.stage !== "won" && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAbortForm(true)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-2 text-sm font-semibold text-(--color-muted) hover:text-red-400 hover:border-red-400/30 transition-colors"
+                    >
+                      Abort Deal
+                    </button>
+                  )}
+                  {nextDealStage(selectedCard.stage) && (
+                    <button
+                      type="button"
+                      onClick={() => void handleAdvance(selectedCard)}
+                      disabled={advancingId === selectedCard.id}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-(--color-primary) px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {advancingId === selectedCard.id ? "Moving…" : `Move to ${STAGE_LABEL[nextDealStage(selectedCard.stage)!]}`}
+                      {advancingId !== selectedCard.id && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -679,7 +830,7 @@ export default function DealBoardPage() {
                 )}
               </button>
               <Link
-                href={`/matches/${selectedIntro.id}`}
+                href={`/matches/breakdown?a=${user?.id ?? ''}&b=${selectedIntro.counterpart_id}&score=${selectedIntro.fit_score || 0}&project=${selectedIntro.project_id || ''}`}
                 onClick={() => setSelectedIntro(null)}
                 className="flex items-center justify-center gap-2 w-full rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-semibold text-(--color-muted) hover:text-(--color-ink) hover:border-(--color-muted) transition-colors"
               >

@@ -1925,9 +1925,7 @@ button {
 
 /* ── Deal Board ────────────────────────────────────────────── */
 
-.db-header {
-  /* no background or border — header lives on the canvas */
-}
+/* .db-header (no background or border — header lives on the canvas) */
 
 .db-header-inner {
   max-width: 1440px;
@@ -2033,7 +2031,7 @@ button {
 
 .db-board-outer {
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: hidden;
   padding: 24px 20px;
   scrollbar-width: thin;
   scrollbar-color: var(--color-muted-soft) var(--color-surface-soft);
@@ -2061,10 +2059,11 @@ button {
 .db-board-inner {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
   min-width: max-content;
   max-width: 1440px;
   margin: 0 auto;
+  height: 100%;
 }
 
 .db-column {
@@ -2072,6 +2071,7 @@ button {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  max-height: 100%;
 }
 
 .db-col-header {
@@ -2116,7 +2116,9 @@ button {
   border-radius: 0 0 10px 10px;
   background: var(--color-surface-soft);
   min-height: 100px;
-  overflow: hidden;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Intro card — same shape as db-card with a subtle orange tint */

@@ -52,6 +52,7 @@ export type MatchRecord = {
   member_a_status: "pending" | "accepted" | "declined";
   member_b_status: "pending" | "accepted" | "declined";
   created_at: string;
+  project_id?: string | null;
 };
 
 type MatchQueueMemberProfile = {
@@ -284,11 +285,11 @@ export async function fetchAdvisorAcceptedByDay(
 export async function fetchUserMatches(
   supabase: SupabaseClient,
   userId: string,
-): Promise<Array<MatchRecord & { counterpart_name: string | null }>> {
+): Promise<Array<MatchRecord & { counterpart_name: string | null; counterpart_full_name: string | null; counterpart_business: string | null; counterpart_role: string | null }>> {
   const { data: matches, error } = await supabase
     .from("matches")
     .select(
-      "id, member_a_id, member_b_id, fit_score, summary, status, member_a_status, member_b_status, created_at",
+      "id, member_a_id, member_b_id, project_id, fit_score, summary, status, member_a_status, member_b_status, created_at",
     )
     .or(`member_a_id.eq.${userId},member_b_id.eq.${userId}`)
     .in("status", ["pending", "approved", "accepted", "introduced"])
@@ -308,23 +309,27 @@ export async function fetchUserMatches(
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, business_name, full_name")
+    .select("id, business_name, full_name, member_role")
     .in("id", counterpartIds);
 
   const counterpartById = new Map(
     (profiles ?? []).map((p) => [
       p.id,
-      p.business_name || p.full_name || "Verified member",
+      p,
     ]),
   );
 
   return matches.map((row) => {
     const counterpartId =
       row.member_a_id === userId ? row.member_b_id : row.member_a_id;
+    const counterpart = counterpartById.get(counterpartId);
 
     return {
       ...row,
-      counterpart_name: counterpartById.get(counterpartId) ?? null,
+      counterpart_name: counterpart?.business_name || counterpart?.full_name || "Verified member",
+      counterpart_full_name: counterpart?.full_name ?? null,
+      counterpart_business: counterpart?.business_name ?? null,
+      counterpart_role: counterpart?.member_role ?? null,
     };
   });
 }
@@ -371,7 +376,7 @@ export async function fetchDealCards(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("deal_cards")
     .select(
-      "id, title, stage, fit_score, confidence, impact_projection, next_action, next_action_due, blocker, close_reason_code, last_updated_at, buyer_member_id, provider_member_id, match_id, buyer:profiles!buyer_member_id(full_name, business_name), provider:profiles!provider_member_id(full_name, business_name)",
+      "id, title, stage, fit_score, confidence, impact_projection, next_action, next_action_due, blocker, close_reason_code, last_updated_at, buyer_member_id, provider_member_id, match_id, project_id, buyer:profiles!buyer_member_id(full_name, business_name, member_role), provider:profiles!provider_member_id(full_name, business_name, member_role)",
     )
     .or(`buyer_member_id.eq.${userId},provider_member_id.eq.${userId}`)
     .order("last_updated_at", { ascending: false });
@@ -379,13 +384,16 @@ export async function fetchDealCards(supabase: SupabaseClient, userId: string) {
   if (error) return [];
 
   return (data ?? []).map((card) => {
-    const buyer = card.buyer as { full_name?: string | null; business_name?: string | null } | null;
-    const provider = card.provider as { full_name?: string | null; business_name?: string | null } | null;
+    const buyer = card.buyer as { full_name?: string | null; business_name?: string | null; member_role?: string | null } | null;
+    const provider = card.provider as { full_name?: string | null; business_name?: string | null; member_role?: string | null } | null;
     const counterpart = card.buyer_member_id === userId ? provider : buyer;
     const counterpart_name =
       counterpart?.business_name || counterpart?.full_name || "Unknown";
+    const counterpart_full_name = counterpart?.full_name ?? null;
+    const counterpart_business = counterpart?.business_name ?? null;
+    const counterpart_role = counterpart?.member_role ?? null;
     const { buyer: _b, provider: _p, ...rest } = card;
-    return { ...rest, counterpart_name };
+    return { ...rest, counterpart_name, counterpart_full_name, counterpart_business, counterpart_role };
   });
 }
 
@@ -421,6 +429,19 @@ export async function advanceDealCardStage(supabase: SupabaseClient, dealId: str
   return { error: error?.message ?? null };
 }
 
+export async function abortDealCard(supabase: SupabaseClient, dealId: string, reasonCode: string) {
+  const { error } = await supabase
+    .from("deal_cards")
+    .update({ 
+      stage: "lost", 
+      close_reason_code: reasonCode,
+      last_updated_at: new Date().toISOString() 
+    })
+    .eq("id", dealId);
+
+  return { error: error?.message ?? null };
+}
+
 export async function promoteIntroToDeal(
   supabase: SupabaseClient,
   userId: string,
@@ -428,6 +449,7 @@ export async function promoteIntroToDeal(
   title: string,
   matchId?: string,
   fitScore?: number | null,
+  projectId?: string | null,
 ) {
   const { data, error } = await supabase
     .from("deal_cards")
@@ -439,6 +461,7 @@ export async function promoteIntroToDeal(
       provider_member_id: counterpartId,
       match_id: matchId,
       fit_score: fitScore,
+      project_id: projectId,
       last_updated_at: new Date().toISOString(),
     })
     .select("id")

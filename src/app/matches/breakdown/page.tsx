@@ -490,8 +490,8 @@ function BreakdownPage() {
     void (async () => {
       setIsLoading(true);
       const [
-        { data: myProfile },
-        { data: theirProfile },
+        { data: profileA },
+        { data: profileB },
         projectRes,
         scoreRes,
         ecoScoreRes,
@@ -520,8 +520,9 @@ function BreakdownPage() {
           : Promise.resolve({ data: null }),
       ]);
 
-      setMine(myProfile as Profile ?? null);
-      setTheirs(theirProfile as Profile ?? null);
+      const isUserB = user.id === profileBId;
+      setMine((isUserB ? profileB : profileA) as Profile ?? null);
+      setTheirs((isUserB ? profileA : profileB) as Profile ?? null);
       const proj = (projectRes as { data: unknown }).data as { stage: string | null } | null;
       setProjectStage(proj?.stage ?? null);
 
@@ -687,9 +688,11 @@ function BreakdownPage() {
     }
   };
 
-  const canRescore = !!projectId && (
+  const isParticipant = user?.id === profileAId || user?.id === profileBId;
+  const canRescore = !!projectId && isParticipant && (
     mine?.member_role === "investor" ||
     mine?.member_role === "startup"  ||
+    mine?.member_role === "founder"  ||
     mine?.member_role === "ecosystem_partner"
   );
 

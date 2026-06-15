@@ -133,7 +133,7 @@ export default function DashboardPage() {
         ];
 
         // Only fetch completeness if applicable
-        if (["startup", "investor", "ecosystem_partner"].includes(role)) {
+        if (["startup", "founder", "investor", "ecosystem_partner"].includes(role)) {
           promises.push(
             fetch("/api/startup/completeness").then((r) => (r.ok ? r.json() : {}))
           );
@@ -449,7 +449,7 @@ export default function DashboardPage() {
           <>
             {/* Row 1: Credits + Pipeline stats */}
             <section className="space-y-3">
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-live="polite" aria-label="Key metrics">
+              <div className={`grid grid-cols-2 gap-4 ${isInvestor ? "lg:grid-cols-3" : "lg:grid-cols-4"}`} aria-live="polite" aria-label="Key metrics">
                 <MetricCard
                   label="Credits"
                   value={isLoading ? "..." : String(summary.credits)}
@@ -467,17 +467,19 @@ export default function DashboardPage() {
                   }
                   valueColor="text-(--color-accent-gold)"
                 />
-                <MetricCard
-                  label={isInvestor ? "Score cards" : "Inv. matches"}
-                  value={
-                    isLoading
-                      ? "..."
-                      : pipelineStats.investorMatches > 0
-                        ? String(pipelineStats.investorMatches)
-                        : "—"
-                  }
-                  valueColor="text-(--color-primary)"
-                />
+                {!isInvestor && (
+                  <MetricCard
+                    label="Inv. matches"
+                    value={
+                      isLoading
+                        ? "..."
+                        : pipelineStats.investorMatches > 0
+                          ? String(pipelineStats.investorMatches)
+                          : "—"
+                    }
+                    valueColor="text-(--color-primary)"
+                  />
+                )}
                 <MetricCard
                   label="Best fit"
                   value={

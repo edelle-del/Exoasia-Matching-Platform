@@ -371,7 +371,7 @@ export async function fetchDealCards(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("deal_cards")
     .select(
-      "id, title, stage, fit_score, confidence, impact_projection, next_action, next_action_due, blocker, close_reason_code, last_updated_at, buyer_member_id, provider_member_id, buyer:profiles!buyer_member_id(full_name, business_name), provider:profiles!provider_member_id(full_name, business_name)",
+      "id, title, stage, fit_score, confidence, impact_projection, next_action, next_action_due, blocker, close_reason_code, last_updated_at, buyer_member_id, provider_member_id, match_id, buyer:profiles!buyer_member_id(full_name, business_name), provider:profiles!provider_member_id(full_name, business_name)",
     )
     .or(`buyer_member_id.eq.${userId},provider_member_id.eq.${userId}`)
     .order("last_updated_at", { ascending: false });
@@ -384,7 +384,7 @@ export async function fetchDealCards(supabase: SupabaseClient, userId: string) {
     const counterpart = card.buyer_member_id === userId ? provider : buyer;
     const counterpart_name =
       counterpart?.business_name || counterpart?.full_name || "Unknown";
-    const { buyer: _b, provider: _p, buyer_member_id: _bm, provider_member_id: _pm, ...rest } = card;
+    const { buyer: _b, provider: _p, ...rest } = card;
     return { ...rest, counterpart_name };
   });
 }
@@ -426,6 +426,8 @@ export async function promoteIntroToDeal(
   userId: string,
   counterpartId: string,
   title: string,
+  matchId?: string,
+  fitScore?: number | null,
 ) {
   const { data, error } = await supabase
     .from("deal_cards")
@@ -435,6 +437,8 @@ export async function promoteIntroToDeal(
       confidence: "medium",
       buyer_member_id: userId,
       provider_member_id: counterpartId,
+      match_id: matchId,
+      fit_score: fitScore,
       last_updated_at: new Date().toISOString(),
     })
     .select("id")

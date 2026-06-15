@@ -68,9 +68,19 @@ export async function PATCH(
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // When both parties accept, advance the deal card from "Qualified" → "Intro & Scoping"
-    if (nextStatus === "accepted") {
+    // When either party accepts, advance the deal card from "discover" (Qualified) → "intro" (Intro & Scoping)
+    if (decision === "accepted") {
       try {
+        await admin
+          .from("deal_cards")
+          .update({
+            stage: "intro",
+            last_updated_at: new Date().toISOString(),
+          })
+          .eq("match_id", matchId)
+          .eq("stage", "discover");
+
+        // Fallback for older deal cards without match_id
         await admin
           .from("deal_cards")
           .update({

@@ -6,38 +6,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers";
+import { SECTOR_OPTIONS } from "@/types/constants";
 
 // ─── Static lists ────────────────────────────────────────────────────────────
 
-const sectorOptions = [
-  "Advanced Manufacturing",
-  "Aerospace & Defense",
-  "Agtech",
-  "Animal Health",
-  "Brand & Retail",
-  "Crypto & Digital Assets",
-  "Deeptech",
-  "Energy",
-  "Enterprise & AI",
-  "Fintech",
-  "Food & Beverage",
-  "GOAL",
-  "Health",
-  "Insurtech",
-  "Lifetech",
-  "Maritime",
-  "Media & Advertising",
-  "Medtech",
-  "Mobility & Physical AI",
-  "New Materials & Packaging",
-  "Real Estate & Construction",
-  "Semiconductors",
-  "Smart Cities",
-  "Sportstech",
-  "Supply Chain",
-  "Sustainability",
-  "Travel & Hospitality",
-];
+
 
 const employeeBands = ["1-10", "11-50", "51-200", "201-500", "500+"];
 const revenueRanges = [
@@ -1384,7 +1357,7 @@ export default function OnboardingForm() {
         city: p.city || prev.city,
         short_bio: p.short_bio || prev.short_bio,
         linkedin_url: p.linkedin || prev.linkedin_url,
-        sector: matchOpt(p.sector, sectorOptions) || prev.sector,
+        sector: matchOpt(p.sector, SECTOR_OPTIONS) || prev.sector,
         employee_band:
           matchOpt(p.employee_band, employeeBands) || prev.employee_band,
         annual_revenue_estimate:
@@ -1429,7 +1402,7 @@ export default function OnboardingForm() {
         name: p.project_name || p.venture || p.business_name || prev.name,
         description: p.description || p.additional_info || prev.description,
         stage: matchOpt(p.product_stage, PRODUCT_STAGES) || prev.stage,
-        sector: matchOpt(p.sector, sectorOptions) || prev.sector,
+        sector: matchOpt(p.sector, SECTOR_OPTIONS) || prev.sector,
       }));
 
       setPdfStatus("done");
@@ -2408,7 +2381,7 @@ export default function OnboardingForm() {
               </p>
             )}
             <div className="mt-2 flex flex-wrap gap-2">
-              {sectorOptions.map((s) => {
+              {SECTOR_OPTIONS.map((s) => {
                 const selected = form.sector.split(",").filter(Boolean).includes(s);
                 return (
                   <button

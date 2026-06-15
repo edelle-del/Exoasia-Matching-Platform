@@ -7,6 +7,7 @@ import {
   fetchCommunityMembers,
   type CommunityMemberRecord,
 } from "@/lib/app-data";
+import { SECTOR_OPTIONS } from "@/types/constants";
 import { InsufficientCreditsModal } from "@/app/_components/InsufficientCreditsModal";
 
 const PROJECT_STAGES = [
@@ -95,13 +96,7 @@ export default function CommunityPage() {
     })();
   }, [supabase]);
 
-  const sectors = useMemo(
-    () =>
-      Array.from(
-        new Set(members.map((m) => m.sector).filter(Boolean)),
-      ).sort() as string[],
-    [members],
-  );
+
 
   const countries = useMemo(
     () =>
@@ -128,7 +123,10 @@ export default function CommunityPage() {
           .toLowerCase();
         if (!haystack.includes(q)) return false;
       }
-      if (filterSector !== "all" && m.sector !== filterSector) return false;
+      if (filterSector !== "all") {
+        const memberSectors = m.sector ? m.sector.split(",").map(s => s.trim()) : [];
+        if (!memberSectors.includes(filterSector)) return false;
+      }
       if (filterCountry !== "all") {
         const idx = m.city?.lastIndexOf(", ") ?? -1;
         const memberCountry = idx !== -1 ? m.city!.slice(idx + 2) : "";
@@ -182,7 +180,7 @@ export default function CommunityPage() {
             label="Sector"
             options={[
               { value: "all", label: "All sectors" },
-              ...sectors.map((s) => ({ value: s, label: s })),
+              ...SECTOR_OPTIONS.map((s) => ({ value: s, label: s })),
             ]}
           />
           <FilterSelect

@@ -73,6 +73,9 @@ type DealCard = {
   close_reason_code: string | null;
   last_updated_at: string;
   counterpart_name: string;
+  match_id?: string | null;
+  buyer_member_id: string;
+  provider_member_id: string;
 };
 
 type ActiveIntro = {
@@ -132,8 +135,10 @@ export default function DealBoardPage() {
     ]);
     setCards(next);
 
+    const existingMatchIds = new Set(next.map(c => c.match_id).filter(Boolean));
+
     const intros = rawMatches.filter((m) =>
-      ["accepted", "introduced"].includes(m.status),
+      ["accepted", "introduced"].includes(m.status) && !existingMatchIds.has(m.id)
     );
 
     const cpIds = [...new Set(intros.map((m) =>
@@ -188,7 +193,14 @@ export default function DealBoardPage() {
   const handlePromote = async (intro: ActiveIntro) => {
     if (!user?.id) return;
     setPromotingId(intro.id);
-    const { id: newId, error } = await promoteIntroToDeal(supabase, user.id, intro.counterpart_id, intro.counterpart_name);
+    const { id: newId, error } = await promoteIntroToDeal(
+      supabase,
+      user.id,
+      intro.counterpart_id,
+      intro.counterpart_name,
+      intro.id,
+      intro.fit_score,
+    );
     setPromotingId(null);
     if (error) { window.alert(error); return; }
     setSelectedIntro(null);
@@ -574,9 +586,20 @@ export default function DealBoardPage() {
             </div>
 
             <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-(--color-hairline)">
-              <p className="text-xs text-(--color-muted)">
-                Last updated {Math.floor((Date.now() - new Date(selectedCard.last_updated_at).getTime()) / 86400000)}d ago
-              </p>
+              <div className="flex flex-col gap-2 min-w-0">
+                <p className="text-xs text-(--color-muted)">
+                  Last updated {Math.floor((Date.now() - new Date(selectedCard.last_updated_at).getTime()) / 86400000)}d ago
+                </p>
+                {selectedCard.match_id && (
+                  <Link
+                    href={`/matches/breakdown?a=${selectedCard.buyer_member_id}&b=${selectedCard.provider_member_id}&score=${selectedCard.fit_score || 0}`}
+                    onClick={() => setSelectedCard(null)}
+                    className="text-xs font-semibold text-(--color-primary) hover:underline"
+                  >
+                    View match details &rarr;
+                  </Link>
+                )}
+              </div>
               {nextDealStage(selectedCard.stage) && (
                 <button
                   type="button"

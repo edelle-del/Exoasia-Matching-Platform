@@ -7,6 +7,37 @@ export interface CreditPackage {
   price: number;
 }
 
+export const SECTOR_OPTIONS = [
+  "Advanced Manufacturing",
+  "Aerospace & Defense",
+  "Agtech",
+  "Animal Health",
+  "Brand & Retail",
+  "Crypto & Digital Assets",
+  "Deeptech",
+  "Energy",
+  "Enterprise & AI",
+  "Fintech",
+  "Food & Beverage",
+  "GOAL",
+  "Health",
+  "Insurtech",
+  "Lifetech",
+  "Maritime",
+  "Media & Advertising",
+  "Medtech",
+  "Mobility & Physical AI",
+  "New Materials & Packaging",
+  "Real Estate & Construction",
+  "Semiconductors",
+  "Smart Cities",
+  "Sportstech",
+  "Supply Chain",
+  "Sustainability",
+  "Travel & Hospitality",
+];
+
+
 export interface DurationPlan {
   id: string;
   label: string;

@@ -98,37 +98,36 @@ export async function POST(
       await new Promise((r) => setTimeout(r, 150));
     }
 
-    // If both accepted, advance deal card from "Qualified" to "Intro & Scoping"
-    if (bothAccepted && match) {
+    // If the current user accepted, advance deal card from "discover" (Qualified) to "intro" (Intro & Scoping)
+    if (decision === "accepted" && match) {
       await admin
         .from("deal_cards")
         .update({
-          stage: ACCEPTED_STAGE,
+          stage: "intro",
           last_updated_at: new Date().toISOString(),
         })
-        .eq("buyer_member_id", match.member_a_id < match.member_b_id ? match.member_a_id : match.member_b_id)
-        .eq("provider_member_id", match.member_a_id < match.member_b_id ? match.member_b_id : match.member_a_id)
-        .eq("stage", "Qualified");
+        .eq("match_id", match.id)
+        .eq("stage", "discover");
 
-      // Also try the other member order (canonical pair may be either way)
+      // Fallback for deal cards without match_id yet (legacy)
       await admin
         .from("deal_cards")
         .update({
-          stage: ACCEPTED_STAGE,
+          stage: "intro",
           last_updated_at: new Date().toISOString(),
         })
         .or(
           `and(buyer_member_id.eq.${match.member_a_id},provider_member_id.eq.${match.member_b_id}),` +
           `and(buyer_member_id.eq.${match.member_b_id},provider_member_id.eq.${match.member_a_id})`,
         )
-        .eq("stage", "Qualified");
+        .eq("stage", "discover");
     }
 
     return NextResponse.json({
       success: true,
       status: nextStatus,
       bothAccepted,
-      advancedToStage: bothAccepted ? ACCEPTED_STAGE : null,
+      advancedToStage: decision === "accepted" ? "intro" : null,
     });
   } catch (err) {
     return NextResponse.json(

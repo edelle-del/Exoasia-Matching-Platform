@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { abortDealCard, advanceDealCardStage, deleteDealCard, fetchDealCards, fetchUserMatches, fetchUserProjects, nextDealStage, promoteIntroToDeal, revertDealCardStage, touchDealCard, type ProjectRecord } from "@/lib/app-data";
+import { abortDealCard, advanceDealCardStage, deleteDealCard, fetchDealCards, fetchUserMatches, fetchUserProjects, nextDealStage, promoteIntroToDeal, revertDealCardStage, touchDealCard, updateDealCardStage, type ProjectRecord } from "@/lib/app-data";
 import { useAuth } from "../providers";
 import type { PdfDealCard } from "@/components/deal-pipeline-pdf";
 
@@ -113,6 +113,10 @@ export default function DealBoardPage() {
   const [abortReason, setAbortReason] = useState("");
   const [toast, setToast] = useState<{ message: string; onUndo: () => Promise<void> } | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  const [draggingIntroId, setDraggingIntroId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -305,6 +309,91 @@ export default function DealBoardPage() {
     });
   };
 
+  const handleDragStart = (e: React.DragEvent, type: "card" | "intro", id: string) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/json", JSON.stringify({ type, id }));
+    if (type === "card") setDraggingCardId(id);
+    else setDraggingIntroId(id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingCardId(null);
+    setDraggingIntroId(null);
+    setDragOverStage(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, stage: string) => {
+    if (draggingIntroId && stage !== "Proposal") {
+      e.dataTransfer.dropEffect = "none";
+      return;
+    }
+    e.preventDefault(); // Necessary to allow dropping
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverStage !== stage) setDragOverStage(stage);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only reset if we're actually leaving the column, not just a child element
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    if (
+      e.clientX <= rect.left ||
+      e.clientX >= rect.right ||
+      e.clientY <= rect.top ||
+      e.clientY >= rect.bottom
+    ) {
+      setDragOverStage(null);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, stage: string) => {
+    e.preventDefault();
+    setDragOverStage(null);
+    
+    try {
+      const data = JSON.parse(e.dataTransfer.getData("application/json"));
+      if (data.type === "card") {
+        const card = cards.find(c => c.id === data.id);
+        if (!card) return;
+        const targetStage = STAGE_DB[stage];
+        if (card.stage === targetStage) return; // No change
+
+        if (targetStage === "lost") {
+          setSelectedCard(card);
+          setShowAbortForm(true);
+          return;
+        }
+
+        const previousStage = card.stage;
+        setAdvancingId(card.id);
+        const { error } = await updateDealCardStage(supabase, card.id, targetStage);
+        setAdvancingId(null);
+        if (error) { window.alert(error); return; }
+        
+        await load();
+        setToast({
+          message: `${card.title || card.counterpart_name} moved to ${stage}`,
+          onUndo: async () => {
+            await revertDealCardStage(supabase, card.id, previousStage);
+            await load();
+            setToast(null);
+          },
+        });
+      } else if (data.type === "intro") {
+        if (stage === "Proposal") {
+          const intro = activeIntros.find(i => i.id === data.id);
+          if (intro) {
+             void handlePromote(intro);
+          }
+        }
+      }
+    } catch (err) {
+      // ignore
+    }
+    
+    setDraggingCardId(null);
+    setDraggingIntroId(null);
+  };
+
   const handleExportPDF = async () => {
     setExporting(true);
     try {
@@ -478,12 +567,20 @@ export default function DealBoardPage() {
                 </div>
 
                 {/* Column body */}
-                <div className="db-col-body">
+                <div 
+                  className={`db-col-body transition-colors duration-200 ${dragOverStage === stage ? "bg-black/5 outline-dashed outline-2 outline-(--color-hairline) outline-offset-[-2px] rounded-xl" : ""}`}
+                  onDragOver={(e) => handleDragOver(e, stage)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, stage)}
+                >
                   {/* Active intros rendered as uniform cards */}
                   {hasIntros && displayedIntros.map((intro) => (
                     <article
                       key={intro.id}
-                      className="db-card db-card--intro cursor-pointer"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, "intro", intro.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`db-card db-card--intro cursor-grab active:cursor-grabbing ${draggingIntroId === intro.id ? "opacity-50" : ""}`}
                       onClick={() => setSelectedIntro(intro)}
                     >
                       <div className="mb-2">
@@ -554,7 +651,10 @@ export default function DealBoardPage() {
                         return (
                           <article
                             key={card.id}
-                            className="db-card cursor-pointer"
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, "card", card.id)}
+                            onDragEnd={handleDragEnd}
+                            className={`db-card cursor-grab active:cursor-grabbing ${draggingCardId === card.id ? "opacity-50" : ""}`}
                             style={cardVars}
                             onClick={() => setSelectedCard(card)}
                           >

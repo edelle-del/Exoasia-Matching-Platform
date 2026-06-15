@@ -129,7 +129,10 @@ export default function AcceptInvitePage() {
     if (signInError) { setError(signInError); setSubmitting(false); return; }
 
     setAccepted(true);
-    setTimeout(() => router.push("/matches"), 2000);
+    setTimeout(() => {
+      const projectId = inviteInfo?.project?.id ? `&project=${inviteInfo.project.id}` : "";
+      router.push(`/onboarding?invited=true${projectId}`);
+    }, 2000);
   };
 
   // Legacy path: admin-provisioned invited account
@@ -156,8 +159,31 @@ export default function AcceptInvitePage() {
     setAuthSubmitting(true);
     setError("");
     const { error: signInError } = await signInWithPassword(emailVal, authData.password);
+    if (signInError) {
+      setError(signInError);
+      setAuthSubmitting(false);
+      return;
+    }
+
+    // Accept invite
+    const res = await fetch("/api/cofounders/accept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data?.error ?? "Failed to accept invite.");
+      setAuthSubmitting(false);
+      return;
+    }
+
+    setAccepted(true);
     setAuthSubmitting(false);
-    if (signInError) setError(signInError);
+    setTimeout(() => {
+      const projectId = inviteInfo?.project?.id ? `&project=${inviteInfo.project.id}` : "";
+      router.push(`/onboarding?invited=true${projectId}`);
+    }, 2000);
   };
 
   const inviterLabel = inviteInfo?.inviter?.full_name || inviteInfo?.inviter?.business_name || "A founder";

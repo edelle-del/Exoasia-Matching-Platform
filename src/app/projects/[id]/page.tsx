@@ -2456,8 +2456,14 @@ export default function ProjectDetailPage({
           </div>
 
           {/* Matches content */}
-          {matchesLoading ? (
-            <p className="text-sm text-(--color-muted)">Loading…</p>
+          {matchesLoading || generating ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-(--color-muted)">
+              <svg className="animate-spin h-4 w-4 shrink-0 text-(--color-primary)" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              {generating ? "Exoasia Intelligence is scoring…" : "Loading…"}
+            </div>
           ) : !matchesGenerated ? (
             <div className="rounded-xl border border-(--color-hairline) border-dashed p-10 text-center">
               <p className="text-sm text-(--color-muted)">

@@ -429,6 +429,15 @@ export async function advanceDealCardStage(supabase: SupabaseClient, dealId: str
   return { error: error?.message ?? null };
 }
 
+export async function updateDealCardStage(supabase: SupabaseClient, dealId: string, newStage: string) {
+  const { error } = await supabase
+    .from("deal_cards")
+    .update({ stage: newStage, last_updated_at: new Date().toISOString() })
+    .eq("id", dealId);
+
+  return { error: error?.message ?? null };
+}
+
 export async function abortDealCard(supabase: SupabaseClient, dealId: string, reasonCode: string) {
   const { error } = await supabase
     .from("deal_cards")

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { City, Country } from "country-state-city";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "../providers";
 import { SECTOR_OPTIONS } from "@/types/constants";
@@ -1007,6 +1007,7 @@ function PdfUploadCard({
 
 export default function OnboardingForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const { role, user, signOut } = useAuth();
   const isAdminView = ["advisor", "admin"].includes(role ?? "");
@@ -1646,13 +1647,19 @@ export default function OnboardingForm() {
       const resData = await res.json();
       if (!res.ok) throw new Error(resData?.error || "Save failed");
 
+      const isInvited = searchParams.get("invited") === "true" || user?.user_metadata?.is_invited_cofounder;
+
       await supabase.auth.refreshSession();
       setSuccess("Profile saved.");
       if (form.member_role === "startup" && !isReturningStartup) {
-        setTimeout(() => {
-          setSuccess("");
-          setStep("startup");
-        }, 600);
+        if (isInvited) {
+          setTimeout(() => router.push("/matches"), 900);
+        } else {
+          setTimeout(() => {
+            setSuccess("");
+            setStep("startup");
+          }, 600);
+        }
       } else {
         setTimeout(() => router.push("/profile"), 900);
       }

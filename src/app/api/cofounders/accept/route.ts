@@ -69,6 +69,13 @@ export async function POST(request: Request) {
       .update({ status: "accepted" })
       .eq("id", invite.id);
 
+    // Set flag so middleware knows they are an invited cofounder
+    await admin.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        is_invited_cofounder: true,
+      },
+    });
+
     return NextResponse.json({ success: true, project_id: invite.project_id ?? null });
   } catch (err) {
     return NextResponse.json(

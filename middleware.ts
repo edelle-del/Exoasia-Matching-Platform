@@ -81,7 +81,7 @@ export async function middleware(request: NextRequest) {
     if (!isOnboardingPath && isMemberRole) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, sector, stage")
+        .select("full_name, sector, stage, member_role")
         .eq("id", user.id)
         .single();
 
@@ -101,6 +101,25 @@ export async function middleware(request: NextRequest) {
         const redirectUrl = new URL("/onboarding", origin);
         redirectUrl.search = request.nextUrl.search;
         return NextResponse.redirect(redirectUrl);
+      }
+
+      // Strict project restriction for startups
+      const isProjectCreationPath = pathname.startsWith("/projects/new") || pathname.startsWith("/api/projects");
+      if (
+        profile?.member_role === "startup" &&
+        !user.user_metadata?.is_invited_cofounder &&
+        !isProjectCreationPath
+      ) {
+        const { count } = await supabase
+          .from("projects")
+          .select("*", { count: "exact", head: true })
+          .eq("owner_id", user.id)
+          .eq("is_active", true);
+
+        if (count === 0) {
+          const redirectUrl = new URL("/projects/new", origin);
+          return NextResponse.redirect(redirectUrl);
+        }
       }
     }
   }

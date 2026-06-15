@@ -189,6 +189,34 @@ export async function GET() {
       created_at: req.updated_at ?? req.created_at,
     }));
 
+    // ── Outbound cofounder invites ───────────────────────────────────────────
+    const { data: rawOutboundInvites } = await admin
+      .from("cofounder_invites")
+      .select("id, inviter_id, project_id, uid_value, status, created_at, expires_at, updated_at")
+      .eq("inviter_id", user.id)
+      .in("status", ["pending", "accepted"])
+      .order("created_at", { ascending: false });
+
+    const outboundInviteProjectIds = [...new Set((rawOutboundInvites ?? []).filter((i: any) => i.project_id).map((i: any) => i.project_id as string))];
+    const { data: outboundInviteProjects } = outboundInviteProjectIds.length > 0
+      ? await admin.from("projects").select("id, name, stage, tagline").in("id", outboundInviteProjectIds)
+      : { data: [] };
+    const outboundInviteProjectMap = new Map((outboundInviteProjects ?? []).map((p: any) => [p.id, p]));
+
+    const allOutboundCofounderInvites = (rawOutboundInvites ?? []).map((inv: any) => ({
+      id: inv.id,
+      type: "outbound_cofounder_invite" as const,
+      status: inv.status as "pending" | "accepted",
+      uid_value: inv.uid_value,
+      project: inv.project_id ? (outboundInviteProjectMap.get(inv.project_id) ?? null) : null,
+      created_at: inv.created_at,
+      expires_at: inv.expires_at,
+      resolved_at: inv.updated_at,
+    }));
+
+    const yourPendingCofounderInvites = allOutboundCofounderInvites.filter((i) => i.status === "pending");
+    const yourAcceptedCofounderInvites = allOutboundCofounderInvites.filter((i) => i.status === "accepted");
+
     // ── Split into pending / accepted ────────────────────────────────────────
     const cofounderInvites        = allCofounderInvites.filter((i) => i.status === "pending");
     const acceptedCofounderInvites = allCofounderInvites.filter((i) => i.status === "accepted");
@@ -209,10 +237,11 @@ export async function GET() {
       collabInvites.length +
       connectionRequests.length;
 
-    const totalYourPending = yourPendingConnectionRequests.length;
+    const totalYourPending = yourPendingConnectionRequests.length + yourPendingCofounderInvites.length;
 
     const totalAccepted =
       acceptedCofounderInvites.length +
+      yourAcceptedCofounderInvites.length +
       acceptedDataRoomRequests.length +
       acceptedCollabInvites.length +
       acceptedConnectionRequests.length;
@@ -226,9 +255,11 @@ export async function GET() {
       totalPending,
       // your pending
       yourPendingConnectionRequests,
+      yourPendingCofounderInvites,
       totalYourPending,
       // accepted
       acceptedCofounderInvites,
+      yourAcceptedCofounderInvites,
       acceptedDataRoomRequests,
       acceptedCollabInvites,
       acceptedConnectionRequests,

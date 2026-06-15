@@ -79,6 +79,7 @@ export async function POST(request: Request) {
         account_status: "active",
         invite_inviter_name: null,
         invite_project_name: null,
+        is_invited_cofounder: true,
       },
     });
     if (updateError) {

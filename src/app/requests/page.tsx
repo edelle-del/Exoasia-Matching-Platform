@@ -31,6 +31,17 @@ type CofounderInvite = {
   resolved_at?: string;
 };
 
+type OutboundCofounderInvite = {
+  id: string;
+  type: "outbound_cofounder_invite";
+  status: "pending" | "accepted";
+  uid_value: string;
+  project: { id: string; name: string; stage: string | null; tagline: string | null } | null;
+  created_at: string;
+  expires_at: string;
+  resolved_at?: string;
+};
+
 type DataRoomRequest = {
   id: string;
   type: "data_room_request";
@@ -72,8 +83,10 @@ type RequestsData = {
   connectionRequests: ConnectionRequest[];
   totalPending: number;
   yourPendingConnectionRequests: ConnectionRequest[];
+  yourPendingCofounderInvites?: OutboundCofounderInvite[];
   totalYourPending: number;
   acceptedCofounderInvites: CofounderInvite[];
+  yourAcceptedCofounderInvites?: OutboundCofounderInvite[];
   acceptedDataRoomRequests: DataRoomRequest[];
   acceptedCollabInvites: CollabInvite[];
   acceptedConnectionRequests: ConnectionRequest[];
@@ -90,6 +103,9 @@ function getName(p: Pick<Profile, "full_name" | "business_name"> | null): string
 }
 
 function getInitials(name: string): string {
+  if (name.includes("@")) {
+    return name.substring(0, 2).toUpperCase();
+  }
   return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
 
@@ -245,6 +261,52 @@ function CofounderInviteCard({ invite, onRespond }: { invite: CofounderInvite; o
         className="flex items-center gap-1.5 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-muted) transition hover:border-rose-500/40 hover:text-rose-400 disabled:opacity-50">
         {busy === "decline" ? "…" : "Decline"}
       </button>
+      {invite.project && (
+        <Link href={`/projects/${invite.project.id}`} className="ml-auto flex items-center gap-1 text-xs text-(--color-muted) hover:text-(--color-ink) transition">
+          View project →
+        </Link>
+      )}
+    </CardShell>
+  );
+}
+
+// ── Outbound cofounder invite card ────────────────────────────────────────────
+
+function OutboundCofounderInviteCard({ invite }: { invite: OutboundCofounderInvite }) {
+  const initials = invite.uid_value ? getInitials(invite.uid_value) : "?";
+  return (
+    <CardShell
+      initials={initials} avatarColor="bg-violet-500/20 text-violet-300"
+      name={invite.uid_value} roleTitle="Co-founder (Invited)"
+      badge="Co-founder invite" badgeColor="bg-violet-500/10 text-violet-400"
+      description={<>You invited them to join {invite.project ? <span className="font-semibold text-(--color-ink)">{invite.project.name}</span> : "your project"} as a co-founder.</>}
+      note="Waiting for their response..." timestamp={invite.created_at}
+    >
+      <span className="flex items-center gap-1.5 rounded-xl bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-500">
+        Pending
+      </span>
+      {invite.project && (
+        <Link href={`/projects/${invite.project.id}`} className="ml-auto flex items-center gap-1 text-xs text-(--color-muted) hover:text-(--color-ink) transition">
+          View project →
+        </Link>
+      )}
+    </CardShell>
+  );
+}
+
+// ── Outbound accepted cofounder invite card ───────────────────────────────────
+
+function OutboundAcceptedCofounderCard({ invite }: { invite: OutboundCofounderInvite }) {
+  const initials = invite.uid_value ? getInitials(invite.uid_value) : "?";
+  return (
+    <CardShell
+      initials={initials} avatarColor="bg-violet-500/20 text-violet-300"
+      name={invite.uid_value} roleTitle="Co-founder"
+      badge="Co-founder invite" badgeColor="bg-violet-500/10 text-violet-400"
+      description={<>They joined {invite.project ? <span className="font-semibold text-(--color-ink)">{invite.project.name}</span> : "your project"} as a co-founder.</>}
+      note={null} timestamp={invite.resolved_at ?? invite.created_at}
+    >
+      <AcceptedBadge />
       {invite.project && (
         <Link href={`/projects/${invite.project.id}`} className="ml-auto flex items-center gap-1 text-xs text-(--color-muted) hover:text-(--color-ink) transition">
           View project →
@@ -695,6 +757,7 @@ export default function RequestsPage() {
 
   const founderAcceptedCount =
     (data?.acceptedCofounderInvites.length ?? 0) +
+    (data?.yourAcceptedCofounderInvites?.length ?? 0) +
     (data?.acceptedCollabInvites.length ?? 0) +
     (data?.acceptedConnectionRequests.length ?? 0) +
     (data?.acceptedDataRoomRequests.length ?? 0);
@@ -969,6 +1032,17 @@ export default function RequestsPage() {
         {/* Your Pending lists — ALL ROLES */}
         {!loading && data && !isEmpty && activeTab === "your_pending" && (
           <div className="space-y-8">
+            {data.yourPendingCofounderInvites && data.yourPendingCofounderInvites.length > 0 && (
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Outbound Co-founder Invites</p>
+                <div className="space-y-3">
+                  {data.yourPendingCofounderInvites.map((inv) => (
+                    <OutboundCofounderInviteCard key={inv.id} invite={inv} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {data.yourPendingConnectionRequests.length > 0 && (
               <div>
                 <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Outbound Requests</p>
@@ -991,6 +1065,17 @@ export default function RequestsPage() {
                 <div className="space-y-3">
                   {data.acceptedCofounderInvites.map((inv) => (
                     <AcceptedCofounderCard key={inv.id} invite={inv} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {data.yourAcceptedCofounderInvites && data.yourAcceptedCofounderInvites.length > 0 && (
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Accepted Co-founder Invites</p>
+                <div className="space-y-3">
+                  {data.yourAcceptedCofounderInvites.map((inv) => (
+                    <OutboundAcceptedCofounderCard key={inv.id} invite={inv} />
                   ))}
                 </div>
               </div>

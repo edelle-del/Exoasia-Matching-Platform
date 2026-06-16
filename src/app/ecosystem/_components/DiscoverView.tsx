@@ -61,6 +61,7 @@ function ProjectModal({
   scoring,
   userId,
   onAdd,
+  onCancelInvite,
   onScore,
   onClose,
   setConfirmInvite,

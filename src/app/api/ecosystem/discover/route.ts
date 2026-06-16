@@ -25,7 +25,6 @@ export type DiscoverInvestor = {
   role_title: string | null;
   offer_categories: string[] | null;
   ask_categories: string[] | null;
-  ask_categories: string[] | null;
   short_bio: string | null;
   eco_score: number | null;
   eco_summary: string | null;

@@ -42,9 +42,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Upfront credit deduction
+    const actionType = profile.member_role === "ecosystem_partner" 
+      ? "BULK_MATCH_SWEEP_PARTNER" 
+      : "BULK_MATCH_SWEEP_STARTUP";
+      
     let deductedCost = 0;
     try {
-      const { deducted } = await deductCredits(userId, "BULK_MATCH_SWEEP");
+      const { deducted } = await deductCredits(userId, actionType);
       deductedCost = deducted;
     } catch (e: any) {
       if (e.name === "InsufficientCreditsError") {

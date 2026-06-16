@@ -1073,13 +1073,13 @@ export default function MatchesPage() {
                     <div key={i} className="h-24 animate-pulse rounded-2xl bg-(--color-surface-soft)" />
                   ))}
                 </div>
-              ) : generatedMatchResults.length === 0 ? (
+              ) : generatedMatches.length === 0 ? (
                 <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-8">
                   <p className="text-sm text-(--color-body)">No founder projects on the platform yet.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {generatedMatchResults.map((item, index) => {
+                  {generatedMatches.map((item, index) => {
                     const limit = 10;
                     const isLocked = !hasActiveSub && index >= limit;
                     const p = item as ProjectRecord & { owner_name?: string };

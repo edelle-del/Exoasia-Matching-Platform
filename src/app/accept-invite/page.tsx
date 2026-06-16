@@ -69,18 +69,8 @@ export default function AcceptInvitePage() {
       if (accessToken && refreshToken) {
         const supabase = createClient();
         supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ data }) => {
-          const isNewInvitedUser = data?.session?.user?.user_metadata?.account_status === "invited";
-          
-          const reloadWithoutHash = () => {
-            window.location.hash = "";
-            window.location.reload();
-          };
-
-          if (isNewInvitedUser) {
-            supabase.auth.signOut().then(reloadWithoutHash);
-          } else {
-            reloadWithoutHash();
-          }
+          window.location.hash = "";
+          window.location.reload();
         });
         return;
       }
@@ -88,25 +78,12 @@ export default function AcceptInvitePage() {
 
     if (code) {
       const supabase = createClient();
-      // Exchange code for session directly to securely log out any previous user.
+      // Exchange code for session directly.
       supabase.auth.exchangeCodeForSession(code).then(({ data }) => {
-        const isNewInvitedUser = data?.session?.user?.user_metadata?.account_status === "invited";
-        
-        const reloadWithoutCode = () => {
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete("code");
-          window.history.replaceState({}, document.title, newUrl.toString());
-          window.location.reload();
-        };
-
-        if (isNewInvitedUser) {
-          // If they are a new invited user, explicitly sign them out so they are 
-          // forced to set up their name and password before entering the dashboard.
-          supabase.auth.signOut().then(reloadWithoutCode);
-        } else {
-          // Existing users (e.g. magic link) stay signed in.
-          reloadWithoutCode();
-        }
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("code");
+        window.history.replaceState({}, document.title, newUrl.toString());
+        window.location.reload();
       });
       return;
     }

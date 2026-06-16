@@ -69,6 +69,7 @@ export default function AdminUsersPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [manualCopyLink, setManualCopyLink] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Debounce Search
   useEffect(() => {
@@ -241,12 +242,16 @@ export default function AdminUsersPage() {
                       type="button"
                       onClick={() => {
                         void navigator.clipboard.writeText(manualCopyLink);
+                        setIsCopied(true);
                         setToast("Link copied to clipboard!");
-                        setTimeout(() => setToast(null), 3500);
+                        setTimeout(() => {
+                          setToast(null);
+                          setIsCopied(false);
+                        }, 3500);
                       }}
-                      className="shrink-0 rounded bg-amber-200 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-300 transition-colors"
+                      className="shrink-0 rounded bg-amber-200 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-300 transition-colors min-w-[72px]"
                     >
-                      Copy
+                      {isCopied ? "Copied!" : "Copy"}
                     </button>
                   </div>
                 </div>
@@ -255,6 +260,7 @@ export default function AdminUsersPage() {
                   onClick={() => {
                     setShowInviteAdmin(false);
                     setManualCopyLink(null);
+                    setIsCopied(false);
                     setInviteEmail("");
                   }}
                   className="w-full rounded-xl bg-(--color-ink) py-2.5 text-sm font-semibold text-(--color-canvas) hover:opacity-90 transition-opacity"

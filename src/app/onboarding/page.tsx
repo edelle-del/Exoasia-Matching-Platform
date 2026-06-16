@@ -1609,7 +1609,17 @@ export default function OnboardingForm() {
                   },
                 ],
               }
-            : null;
+            : form.member_role === "startup"
+              ? {
+                  _v: 2,
+                  target_regions: form.target_regions,
+                  target_industries: form.target_industries,
+                  fundraising_stage: form.fundraising_stage,
+                  target_raise_min: form.target_raise_min,
+                  target_raise_max: form.target_raise_max,
+                  product_stage: form.product_stage,
+                }
+              : null;
 
       const payload = {
         full_name: `${form.first_name.trim()} ${form.last_name.trim()}`,
@@ -2593,6 +2603,15 @@ export default function OnboardingForm() {
                   label="Ask &amp; Offer"
                   description="Tell us what your startup needs and what it brings. This directly powers Investment Thesis matching with investors and ecosystem partners."
                 >
+                  <Field label="Target Regions">
+                    <p className="mb-2 text-xs text-[var(--color-muted)]">Where are you seeking capital, expansion, or partners?</p>
+                    <SearchableMultiSelect
+                      options={REGIONS}
+                      value={form.target_regions}
+                      onChange={(v) => setArr("target_regions", v)}
+                      placeholder="Search regions…"
+                    />
+                  </Field>
                   <Field label="What are you looking for?">
                     <p className="mb-2 text-xs text-[var(--color-muted)]">Select everything that applies.</p>
                     <div className="flex flex-wrap gap-2">

@@ -17,6 +17,7 @@
     "create:ecosystem-partner": "node scripts/create-ecosystem-partner.mjs"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.49.1",

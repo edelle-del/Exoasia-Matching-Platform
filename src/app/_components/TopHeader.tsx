@@ -29,6 +29,7 @@ const ICONS = {
   signOut: "ri-logout-box-r-line",
   signIn: "ri-login-box-line",
   docs: "ri-book-open-line",
+  announcements: "ri-notification-3-line",
 };
 
 function Icon({ name, className = "" }: { name: string; className?: string }) {
@@ -179,12 +180,19 @@ export default function TopHeader() {
   const NavLinks = () => (
     <>
       {signedIn && (
-        <NavLink
-          href="/dashboard"
-          label="Dashboard"
-          icon={ICONS.dashboard}
-          exact
-        />
+        <>
+          <NavLink
+            href="/dashboard"
+            label="Dashboard"
+            icon={ICONS.dashboard}
+            exact
+          />
+          <NavLink
+            href="/announcements"
+            label="Announcements"
+            icon={ICONS.announcements}
+          />
+        </>
       )}
 
       {isEcosystemPartner && (

@@ -6,11 +6,9 @@ import { useAuth } from "@/app/providers";
 import { createClient } from "@/lib/supabase/client";
 import { CREDIT_PACKAGES, DURATION_PLANS, type CreditPackage } from "@/types/constants";
 
-
 type CreditRole = "startup" | "investor" | "ecosystem_partner";
 
-// All costs reflect free-tier pricing (1 cr each).
-// includedWithPlan: true = free for paid subscribers; false = costs credits on all tiers.
+// Reflected with new weekly non-stacking limits, 3cr unblurs, and Bulk AI Sweeps.
 const CREDIT_COSTS: {
   action: string;
   cost: number;
@@ -20,155 +18,146 @@ const CREDIT_COSTS: {
   roles: CreditRole[];
   href: string;
 }[] = [
-  // ── Startup ───────────────────────────────────────────────────────────────
-  {
-    action: "Investor profiles & compatibility breakdowns",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "On any paid subscription, investor profiles and compatibility breakdowns are fully unlocked at no credit cost — this is the core benefit of subscribing. On the free tier, each unlock costs 1 credit. Either way, the unlock is permanent: once you've accessed a profile, it stays open with no repeat charges.",
-    includedWithPlan: true,
-    roles: ["startup"],
-    href: "/matches",
-  },
-  {
-    action: "Investor match report regeneration",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "Your first investor match report is free. On a paid plan, regeneration is also free — for when you've updated your project and want a fresh set of matches. On the free tier, regeneration costs 1 credit to prevent repeated runs without meaningful project updates, keeping match data accurate and relevant for investors on the other side.",
-    includedWithPlan: true,
-    roles: ["startup"],
-    href: "/matches",
-  },
-  {
-    action: "Cofounder email invite",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "Inviting someone already on the platform is free — no credit needed. The 1-credit cost on the free tier applies only to external email invites, which trigger a server-side outreach email and onboarding flow. The nominal cost prevents invite abuse while keeping team-building accessible. Paid subscribers send these for free.",
-    includedWithPlan: true,
-    roles: ["startup"],
-    href: "/requests",
-  },
-  {
-    action: "Request intro to investor",
-    cost: 1,
-    note: "1 cr ea · from $99 match-bundle add-on",
-    reason: "When a startup requests an intro, the platform vouches for your profile, attaches your match score, and surfaces the request to an investor who has opted into deal flow — that warm context is what makes investors respond. Each intro costs 1 credit drawn from a purchased match-bundle add-on ($99 = 100 credits). This applies across all tiers: the cost ensures founders are intentional about each outreach, keeping investor inboxes signal-rich.",
-    includedWithPlan: false,
-    roles: ["startup"],
-    href: "/matches",
-  },
-  // ── Shared ────────────────────────────────────────────────────────────────
-  {
-    action: "Community member profile unlock",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "Community member cards show name, role, location, and sector for free — enough to decide if someone is worth a closer look. The 1-credit unlock on free tier opens the full profile: bio, what they're asking for, what they're offering, and contact details. The cost prevents bulk-scraping of member data. Paid subscribers get unlimited community profile unlocks at no credit cost.",
-    includedWithPlan: true,
-    roles: ["startup", "investor"],
-    href: "/community",
-  },
-  {
-    action: "Community introduction request",
-    cost: 1,
-    note: "1 cr ea · from $99 match-bundle add-on",
-    reason: "A community intro request creates a two-sided connection — both parties are notified and either can accept. At 1 credit per request across all tiers, the cost ensures members only reach out when there's genuine intent, keeping inboxes signal-rich. It's intentionally low enough not to block networking, but enough to prevent blanket connection spam that degrades everyone's experience.",
-    includedWithPlan: false,
-    roles: ["startup", "investor", "ecosystem_partner"],
-    href: "/community",
-  },
-  // ── Investor ──────────────────────────────────────────────────────────────
-  {
-    action: "Startup pitch deck access",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "Pitch decks are the most sensitive assets a startup uploads. The 1-credit unlock on free tier gates casual browsing and signals serious investor intent — startups see who accessed their deck, creating accountability on both sides. On any paid subscription, pitch deck access is fully unlocked with no credit cost as part of the deal-sourcing toolkit.",
-    includedWithPlan: true,
-    roles: ["investor"],
-    href: "/data-room",
-  },
-  {
-    action: "Startup financial snapshot",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "Financial snapshots include self-reported revenue estimates, burn rate, and runway — data startups share only with serious potential investors. The 1-credit cost on free tier creates a natural filter so founders only share sensitive data with investors who have real intent. Paid subscribers access financial snapshots for free as a standard due-diligence tool.",
-    includedWithPlan: true,
-    roles: ["investor"],
-    href: "/data-room",
-  },
-  {
-    action: "Startup compatibility score",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "The compatibility score breaks down thesis alignment, stage fit, sector overlap, and potential red flags for a specific startup–investor pairing. At 1 credit on free tier it's accessible enough to use during active deal sourcing, while still ensuring investors evaluate fit deliberately rather than skimming every startup on the platform. Paid subscribers get unlimited compatibility views.",
-    includedWithPlan: true,
-    roles: ["investor"],
-    href: "/matches",
-  },
-  {
-    action: "Deal pipeline PDF export",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "The pipeline export compiles your tracked startups into a structured PDF with scores, notes, and status — useful for sharing with co-investors or internal investment committees. Costs 1 credit on the free tier; included at no cost on any paid subscription because investors running active deal cycles need this regularly.",
-    includedWithPlan: true,
-    roles: ["investor"],
-    href: "/deal-board",
-  },
-  {
-    action: "Request intro to startup founder",
-    cost: 1,
-    note: "1 cr ea · from $99 match-bundle add-on",
-    reason: "When an investor initiates contact, it triggers a managed warm intro flow — the startup is notified, a deal card is opened, and both parties are placed in a structured pipeline. At 1 credit per intro (drawn from a purchased match-bundle add-on, $99 = 100 credits), this applies across all tiers. The credit cost ensures investors are intentional about each outreach, keeping founder inboxes signal-rich rather than flooded with unqualified interest.",
-    includedWithPlan: false,
-    roles: ["investor"],
-    href: "/matches",
-  },
-  // ── Ecosystem Partner ─────────────────────────────────────────────────────
-  {
-    action: "Post opportunity or program call",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "Posting an accelerator call, grant opportunity, or program opening broadcasts to a curated list of matched startups. Costs 1 credit on the free tier to prevent spam postings and ensure partners only publish opportunities they intend to actively manage — protecting startups from wasted applications. Paid subscribers post for free as a core program management tool.",
-    includedWithPlan: true,
-    roles: ["ecosystem_partner"],
-    href: "/events",
-  },
-  {
-    action: "Cohort analytics dashboard access",
-    cost: 1,
-    note: "1 cr on free tier · free with plan",
-    reason: "The cohort analytics view shows aggregated readiness scores, funding stage distributions, and sector breakdowns across all startups you're tracking — useful for program reporting and portfolio health checks. Costs 1 credit on the free tier per generation; included free for paid subscribers as an essential program reporting tool.",
-    includedWithPlan: true,
-    roles: ["ecosystem_partner"],
-    href: "/ecosystem",
-  },
-  {
-    action: "Bulk AI match startups to program",
-    cost: 1,
-    note: "1 cr per run · applies on all tiers",
-    reason: "This runs an AI matching pass across your entire tracked pipeline, scoring each startup against your program's specific criteria (stage, sector, geography, team size). At 1 credit per run it costs across all tiers — the output is a ranked shortlist that directly informs cohort selection, making it a transactional action rather than a subscription benefit that would incentivise over-running it without reviewing results.",
-    includedWithPlan: false,
-    roles: ["ecosystem_partner"],
-    href: "/matches",
-  },
-  {
-    action: "Feature startup in partner digest",
-    cost: 1,
-    note: "1 cr per feature · applies on all tiers",
-    reason: "Featuring a startup amplifies their visibility across your partner network and newsletter, surfacing them to investors and other partners outside the platform. At 1 credit per feature across all tiers, the cost ensures this spotlight is used for startups that genuinely deserve the exposure, not as a default action for every startup in a cohort.",
-    includedWithPlan: false,
-    roles: ["ecosystem_partner"],
-    href: "/ecosystem",
-  },
-  {
-    action: "Send partnership invite (email)",
-    cost: 1,
-    note: "1 cr per invite · applies on all tiers",
-    reason: "Inviting a startup or investor already on the platform is free. The 1-credit cost applies to external email invites across all tiers, covering the server-side outreach and onboarding flow. The nominal cost prevents bulk-invite abuse while keeping ecosystem-building accessible for partners actively growing their network.",
-    includedWithPlan: false,
-    roles: ["ecosystem_partner"],
-    href: "/requests",
-  },
-];
+    // ── Startup (Founder) ───────────────────────────────────────────────────────
+    {
+      action: "Unlock Blurred Investor Match",
+      cost: 3,
+      note: "3 cr per match · free tier sees 3 max",
+      reason: "On the free tier, you can see up to 3 unblurred investor matches. Any additional matching profiles generated beyond this limit are visually masked. You can permanently unlock any individual blurred card for 3 credits across both free and paid plans.",
+      includedWithPlan: false,
+      roles: ["startup"],
+      href: "/matches",
+    },
+    {
+      action: "Investor profiles & compatibility breakdowns",
+      cost: 1,
+      note: "1 free/wk · then 1 cr fallback · unlimited with plan",
+      reason: "Free tier accounts get 1 detailed investor profile view per week which resets every Monday at 6:00 AM PHT and does not roll over. Once your weekly allowance is exhausted, you can use 1 premium credit fallback per view to bypass the restriction. Paid plan subscribers enjoy unlimited profile unlocks.",
+      includedWithPlan: true,
+      roles: ["startup"],
+      href: "/matches",
+    },
+    {
+      action: "Cofounder email invite",
+      cost: 1,
+      note: "1 cr on free tier · free with plan",
+      reason: "Inviting collaborators who are already registered on the platform is completely free. Outbound external email invites that trigger system onboarding pipelines consume 1 credit on the free tier to maintain network balance, while paid subscribers send external invites with zero limitations.",
+      includedWithPlan: true,
+      roles: ["startup"],
+      href: "/requests",
+    },
+    {
+      action: "Request intro to investor",
+      cost: 0,
+      note: "Free · applies on all tiers",
+      reason: "Initiating a formal, managed introduction request applies a warm platform vouch and surfaces your venture parameters directly to an investor's board. This intent-driven action is now completely free across all tiers to encourage meaningful networking.",
+      includedWithPlan: true,
+      roles: ["startup"],
+      href: "/matches",
+    },
+    // ── Shared ────────────────────────────────────────────────────────────────
+    {
+      action: "Community member profile unlock",
+      cost: 1,
+      note: "2 free/wk · then 1 cr fallback · unlimited with plan",
+      reason: "Basic membership cards remain globally viewable. Accessing deep contact parameters, portfolio bios, and custom asks/offers is limited to 2 free community unlocks per week on the free tier. Bypassing an exhausted weekly quota costs 1 fallback credit per profile, whereas paid plan tiers are fully unrestricted.",
+      includedWithPlan: true,
+      roles: ["startup", "investor"],
+      href: "/community",
+    },
+    {
+      action: "Community introduction request",
+      cost: 0,
+      note: "Free · applies on all tiers",
+      reason: "Establishes a double-opt-in connection request between standard community members. To eliminate friction in ecosystem building, every handshake attempt is completely free across both free and paid tiers.",
+      includedWithPlan: true,
+      roles: ["startup", "investor", "ecosystem_partner"],
+      href: "/community",
+    },
+    // ── Investor ──────────────────────────────────────────────────────────────
+    {
+      action: "Unlock Blurred Startup Match",
+      cost: 3,
+      note: "3 cr per match · free tier sees 10 max",
+      reason: "Free tier investors can see up to 10 unblurred startup recommendations matching their high-level configurations. Matches beyond this cap are rendered blurred on your dashboard. Spending 3 credits permanently unmasks the startup asset profile details.",
+      includedWithPlan: false,
+      roles: ["investor"],
+      href: "/matches",
+    },
+    {
+      action: "Startup pitch deck access",
+      cost: 1,
+      note: "1 free/wk · then 1 cr fallback · unlimited with plan",
+      reason: "To safeguard sensitive venture materials, free investors are allotted 1 pitch deck unlock per week. Additional data room access within the same cycle requires a 1-credit asset fallback payment. Paid tier subscriptions bypass this cap entirely for deep pipeline vetting.",
+      includedWithPlan: true,
+      roles: ["investor"],
+      href: "/data-room",
+    },
+    {
+      action: "Startup financial snapshot",
+      cost: 1,
+      note: "1 free/wk · then 1 cr fallback · unlimited with plan",
+      reason: "Gated access to self-reported startup operational matrices including runway lengths, revenue estimations, and burn rates. Free tier structures permit 1 view per week, charging a 1-credit fallback fee per snapshot thereafter. Free and unrestricted on paid plans.",
+      includedWithPlan: true,
+      roles: ["investor"],
+      href: "/data-room",
+    },
+    {
+      action: "Deal pipeline PDF export",
+      cost: 0,
+      note: "Locked on Free Tier · Requires Paid Plan",
+      reason: "Compiling tracked pipeline information into a clean PDF format for internal committees or syndicate distribution is locked on the free tier. This feature requires an active premium subscription plan to execute.",
+      includedWithPlan: true,
+      roles: ["investor"],
+      href: "/deal-board",
+    },
+    {
+      action: "Request intro to startup founder",
+      cost: 0,
+      note: "Free · applies on all tiers",
+      reason: "Triggers a managed pipeline handshake that establishes an active board tracking node and signals serious investor thesis commitment. This action is now completely free across all membership tiers.",
+      includedWithPlan: true,
+      roles: ["investor"],
+      href: "/matches",
+    },
+    // ── Ecosystem Partner ─────────────────────────────────────────────────────
+    {
+      action: "Unlock Blurred Program Match",
+      cost: 3,
+      note: "3 cr per match · free tier sees 5 max",
+      reason: "Ecosystem partner free tracking views provide up to 5 unblurred startup alignment matches. Results populated above this numerical visibility boundary are locked and require 3 credits to permanently reveal.",
+      includedWithPlan: false,
+      roles: ["ecosystem_partner"],
+      href: "/matches",
+    },
+    {
+      action: "Publish Feed Announcement",
+      cost: 1,
+      note: "1 free/wk · paid subscribers have unlimited posts",
+      reason: "Broadcast calls, incubator entries, or updates onto the centralized global /announcements board. Free partners receive 1 post allowance per week (resets Mondays, non-stacking). Paid subscribers post announcements limitlessly.",
+      includedWithPlan: true,
+      roles: ["ecosystem_partner"],
+      href: "/announcements",
+    },
+    {
+      action: "Feature Announcement in Partner Digest",
+      cost: 1,
+      note: "1 cr per spotlight · applies on all tiers",
+      reason: "Highlights your program or opportunity announcement inside our network-wide premium newsletter digest. This premium transactional real estate boost always costs 1 credit across all subscription tiers.",
+      includedWithPlan: false,
+      roles: ["ecosystem_partner"],
+      href: "/announcements",
+    },
+    {
+      action: "Bulk AI Match Sweep ('Create Matches')",
+      cost: 5, // Representing a placeholder cost for the flat-fee backend sweep execution
+      note: "5 cr per sweep · applies on all tiers",
+      reason: "Triggers a heavy database-wide background AI computation worker that processes all existing platform records against your thesis parameters, building a ranked ecosystem shortlist. Runs asynchronously via background pipelines and costs a flat credit fee per execution on all tiers.",
+      includedWithPlan: false,
+      roles: ["ecosystem_partner"],
+      href: "/matches",
+    },
+  ];
 
 const PAYMENT_INFO = [
   "Prices shown in USD · charged in PHP at a fixed rate of ₱56 per $1",
@@ -415,7 +404,9 @@ export default function PaymentsPage() {
                           {c.includedWithPlan ? (
                             <span className="shrink-0 text-emerald-400 font-mono text-[0.72rem]">free with plan</span>
                           ) : (
-                            <span className="shrink-0 text-white/40 font-mono text-[0.72rem]">1 cr ea</span>
+                            <span className="shrink-0 text-white/40 font-mono text-[0.72rem]">
+                              {c.cost === 0 ? "Free" : `${c.cost} cr ea`}
+                            </span>
                           )}
                         </div>
                       ))}
@@ -576,7 +567,7 @@ export default function PaymentsPage() {
 
             {/* ── Duration plan cards ── */}
             {DURATION_PLANS.map((plan) => {
-              const isCurrent  = subscriptionPlan === plan.id;
+              const isCurrent = subscriptionPlan === plan.id;
               const isFeatured = plan.featured;
               return (
                 <div
@@ -700,11 +691,12 @@ export default function PaymentsPage() {
             <div className="flex-1 flex flex-col gap-4">
               <ul className="flex flex-col gap-2 list-none p-0 m-0">
                 {[
-                  "Unlock additional investor or founder matches (1 cr each)",
-                  "Request intros to matched investors or founders",
-                  "Send community introduction requests",
-                  "Retake your venture readiness assessment on confidence.exoasia.org (uses full 100 cr)",
-                  "Works on free tier and paid subscriptions",
+                  "Unlock additional blurred investor, founder, or partner matches (3 cr each)",
+                  "Bypass exhausted weekly view allowances with on-demand fallback unlocks (1 cr each)",
+                  "Request warm intros to matched parameters and send community requests (Free)",
+                  "Run comprehensive database-wide background AI matching sweeps via the Create Matches engine",
+                  "Retake your full Venture Readiness Assessment on confidence.exoasia.org (uses full 100 cr bundle)",
+                  "Credits never expire and work across both Free and Paid subscription tiers",
                 ].map((line) => (
                   <li key={line} className="flex gap-2 text-sm text-white/65">
                     <span className="text-[#C9A040] shrink-0 mt-px">✓</span> {line}
@@ -802,15 +794,15 @@ export default function PaymentsPage() {
                           {item.reason}
                         </p>
                         {memberRole && item.roles.includes(memberRole as CreditRole) && (
-                        <Link
-                          href={item.href}
-                          className="self-start inline-flex items-center gap-1.5 rounded-lg bg-[#FF6B1F]/12 border border-[#FF6B1F]/20 px-3 py-1.5 text-[0.75rem] font-semibold text-[#FF6B1F] hover:bg-[#FF6B1F]/20 transition-colors"
-                        >
-                          Go to action
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 5l7 7-7 7" />
-                          </svg>
-                        </Link>
+                          <Link
+                            href={item.href}
+                            className="self-start inline-flex items-center gap-1.5 rounded-lg bg-[#FF6B1F]/12 border border-[#FF6B1F]/20 px-3 py-1.5 text-[0.75rem] font-semibold text-[#FF6B1F] hover:bg-[#FF6B1F]/20 transition-colors"
+                          >
+                            Go to action
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M9 5l7 7-7 7" />
+                            </svg>
+                          </Link>
                         )}
                       </div>
                     </div>

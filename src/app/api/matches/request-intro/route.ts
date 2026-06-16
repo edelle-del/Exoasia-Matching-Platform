@@ -59,21 +59,7 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (!existingMatch) {
-      try {
-        await deductCredits(
-          user.id,
-          isStartup ? "REQUEST_INTRO_INVESTOR" : "REQUEST_FOUNDER_INTRO",
-          isStartup ? investor_profile_id : project.owner_id,
-        );
-      } catch (err) {
-        if (err instanceof InsufficientCreditsError) {
-          return NextResponse.json(
-            { error: `Insufficient credits. You need ${err.required} credits but have ${err.balance}.`, needed: err.required, balance: err.balance },
-            { status: 402 },
-          );
-        }
-        throw err;
-      }
+      // Intro requests are now free, so we no longer deduct credits here.
     }
 
     // Carry over fit_score + summary from the project score if it exists

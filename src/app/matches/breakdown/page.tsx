@@ -561,18 +561,12 @@ function BreakdownPage() {
 
   useRadar(canvasRef, catAxes, catScores, 260);
 
-  // When AI dimension scores exist: ring = fitScore (AI produced overall + dimensions together — consistent).
-  // When all dimensions are estimated from evidence: ring = average of category scores so the
-  // ring is logically consistent with what the categories show. Showing the AI's holistic fitScore
-  // alongside evidence-only category scores produces an unexplainable contradiction (e.g. ring 75%,
-  // categories 25/0/0/25).
-  // Exception: ecosystem partners — the stored fit_score is AI-generated mandate-fit (not a
-  // dimension average), so always trust it even when per-dimension AI scores aren't stored.
   const allEstimated   = categories.every((c) => c.isEstimated);
   const someEstimated  = categories.some((c) => c.isEstimated);
-  const ringScore     = (allEstimated && !hasStoredEcoScore)
-    ? Math.round(categories.reduce((sum, c) => sum + c.score, 0) / categories.length)
-    : fitScore;
+
+  // Always use the fitScore from the database/API so it matches the main list
+  // exactly, regardless of whether the category scores are AI-generated or estimated.
+  const ringScore = fitScore;
   const circumf      = 2 * Math.PI * 28;
   const ringOffset   = circumf - (ringScore / 100) * circumf;
   const matchedCount  = categories.flatMap((c) => c.params).filter((p) => p.status === "matched").length;

@@ -35,6 +35,7 @@ export const MEMBER_PATH_PREFIXES = [
   "/stage-2",
   "/stage-3",
   "/stage-4",
+  "/announcements",
 ] as const;
 
 export const ADVISOR_PATH_PREFIXES = [

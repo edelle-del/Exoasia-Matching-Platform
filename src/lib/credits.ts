@@ -34,10 +34,12 @@ export const CREDIT_COSTS = {
   VIEW_COMPATIBILITY:       { base: 1,  reason: "View compatibility score" },
   EXPORT_PIPELINE_REPORT:   { base: 1,  reason: "Deal pipeline export" },
 
-  // ── Outreach: 1 credit = 1 match / introduction (drawn from match bundle) ─
+  // ── Outreach & Unlocking ──────────────────────────────────────────────────
   REQUEST_INTRO_INVESTOR:   { base: 1,  reason: "Intro request to investor" },
   REQUEST_FOUNDER_INTRO:    { base: 1,  reason: "Intro request to founder" },
   REQUEST_COMMUNITY_INTRO:  { base: 1,  reason: "Community intro request" },
+  UNLOCK_MATCH:             { base: 3,  reason: "Permanently unlock match card" },
+  UNLOCK_ASSET_FALLBACK:    { base: 1,  reason: "Unlock asset (weekly quota exhausted)" },
 
   // ── Shared / community ────────────────────────────────────────────────────
   UNLOCK_COMMUNITY_PROFILE: { base: 0,  reason: "Unlock community profile" },
@@ -50,6 +52,10 @@ export const CREDIT_COSTS = {
   BULK_AI_MATCH_STARTUPS:   { base: 1,  reason: "Bulk AI match startups to program" },
   FEATURE_STARTUP_DIGEST:   { base: 1,  reason: "Feature startup in digest" },
   SEND_PARTNERSHIP_INVITE:  { base: 1,  reason: "Partnership email invite" },
+  FEATURE_ANNOUNCEMENT:     { base: 1,  reason: "Feature announcement in Partner Digest" },
+
+  // ── AI Generation Sweeps ─────────────────────────────────────────────────
+  BULK_MATCH_SWEEP:         { base: 1,  reason: "AI bulk match generation sweep" },
 
   // ── Premium flat-rate add-on ($99 purchase = 100-credit block) ───────────
   // OPEN_MATCH_BUNDLE costs 1 credit per match (100-credit block = 100 matches).

@@ -56,7 +56,7 @@ async function callOpenRouter(systemInstruction: string, payload: unknown) {
         { role: "system", content: systemInstruction },
         { role: "user", content: JSON.stringify(payload) },
       ],
-      temperature: 0.2,
+      temperature: 0.0,
       max_tokens: 1200,
     }),
   });
@@ -139,6 +139,9 @@ export async function POST(
   }
   try {
     const { id: projectId } = await params;
+    const { searchParams } = new URL(_req.url);
+    const isRescore = searchParams.get("rescore") === "true";
+
     const supabase = await createClient();
     const admin = createAdminClient();
 
@@ -149,6 +152,19 @@ export async function POST(
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    if (isRescore) {
+      const { deductCredits, InsufficientCreditsError } = await import("@/lib/credits");
+      try {
+        await deductCredits(user.id, "RESCORE_MATCH", projectId);
+      } catch (e: any) {
+        if (e.name === "InsufficientCreditsError") {
+          return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+        }
+        throw e;
+      }
+    }
+
 
     const { data: callerProfile } = await supabase
       .from("profiles")
@@ -303,7 +319,7 @@ export async function POST(
     const { data: investors } = await admin
       .from("profiles")
       .select(
-        "id, full_name, business_name, role_title, city, sector, member_role, ask_categories, offer_categories, asks_summary, offers_summary, employee_band, annual_revenue_estimate",
+        "id, full_name, business_name, role_title, city, sector, member_role, ask_categories, offer_categories, asks_summary, offers_summary, employee_band, annual_revenue_estimate, short_bio, linkedin_url, years_in_operation, verification_status",
       )
       .eq("member_role", "investor")
       .limit(50);
@@ -407,7 +423,16 @@ export async function POST(
       return {
         ...r,
         investor_name: inv?.business_name || inv?.full_name || "Investor",
-        investor_sector: inv?.sector,
+        investor_full_name: inv?.full_name ?? null,
+        investor_sector: inv?.sector ?? null,
+        investor_city: inv?.city ?? null,
+        investor_bio: inv?.short_bio ?? null,
+        investor_linkedin: inv?.linkedin_url ?? null,
+        investor_role_title: inv?.role_title ?? null,
+        investor_years: inv?.years_in_operation ?? null,
+        investor_employee_band: inv?.employee_band ?? null,
+        investor_verification: inv?.verification_status ?? null,
+        investor_asks_summary: inv?.asks_summary ?? null,
       };
     });
 

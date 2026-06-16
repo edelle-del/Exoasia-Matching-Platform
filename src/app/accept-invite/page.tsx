@@ -28,6 +28,7 @@ export default function AcceptInvitePage() {
     useAuth();
 
   const token = searchParams.get("token") ?? "";
+  const code = searchParams.get("code");
 
   // Invite context loaded from token
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
@@ -67,13 +68,47 @@ export default function AcceptInvitePage() {
       
       if (accessToken && refreshToken) {
         const supabase = createClient();
-        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
-          // Clear the hash so we don't loop, then reload to let providers pick up the new session cleanly
-          window.location.hash = "";
-          window.location.reload();
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ data }) => {
+          const isNewInvitedUser = data?.session?.user?.user_metadata?.account_status === "invited";
+          
+          const reloadWithoutHash = () => {
+            window.location.hash = "";
+            window.location.reload();
+          };
+
+          if (isNewInvitedUser) {
+            supabase.auth.signOut().then(reloadWithoutHash);
+          } else {
+            reloadWithoutHash();
+          }
         });
         return;
       }
+    }
+
+    if (code) {
+      const supabase = createClient();
+      // Exchange code for session directly to securely log out any previous user.
+      supabase.auth.exchangeCodeForSession(code).then(({ data }) => {
+        const isNewInvitedUser = data?.session?.user?.user_metadata?.account_status === "invited";
+        
+        const reloadWithoutCode = () => {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete("code");
+          window.history.replaceState({}, document.title, newUrl.toString());
+          window.location.reload();
+        };
+
+        if (isNewInvitedUser) {
+          // If they are a new invited user, explicitly sign them out so they are 
+          // forced to set up their name and password before entering the dashboard.
+          supabase.auth.signOut().then(reloadWithoutCode);
+        } else {
+          // Existing users (e.g. magic link) stay signed in.
+          reloadWithoutCode();
+        }
+      });
+      return;
     }
 
     if (!token) {
@@ -93,7 +128,7 @@ export default function AcceptInvitePage() {
       })
       .catch(() => setInviteError("Failed to load invite. Please try again."))
       .finally(() => setInviteLoading(false));
-  }, [token]);
+  }, [token, code]);
 
   const canSubmitSetup = useMemo(
     () =>

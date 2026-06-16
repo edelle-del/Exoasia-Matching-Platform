@@ -383,7 +383,24 @@ export async function fetchDealCards(supabase: SupabaseClient, userId: string) {
 
   if (error) return [];
 
-  return (data ?? []).map((card) => {
+  const cards = data ?? [];
+  const projectIds = [...new Set(cards.map((c) => c.project_id).filter(Boolean))] as string[];
+  const latestScoresMap = new Map<string, number>();
+
+  if (projectIds.length > 0) {
+    const { data: scores } = await supabase
+      .from("project_match_scores")
+      .select("project_id, investor_profile_id, fit_score")
+      .in("project_id", projectIds);
+
+    if (scores) {
+      scores.forEach((s) => {
+        latestScoresMap.set(`${s.project_id}_${s.investor_profile_id}`, s.fit_score);
+      });
+    }
+  }
+
+  return cards.map((card) => {
     const buyer = card.buyer as { full_name?: string | null; business_name?: string | null; member_role?: string | null } | null;
     const provider = card.provider as { full_name?: string | null; business_name?: string | null; member_role?: string | null } | null;
     const counterpart = card.buyer_member_id === userId ? provider : buyer;
@@ -393,7 +410,19 @@ export async function fetchDealCards(supabase: SupabaseClient, userId: string) {
     const counterpart_business = counterpart?.business_name ?? null;
     const counterpart_role = counterpart?.member_role ?? null;
     const { buyer: _b, provider: _p, ...rest } = card;
-    return { ...rest, counterpart_name, counterpart_full_name, counterpart_business, counterpart_role };
+
+    let currentFitScore = card.fit_score;
+    if (card.project_id) {
+      const scoreAsBuyer = latestScoresMap.get(`${card.project_id}_${card.buyer_member_id}`);
+      const scoreAsProvider = latestScoresMap.get(`${card.project_id}_${card.provider_member_id}`);
+      if (scoreAsBuyer !== undefined) {
+        currentFitScore = scoreAsBuyer;
+      } else if (scoreAsProvider !== undefined) {
+        currentFitScore = scoreAsProvider;
+      }
+    }
+
+    return { ...rest, fit_score: currentFitScore, counterpart_name, counterpart_full_name, counterpart_business, counterpart_role };
   });
 }
 

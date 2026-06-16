@@ -595,7 +595,7 @@ function BreakdownPage() {
       if (isEcoPartner) {
         // Ecosystem partner rescores via a different endpoint; startup owner is profileBId.
         const startupOwnerId = mine?.id === profileAId ? profileBId : profileAId;
-        const res = await fetch("/api/ecosystem/score-company", {
+        const res = await fetch("/api/ecosystem/score-company?rescore=true", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ startup_id: startupOwnerId }),
@@ -604,7 +604,11 @@ function BreakdownPage() {
           error?: string;
           scores?: { project_id: string; fit_score: number }[];
         };
-        if (!res.ok) { setRescoreError(data.error ?? `Error ${res.status} — try again.`); return; }
+        if (!res.ok) {
+          if (res.status === 402) setRescoreError("Insufficient credits. You need 1 Ad Credit to rescore.");
+          else setRescoreError(data.error ?? `Error ${res.status} — try again.`);
+          return;
+        }
         newScore = projectId
           ? data.scores?.find((s) => s.project_id === projectId)?.fit_score
           : data.scores?.[0]?.fit_score;
@@ -636,13 +640,17 @@ function BreakdownPage() {
         }
       } else {
         // Investor or startup path.
-        const res = await fetch(`/api/projects/${projectId}/generate-match`, { method: "POST" });
+        const res = await fetch(`/api/projects/${projectId}/generate-match?rescore=true`, { method: "POST" });
         const data = await res.json() as {
           error?: string;
           score?: { fit_score: number };
           scores?: { investor_profile_id?: string; fit_score: number }[];
         };
-        if (!res.ok) { setRescoreError(data.error ?? `Error ${res.status} — try again.`); return; }
+        if (!res.ok) {
+          if (res.status === 402) setRescoreError("Insufficient credits. You need 1 Ad Credit to rescore.");
+          else setRescoreError(data.error ?? `Error ${res.status} — try again.`);
+          return;
+        }
         newScore =
           data.score?.fit_score ??
           data.scores?.find((s) => s.investor_profile_id === profileBId || s.investor_profile_id === profileAId)?.fit_score;
@@ -713,6 +721,7 @@ function BreakdownPage() {
                   disabled={isRescoring || isLoading}
                   onClick={() => void handleRescore()}
                   className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-400 hover:bg-indigo-500/20 disabled:opacity-50 transition-colors"
+                  title="Costs 1 Ad Credit"
                 >
                   {isRescoring ? (
                     <>
@@ -727,7 +736,7 @@ function BreakdownPage() {
                       <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
                         <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                       </svg>
-                      Rescore
+                      Rescore (1 cr)
                     </>
                   )}
                 </button>

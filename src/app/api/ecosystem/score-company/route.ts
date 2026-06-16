@@ -30,7 +30,7 @@ async function callOpenRouter(systemInstruction: string, payload: unknown) {
         { role: "system", content: systemInstruction },
         { role: "user", content: JSON.stringify(payload) },
       ],
-      temperature: 0.2,
+      temperature: 0.0,
       max_tokens: 1200,
     }),
   });
@@ -68,6 +68,21 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const isRescore = searchParams.get("rescore") === "true";
+
+    if (isRescore) {
+      const { deductCredits, InsufficientCreditsError } = await import("@/lib/credits");
+      try {
+        await deductCredits(user.id, "RESCORE_MATCH");
+      } catch (e: any) {
+        if (e.name === "InsufficientCreditsError") {
+          return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+        }
+        throw e;
+      }
     }
 
     const { data: partnerProfile } = await supabase

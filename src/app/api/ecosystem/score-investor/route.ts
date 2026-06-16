@@ -30,7 +30,7 @@ async function callOpenRouter(systemInstruction: string, payload: unknown) {
         { role: "system", content: systemInstruction },
         { role: "user", content: JSON.stringify(payload) },
       ],
-      temperature: 0.2,
+      temperature: 0.0,
       max_tokens: 1200,
     }),
   });

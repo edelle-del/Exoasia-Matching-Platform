@@ -51,6 +51,7 @@ export const CREDIT_COSTS = {
   // ── AI Generation Sweeps ─────────────────────────────────────────────────
   BULK_MATCH_SWEEP_STARTUP: { base: 3,  reason: "AI bulk match generation sweep (Startup/Investor)" },
   BULK_MATCH_SWEEP_PARTNER: { base: 8,  reason: "AI bulk match generation sweep (Ecosystem Partner)" },
+  RESCORE_MATCH:            { base: 1,  reason: "Manual AI match rescore" },
 
   // ── Redo assessment ───────────────────────────────────────────────────────
   REDO_ASSESSMENT:          { base: 100, reason: "AI venture readiness assessment (redo)" },

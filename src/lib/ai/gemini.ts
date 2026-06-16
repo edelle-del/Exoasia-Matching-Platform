@@ -51,7 +51,7 @@ export async function generateGeminiMatches(payload: MatchingPayload) {
         parts: [{ text: GEMINI_MATCHING_SYSTEM_INSTRUCTIONS }],
       },
       generationConfig: {
-        temperature: 0.2,
+        temperature: 0.0,
         responseMimeType: "application/json",
       },
       contents: [

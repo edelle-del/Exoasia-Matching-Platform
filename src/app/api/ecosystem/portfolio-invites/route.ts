@@ -78,8 +78,18 @@ export async function GET() {
           .order("fit_score", { ascending: false })
       : { data: [] };
 
+    // Fetch mandate-fit scores for investors
+    const { data: investorScores } = profile.member_role === "investor" && partnerIds.length > 0
+      ? await admin
+          .from("ecosystem_investor_match_scores")
+          .select("eco_partner_profile_id, fit_score, summary")
+          .eq("investor_profile_id", user.id)
+          .in("eco_partner_profile_id", partnerIds)
+          .order("fit_score", { ascending: false })
+      : { data: [] };
+
     // Best score per partner
-    const bestScoreByPartner = new Map<string, { fit_score: number; summary: string | null; project_id: string }>();
+    const bestScoreByPartner = new Map<string, { fit_score: number; summary: string | null; project_id: string | null }>();
     for (const s of (scores ?? [])) {
       const existing = bestScoreByPartner.get(s.eco_partner_profile_id);
       if (!existing || s.fit_score > existing.fit_score) {
@@ -87,6 +97,16 @@ export async function GET() {
           fit_score: s.fit_score,
           summary: s.summary ?? null,
           project_id: s.project_id,
+        });
+      }
+    }
+    for (const s of (investorScores ?? [])) {
+      const existing = bestScoreByPartner.get(s.eco_partner_profile_id);
+      if (!existing || s.fit_score > existing.fit_score) {
+        bestScoreByPartner.set(s.eco_partner_profile_id, {
+          fit_score: s.fit_score,
+          summary: s.summary ?? null,
+          project_id: null,
         });
       }
     }

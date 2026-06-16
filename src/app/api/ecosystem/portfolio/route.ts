@@ -82,7 +82,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "startup_id is required" }, { status: 400 });
     }
 
-    // Verify the target exists
     const { data: targetProfile } = await admin
       .from("profiles")
       .select("id")
@@ -133,17 +132,16 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function DELETE(request: Request) {
   try {
     const supabase = await createClient();
-    const admin    = createAdminClient();
+    const admin = createAdminClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify caller is an ecosystem_partner
     const { data: profile } = await supabase
       .from("profiles")
       .select("member_role")
@@ -154,7 +152,50 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // 1. Fetch portfolio entries
+    const { startup_id } = (await request.json().catch(() => ({}))) as { startup_id?: string };
+    if (!startup_id) {
+      return NextResponse.json({ error: "startup_id is required" }, { status: 400 });
+    }
+
+    const { error } = await admin
+      .from("portfolio_companies")
+      .delete()
+      .eq("partner_id", user.id)
+      .eq("startup_id", startup_id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const admin    = createAdminClient();
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("member_role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.member_role !== "ecosystem_partner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { data: portfolioRows } = await admin
       .from("portfolio_companies")
       .select("id, startup_id, status")
@@ -170,7 +211,6 @@ export async function GET() {
 
     const startupIds = portfolioRows.map((r) => r.startup_id);
 
-    // 2. Fetch startup profiles
     const { data: startupProfiles } = await admin
       .from("profiles")
       .select("id, full_name, business_name, sector, stage, verification_status")
@@ -180,7 +220,6 @@ export async function GET() {
       (startupProfiles ?? []).map((p) => [p.id, p]),
     );
 
-    // 3. Fetch projects for all startups
     const { data: allProjects } = await admin
       .from("projects")
       .select("id, owner_id, name, stage, sector, description")
@@ -194,7 +233,6 @@ export async function GET() {
       projectsByOwner.set(p.owner_id, arr);
     });
 
-    // 4. Fetch project match scores
     const projectIds = (allProjects ?? []).map((p) => p.id);
     const { data: allScores } = projectIds.length > 0
       ? await admin
@@ -203,7 +241,6 @@ export async function GET() {
           .in("project_id", projectIds)
       : { data: [] };
 
-    // Group investor scores by project
     const scoresByProject = new Map<string, number[]>();
     (allScores ?? []).forEach((s) => {
       const arr = scoresByProject.get(s.project_id) ?? [];
@@ -211,7 +248,6 @@ export async function GET() {
       scoresByProject.set(s.project_id, arr);
     });
 
-    // 4b. Fetch eco mandate-fit scores for this partner
     const { data: ecoScores } = projectIds.length > 0
       ? await admin
           .from("ecosystem_match_scores")
@@ -225,14 +261,24 @@ export async function GET() {
       ecoScoreByProject.set(s.project_id, s.fit_score);
     });
 
-    // 5. Fetch matches for all startups
+    // Fetch investor eco scores (if any of the startupIds are actually investors)
+    const { data: investorEcoScores } = await admin
+      .from("ecosystem_investor_match_scores")
+      .select("investor_profile_id, fit_score")
+      .eq("eco_partner_profile_id", user.id)
+      .in("investor_profile_id", startupIds);
+
+    const ecoScoreByInvestor = new Map<string, number>();
+    (investorEcoScores ?? []).forEach((s) => {
+      ecoScoreByInvestor.set(s.investor_profile_id, s.fit_score);
+    });
+
     const { data: allMatches } = await admin
       .from("matches")
       .select("id, member_a_id, member_b_id, fit_score, status, member_a_status, member_b_status, updated_at, created_at")
       .or(startupIds.map((id) => `member_a_id.eq.${id},member_b_id.eq.${id}`).join(","))
       .in("status", ["pending", "approved", "accepted", "introduced"]);
 
-    // Enrich with counterpart names
     const counterpartIds = [
       ...new Set(
         (allMatches ?? []).map((m) =>
@@ -252,7 +298,6 @@ export async function GET() {
       (counterparts ?? []).map((p) => [p.id, p.business_name || p.full_name || "Verified member"]),
     );
 
-    // 6. Fetch deal cards for all startups
     const { data: allDealCards } = await admin
       .from("deal_cards")
       .select("id, buyer_member_id, provider_member_id, title, stage, last_updated_at")
@@ -267,7 +312,6 @@ export async function GET() {
       dealCardsByStartup.set(ownerId, arr);
     });
 
-    // 7. Assemble per-company data
     const companies: PortfolioCompany[] = portfolioRows.map((row) => {
       const prof = profileMap.get(row.startup_id);
       const rawProjects = projectsByOwner.get(row.startup_id) ?? [];
@@ -310,6 +354,10 @@ export async function GET() {
       });
 
       const ecoScores = projects.map((p) => p.eco_fit_score).filter((s): s is number => s !== null);
+      let bestScore = ecoScores.length > 0 ? Math.max(...ecoScores) : null;
+      if (bestScore === null) {
+        bestScore = ecoScoreByInvestor.get(row.startup_id) ?? null;
+      }
 
       return {
         startup_id: row.startup_id,
@@ -320,13 +368,12 @@ export async function GET() {
         sector: prof?.sector ?? null,
         stage: prof?.stage ?? null,
         verification_status: prof?.verification_status ?? null,
-        best_eco_fit_score: ecoScores.length > 0 ? Math.max(...ecoScores) : null,
+        best_eco_fit_score: bestScore,
         projects,
         matches,
       };
     });
 
-    // 8. Aggregate stats
     const allMatchesFlat  = companies.flatMap((c) => c.matches);
     const activeMatches   = allMatchesFlat.filter((m) => ["accepted", "introduced"].includes(m.status));
     const pendingMatches  = allMatchesFlat.filter((m) => ["pending", "approved"].includes(m.status));

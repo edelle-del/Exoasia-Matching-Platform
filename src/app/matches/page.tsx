@@ -143,6 +143,7 @@ export default function MatchesPage() {
   const [founderProfiles, setFounderProfiles] = useState<Map<string, FounderProfile>>(new Map());
   const [loadingFounders, setLoadingFounders] = useState<Set<string>>(new Set());
   const [selectedFounder, setSelectedFounder] = useState<FounderProfile | null>(null);
+  const [generatedMatches, setGeneratedMatches] = useState<any[]>([]);
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -231,6 +232,17 @@ export default function MatchesPage() {
           (data.scores ?? []).forEach((s) => map.set(s.project_id, s));
           setScoreMap(map);
         }
+      }
+
+      // Fetch generated matches globally (for "Create Matches" tab)
+      try {
+        const genRes = await fetch("/api/matches/generated");
+        if (genRes.ok) {
+          const genData = await genRes.json();
+          setGeneratedMatches(genData.matches || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch generated matches", e);
       }
 
       setIsLoading(false);
@@ -494,19 +506,6 @@ export default function MatchesPage() {
   });
   const pendingCount = pendingMatches.length + portfolioInvites.length;
 
-  const generatedMatchResults = useMemo(() => {
-    if (isInvestor) {
-      return [...projects].sort((a, b) => {
-        const scoreA = scoreMap.get(a.id)?.fit_score ?? -1;
-        const scoreB = scoreMap.get(b.id)?.fit_score ?? -1;
-        return scoreB - scoreA;
-      });
-    } else if (isStartup) {
-      return [...projectScores].sort((a, b) => b.fit_score - a.fit_score);
-    }
-    return [];
-  }, [projects, scoreMap, projectScores, isInvestor, isStartup]);
-
   const activeProjects = projects.filter((p) => p.is_active);
   const archivedProjects = projects.filter((p) => !p.is_active);
   const displayedProjects = showArchived ? archivedProjects : activeProjects;
@@ -575,7 +574,7 @@ export default function MatchesPage() {
         {/* ── CREATE MATCHES VIEW ───────────────────────────────────────────── */}
         {activeTab === "create_matches" && (
           <div className="space-y-6">
-            {generatedMatchResults.length === 0 ? (
+            {generatedMatches.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-10 text-center space-y-6">
                 <div className="rounded-full bg-(--color-primary)/10 p-4">
                   <svg className="h-8 w-8 text-(--color-primary)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -586,7 +585,7 @@ export default function MatchesPage() {
                   <h2 className="text-xl font-bold text-(--color-ink)">AI Match Generation Sweep</h2>
                   <p className="mt-2 max-w-lg text-sm text-(--color-body)">
                     Trigger an ecosystem-wide scan to analyze all {isInvestor ? "active startup projects" : "verified investors"} against your requirements.
-                    This intensive computation costs a flat fee of 1 credit and processes in the background.
+                    This intensive computation costs a flat fee of 3 credits and processes in the background.
                   </p>
                 </div>
 
@@ -608,7 +607,7 @@ export default function MatchesPage() {
                       Processing...
                     </>
                   ) : (
-                    "Run Match Generation (1 Credit)"
+                    "Run Match Generation (3 Credits)"
                   )}
                 </button>
               </div>
@@ -633,7 +632,7 @@ export default function MatchesPage() {
                         Regenerating...
                       </>
                     ) : (
-                      "Regenerate (1 Credit)"
+                      "Regenerate (3 Credits)"
                     )}
                   </button>
                 </div>
@@ -645,13 +644,11 @@ export default function MatchesPage() {
                 )}
 
                 <div className="space-y-4">
-                  {generatedMatchResults.map((item, index) => {
-                    const limit = memberRole === "investor" ? 10 : memberRole === "ecosystem_partner" ? 5 : 3;
-                    const isLocked = !hasActiveSub && index >= limit;
+                  {generatedMatches.map((item, index) => {
+                    const isLocked = item.is_locked;
 
                     if (isInvestor) {
-                      const p = item as ProjectRecord & { owner_name?: string };
-                      const existingScore = scoreMap.get(p.id);
+                      const p = item;
                       const isScoringThis = scoring.has(p.id);
                       const isExpanded = expandedId === p.id;
                       const founder = founderProfiles.get(p.owner_id) ?? null;
@@ -668,7 +665,7 @@ export default function MatchesPage() {
                             <button type="button" onClick={() => handleToggleExpand(p)} className="w-full text-left p-5">
                               <div className="flex items-center gap-4">
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-semibold text-(--color-ink) truncate">{p.name}</p>
+                                  <p className="font-semibold text-(--color-ink) truncate">{p.project_name}</p>
                                   <div className="mt-1 flex flex-wrap gap-1.5">
                                     {p.stage && <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">{p.stage}</span>}
                                     {p.sector && <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{p.sector}</span>}
@@ -676,13 +673,13 @@ export default function MatchesPage() {
                                   </div>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-3">
-                                  {existingScore ? (
+                                  {p.fit_score > 0 ? (
                                     <>
                                       <div className="text-right">
-                                        <p className={`text-xl font-bold ${scoreColorClass(existingScore.fit_score)}`}>{existingScore.fit_score}%</p>
+                                        <p className={`text-xl font-bold ${scoreColorClass(p.fit_score)}`}>{p.fit_score}%</p>
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
                                       </div>
-                                      <PieScore score={existingScore.fit_score} />
+                                      <PieScore score={p.fit_score} />
                                     </>
                                   ) : (
                                     <span className="text-xs text-(--color-muted)">Not yet scored</span>
@@ -692,7 +689,7 @@ export default function MatchesPage() {
                                   </svg>
                                 </div>
                               </div>
-                              {existingScore?.summary && <p className="mt-2 text-xs text-(--color-primary) line-clamp-1">{existingScore.summary}</p>}
+                              {p.summary && <p className="mt-2 text-xs text-(--color-primary) line-clamp-1">{p.summary}</p>}
                             </button>
 
                             {isExpanded && (
@@ -745,9 +742,9 @@ export default function MatchesPage() {
                                     onRequest={handleRequestIntro}
                                     size="md"
                                   />
-                                  {existingScore && (
+                                  {p.fit_score > 0 && (
                                     <Link
-                                      href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${existingScore.fit_score}&project=${p.id}`}
+                                      href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${p.fit_score}&project=${p.id}`}
                                       className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors"
                                     >
                                       View compatibility breakdown
@@ -775,7 +772,7 @@ export default function MatchesPage() {
                                         <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
                                           <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                                         </svg>
-                                        {existingScore ? "Rescore" : "Score this project"}
+                                        {p.fit_score > 0 ? "Rescore" : "Score this project"}
                                       </>
                                     )}
                                   </button>

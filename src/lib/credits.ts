@@ -23,47 +23,36 @@ export class InsufficientCreditsError extends Error {
 }
 
 export const CREDIT_COSTS = {
-  // ── Startup: workflow utilities (free for paid subscribers) ───────────────
-  UNLOCK_INVESTOR_PROFILE:  { base: 1,  reason: "Unlock investor profile" },
-  REGENERATE_MATCH_REPORT:  { base: 0,  reason: "Investor match report regeneration" },
-  SEND_COFOUNDER_INVITE:    { base: 1,  reason: "Cofounder email invite" },
+  // ── Startup (Founder) allowances ──────────────────────────────────────────
+  UNLOCK_INVESTOR_PROFILE:  { base: 1,  reason: "Unlock investor profile (fallback)" },
+  SEND_COFOUNDER_INVITE:    { base: 0,  reason: "Cofounder email invite (always free)" },
+  REQUEST_INTRO_INVESTOR:   { base: 3,  reason: "Intro request to investor (fallback)" },
 
-  // ── Investor: data screening (free for paid subscribers) ─────────────────
-  VIEW_PITCH_DECK:          { base: 1,  reason: "View startup pitch deck" },
-  VIEW_FINANCIALS:          { base: 1,  reason: "View startup financial snapshot" },
-  VIEW_COMPATIBILITY:       { base: 1,  reason: "View compatibility score" },
-  EXPORT_PIPELINE_REPORT:   { base: 1,  reason: "Deal pipeline export" },
+  // ── Investor allowances ───────────────────────────────────────────────────
+  VIEW_PITCH_DECK:          { base: 1,  reason: "View startup pitch deck (fallback)" },
+  VIEW_FINANCIALS:          { base: 1,  reason: "View startup financial snapshot (fallback)" },
+  REQUEST_FOUNDER_INTRO:    { base: 3,  reason: "Intro request to founder (fallback)" },
+  EXPORT_PIPELINE_REPORT:   { base: 1,  reason: "Deal pipeline export" }, // Requires Paid Plan actually, but cost handled by UI usually
 
-  // ── Outreach & Unlocking ──────────────────────────────────────────────────
-  REQUEST_INTRO_INVESTOR:   { base: 1,  reason: "Intro request to investor" },
-  REQUEST_FOUNDER_INTRO:    { base: 1,  reason: "Intro request to founder" },
-  REQUEST_COMMUNITY_INTRO:  { base: 1,  reason: "Community intro request" },
-  UNLOCK_MATCH:             { base: 3,  reason: "Permanently unlock match card" },
-  UNLOCK_ASSET_FALLBACK:    { base: 1,  reason: "Unlock asset (weekly quota exhausted)" },
-
-  // ── Shared / community ────────────────────────────────────────────────────
-  UNLOCK_COMMUNITY_PROFILE: { base: 0,  reason: "Unlock community profile" },
-
-  // ── Ecosystem partner: platform tooling (free for paid subscribers) ──────
+  // ── Ecosystem Partner allowances ─────────────────────────────────────────
   POST_OPPORTUNITY:         { base: 1,  reason: "Post opportunity/program call" },
   VIEW_COHORT_DASHBOARD:    { base: 1,  reason: "View cohort analytics dashboard" },
-
-  // ── Ecosystem partner: transactional ─────────────────────────────────────
-  BULK_AI_MATCH_STARTUPS:   { base: 1,  reason: "Bulk AI match startups to program" },
   FEATURE_STARTUP_DIGEST:   { base: 1,  reason: "Feature startup in digest" },
   SEND_PARTNERSHIP_INVITE:  { base: 1,  reason: "Partnership email invite" },
   FEATURE_ANNOUNCEMENT:     { base: 1,  reason: "Feature announcement in Partner Digest" },
 
-  // ── AI Generation Sweeps ─────────────────────────────────────────────────
-  BULK_MATCH_SWEEP:         { base: 1,  reason: "AI bulk match generation sweep" },
+  // ── Shared / community ────────────────────────────────────────────────────
+  UNLOCK_COMMUNITY_PROFILE: { base: 1,  reason: "Unlock community profile (fallback)" },
+  REQUEST_COMMUNITY_INTRO:  { base: 1,  reason: "Community intro request (fallback)" },
 
-  // ── Premium flat-rate add-on ($99 purchase = 100-credit block) ───────────
-  // OPEN_MATCH_BUNDLE costs 1 credit per match (100-credit block = 100 matches).
-  // VCR generation is handled on confidence.exoasia.org, not this platform.
-  OPEN_MATCH_BUNDLE:        { base: 1,   reason: "Open match bundle (1 match)" },
+  // ── Match Unblurring ──────────────────────────────────────────────────────
+  UNLOCK_MATCH:             { base: 3,  reason: "Permanently unlock match card" },
+
+  // ── AI Generation Sweeps ─────────────────────────────────────────────────
+  BULK_MATCH_SWEEP_STARTUP: { base: 3,  reason: "AI bulk match generation sweep (Startup/Investor)" },
+  BULK_MATCH_SWEEP_PARTNER: { base: 8,  reason: "AI bulk match generation sweep (Ecosystem Partner)" },
 
   // ── Redo assessment ───────────────────────────────────────────────────────
-  // Costs a full 100-credit block ($99 add-on) — equivalent to one VCR on confidence.exoasia.org.
   REDO_ASSESSMENT:          { base: 100, reason: "AI venture readiness assessment (redo)" },
 } as const;
 
@@ -73,20 +62,13 @@ export type CreditAction = keyof typeof CREDIT_COSTS;
 // deductCredits still writes a change_amount: 0 ledger row so idempotency checks
 // (e.g. "has this investor already viewed this deck?") continue to work unchanged.
 const FREE_FOR_PAID_SUBSCRIBERS = new Set<CreditAction>([
-  // Startup workflow utilities
   "UNLOCK_INVESTOR_PROFILE",
-  "REGENERATE_MATCH_REPORT",
-  "SEND_COFOUNDER_INVITE",
-  // Investor data screening
+  "REQUEST_INTRO_INVESTOR",
   "VIEW_PITCH_DECK",
   "VIEW_FINANCIALS",
-  "VIEW_COMPATIBILITY",
-  "EXPORT_PIPELINE_REPORT",
-  // Community
+  "REQUEST_FOUNDER_INTRO",
   "UNLOCK_COMMUNITY_PROFILE",
-  // Ecosystem partner tooling
-  "POST_OPPORTUNITY",
-  "VIEW_COHORT_DASHBOARD",
+  "REQUEST_COMMUNITY_INTRO",
 ]);
 
 export async function getBalance(memberId: string): Promise<number> {

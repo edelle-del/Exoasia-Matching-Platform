@@ -7,6 +7,8 @@ type Option = "choose" | "existing" | "new";
 type StartupResult = {
   id: string;
   name: string;
+  full_name?: string | null;
+  business_name?: string | null;
   sector: string | null;
 };
 
@@ -135,6 +137,7 @@ function ExistingUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess
   const [results, setResults] = useState<StartupResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<StartupResult | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -185,6 +188,58 @@ function ExistingUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess
         </div>
         <p className="text-sm font-semibold text-[#F4F4FF]">Collab invite sent!</p>
         <p className="text-xs text-[#8B8BA7]">{selected?.name} will receive a collaboration invite.</p>
+      </div>
+    );
+  }
+
+  if (showConfirm && selected) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-[#F4F4FF]">Confirm Invitation</p>
+          <p className="mt-1 text-xs text-[#8B8BA7]">You are about to invite the following member to collaborate:</p>
+        </div>
+        
+        <div className="rounded-xl border border-[#2A2A3E] bg-[#1A1A26] p-4 space-y-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Name</p>
+            <p className="text-sm font-medium text-[#F4F4FF]">{selected.full_name || selected.name}</p>
+          </div>
+          {selected.business_name && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Business</p>
+              <p className="text-sm font-medium text-[#F4F4FF]">{selected.business_name}</p>
+            </div>
+          )}
+          {selected.sector && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7]">Sector</p>
+              <p className="text-sm font-medium text-[#F4F4FF]">{selected.sector}</p>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-400">{error}</p>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setShowConfirm(false)}
+            className="flex-1 rounded-xl border border-[#2A2A3E] px-4 py-2.5 text-sm font-semibold text-[#8B8BA7] transition hover:bg-[#1A1A26] hover:text-[#F4F4FF]"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            disabled={adding}
+            onClick={() => void handleAdd()}
+            className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {adding ? "Sending…" : "Confirm & Send"}
+          </button>
+        </div>
       </div>
     );
   }
@@ -256,10 +311,10 @@ function ExistingUserStep({ onBack, onSuccess }: { onBack: () => void; onSuccess
         <button
           type="button"
           disabled={!selected || adding}
-          onClick={() => void handleAdd()}
+          onClick={() => setShowConfirm(true)}
           className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {adding ? "Sending…" : "Send invite"}
+          Continue
         </button>
       </div>
     </div>

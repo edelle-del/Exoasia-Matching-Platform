@@ -23,6 +23,8 @@ type Props = {
   featuringId: string | null;
   onExportAnalytics: () => void;
   exportingAnalytics: boolean;
+  onCancelInvite: (startup_id: string) => void;
+  cancelingInvite: Record<string, boolean>;
 };
 
 function EcoFitBadge({ score }: { score: number | null }) {
@@ -34,7 +36,7 @@ function EcoFitBadge({ score }: { score: number | null }) {
   );
 }
 
-export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany, onNominate, onScoreCompany, scoringId, onFeatureStartup, featuringId, onExportAnalytics, exportingAnalytics }: Props) {
+export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany, onNominate, onScoreCompany, scoringId, onFeatureStartup, featuringId, onExportAnalytics, exportingAnalytics, onCancelInvite, cancelingInvite }: Props) {
   return (
     <div className="space-y-6">
 
@@ -223,6 +225,21 @@ export function PortfolioOverview({ stats, companies, isLoading, onSelectCompany
                   >
                     {featuringId === company.startup_id ? "★…" : "★"}
                   </button>
+
+                  {/* Cancel Invite button (only if pending) */}
+                  {company.status === "pending" && (
+                    <button
+                      type="button"
+                      disabled={cancelingInvite[company.startup_id]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCancelInvite(company.startup_id);
+                      }}
+                      className="shrink-0 rounded-lg px-2 py-1.5 text-[11px] font-bold transition bg-[#1A1A26] text-rose-400 hover:bg-rose-500/20 disabled:opacity-50"
+                    >
+                      {cancelingInvite[company.startup_id] ? "Canceling…" : "Cancel"}
+                    </button>
+                  )}
 
                   <svg
                     onClick={() => onSelectCompany(company.startup_id)}

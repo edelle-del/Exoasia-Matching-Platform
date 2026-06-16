@@ -3,17 +3,32 @@ import { isPayingSubscriber } from "./credits";
 
 export type QuotaAction =
   | "view_investor_profile"
+  | "request_intro_investor"
   | "unlock_community_profile"
+  | "request_community_intro"
   | "view_pitch_deck"
   | "view_financials"
+  | "request_intro_startup"
   | "post_announcement";
 
-export const WEEKLY_LIMITS: Record<QuotaAction, number> = {
-  view_investor_profile: 1,
-  unlock_community_profile: 2,
-  view_pitch_deck: 1,
-  view_financials: 1,
-  post_announcement: 1,
+export const WEEKLY_LIMITS: Record<string, Partial<Record<QuotaAction, number>>> = {
+  startup: {
+    view_investor_profile: 3,
+    request_intro_investor: 2,
+    unlock_community_profile: 5,
+    request_community_intro: 2,
+  },
+  investor: {
+    unlock_community_profile: 10,
+    request_community_intro: 2,
+    view_pitch_deck: 1,
+    view_financials: 1,
+    request_intro_startup: 5,
+  },
+  ecosystem_partner: {
+    request_community_intro: 2,
+    post_announcement: 1,
+  },
 };
 
 export function getCurrentWeekStart(): Date {
@@ -43,10 +58,17 @@ export async function checkWeeklyQuota(
     return { remaining: Infinity, total: Infinity, isPaid: true };
   }
 
-  const limit = WEEKLY_LIMITS[action];
-  const weekStart = getCurrentWeekStart().toISOString();
-
   const admin = createAdminClient();
+  const { data: profile } = await admin.from("profiles").select("member_role").eq("id", userId).single();
+  const role = profile?.member_role || "startup";
+  
+  const limit = WEEKLY_LIMITS[role]?.[action] ?? 0;
+  if (limit === 0) {
+    // If the role has no free allowance for this action, they must use fallback credits
+    return { remaining: 0, total: 0, isPaid: false };
+  }
+
+  const weekStart = getCurrentWeekStart().toISOString();
   const { data } = await admin
     .from("user_weekly_usage")
     .select("usage_count")
@@ -72,6 +94,12 @@ export async function incrementWeeklyQuota(
 
   const weekStart = getCurrentWeekStart().toISOString();
   const admin = createAdminClient();
+
+  const { data: profile } = await admin.from("profiles").select("member_role").eq("id", userId).single();
+  const role = profile?.member_role || "startup";
+  
+  const limit = WEEKLY_LIMITS[role]?.[action] ?? 0;
+  if (limit === 0) return; // Cannot increment if limit is 0 (it requires credits)
 
   const { data } = await admin
     .from("user_weekly_usage")

@@ -25,7 +25,11 @@ export type DiscoverInvestor = {
   role_title: string | null;
   offer_categories: string[] | null;
   ask_categories: string[] | null;
+  ask_categories: string[] | null;
   short_bio: string | null;
+  eco_score: number | null;
+  eco_summary: string | null;
+  already_in_portfolio: boolean;
 };
 
 export async function GET() {
@@ -53,6 +57,8 @@ export async function GET() {
       { data: projects, error: projectsError },
       { data: existingScores },
       { data: investors },
+      { data: ledgerUnlocks },
+      existingInvestorScores,
     ] = await Promise.all([
       admin.from("portfolio_companies").select("startup_id").eq("partner_id", user.id),
       admin
@@ -69,6 +75,15 @@ export async function GET() {
         .select("id, full_name, business_name, sector, city, verification_status, role_title, offer_categories, ask_categories, short_bio")
         .eq("member_role", "investor")
         .order("created_at", { ascending: false }),
+      admin
+        .from("ad_credit_ledger")
+        .select("reason")
+        .eq("member_id", user.id)
+        .ilike("reason", "Permanently unlock match card:%"),
+      admin
+        .from("ecosystem_investor_match_scores")
+        .select("investor_profile_id, fit_score, summary")
+        .eq("eco_partner_profile_id", user.id),
     ]);
 
     if (projectsError) {
@@ -108,9 +123,65 @@ export async function GET() {
       offer_categories: (inv.offer_categories as string[] | null) ?? null,
       ask_categories: (inv.ask_categories as string[] | null) ?? null,
       short_bio: inv.short_bio ?? null,
+      eco_score: null,
+      eco_summary: null,
+      already_in_portfolio: portfolioIds.has(inv.id),
     }));
 
-    return NextResponse.json({ projects: projectRows, investors: investorRows });
+    const investorScores = existingInvestorScores?.data || [];
+    const scoreByInvestor = new Map(
+      investorScores.map((s) => [s.investor_profile_id, s]),
+    );
+
+    for (const inv of investorRows) {
+      const score = scoreByInvestor.get(inv.profile_id);
+      inv.eco_score = score?.fit_score ?? null;
+      inv.eco_summary = score?.summary ?? null;
+    }
+
+    // Sort projects by eco_score descending
+    projectRows.sort((a, b) => {
+      const scoreA = a.eco_score ?? -1;
+      const scoreB = b.eco_score ?? -1;
+      return scoreB - scoreA;
+    });
+
+    // Sort investors by eco_score descending
+    investorRows.sort((a, b) => {
+      const scoreA = a.eco_score ?? -1;
+      const scoreB = b.eco_score ?? -1;
+      return scoreB - scoreA;
+    });
+
+    const unlockedMatchIds = new Set((ledgerUnlocks ?? []).map(row => 
+      (row.reason as string).replace("Permanently unlock match card: ", "").trim()
+    ));
+
+    const limit = 5;
+
+    const maskedProjects = projectRows.map((p, index) => {
+      const isLocked = index >= limit && !p.already_in_portfolio && !unlockedMatchIds.has(p.project_id);
+      return {
+        ...p,
+        owner_name: isLocked ? "Hidden Startup" : p.owner_name,
+        project_name: isLocked ? "Confidential Project" : p.project_name,
+        description: isLocked ? "This project description is hidden due to visibility limits. Unlock to view full details." : p.description,
+        is_locked: isLocked,
+      };
+    });
+
+    const maskedInvestors = investorRows.map((inv, index) => {
+      const isLocked = index >= limit && !inv.already_in_portfolio && !unlockedMatchIds.has(inv.profile_id);
+      return {
+        ...inv,
+        full_name: isLocked ? "Hidden Investor" : inv.full_name,
+        business_name: isLocked ? "Confidential Firm" : inv.business_name,
+        short_bio: isLocked ? "Investor biography is hidden due to visibility limits. Unlock to view full details." : inv.short_bio,
+        is_locked: isLocked,
+      };
+    });
+
+    return NextResponse.json({ projects: maskedProjects, investors: maskedInvestors, unlockedMatchIds: Array.from(unlockedMatchIds) });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

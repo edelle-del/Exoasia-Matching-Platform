@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BYPASS_CREDIT_GATES } from "@/lib/credits";
 
-const BULK_MATCH_COST = 15;
+
 
 export async function POST() {
   try {
@@ -34,6 +34,16 @@ export async function POST() {
       (sum, r) => sum + Number(r.change_amount ?? 0),
       0,
     );
+
+    const { data: previousMatches } = await admin
+      .from("ad_credit_ledger")
+      .select("id")
+      .eq("member_id", user.id)
+      .ilike("reason", "Bulk AI match:%")
+      .limit(1);
+
+    const isFirstMatch = !previousMatches || previousMatches.length === 0;
+    const BULK_MATCH_COST = isFirstMatch ? 0 : 8;
 
     if (!BYPASS_CREDIT_GATES && balance < BULK_MATCH_COST) {
       return NextResponse.json(

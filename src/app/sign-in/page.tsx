@@ -347,6 +347,9 @@ export default function SignInPage() {
                 <p className="mt-2 text-sm text-[var(--color-body)]">
                   Enter your email and we&apos;ll send you a link to reset your password.
                 </p>
+                <p className="mt-2 text-xs text-[var(--color-muted)]">
+                  Note: If you originally signed up with Google, please use the &quot;Continue with Google&quot; button instead. You will be prompted to set a password after logging in.
+                </p>
                 <form onSubmit={handleForgotPassword} className="mt-5 space-y-4">
                   <input
                     type="email"

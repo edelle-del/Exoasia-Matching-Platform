@@ -164,7 +164,7 @@ export default function MatchesPage() {
       setMemberRole(role);
       setHasActiveSub(
         !!profile?.subscription_plan &&
-          (!profile.subscription_ends_at || new Date(profile.subscription_ends_at) > new Date()),
+        (!profile.subscription_ends_at || new Date(profile.subscription_ends_at) > new Date()),
       );
 
       setMatches(matchesRes.matches || []);
@@ -389,7 +389,7 @@ export default function MatchesPage() {
     setSweepStatus("Initializing AI Sweep...");
     try {
       // Pass the user.id so the endpoint knows who is sweeping if token isn't passed perfectly
-      const res = await fetch("/api/matches/bulk-generate", { 
+      const res = await fetch("/api/matches/bulk-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user?.id })
@@ -406,7 +406,7 @@ export default function MatchesPage() {
         return;
       }
       setSweepStatus("Sweeping database... (this may take a while)");
-      
+
       const jobId = data.jobId;
       if (!jobId) {
         setIsSweeping(false);
@@ -438,7 +438,7 @@ export default function MatchesPage() {
           // keep polling if transient error
         }
       }, 2000);
-      
+
     } catch (e: any) {
       alert("Sweep failed: " + e.message);
       setIsSweeping(false);
@@ -589,7 +589,7 @@ export default function MatchesPage() {
                     This intensive computation costs a flat fee of 1 credit and processes in the background.
                   </p>
                 </div>
-                
+
                 {sweepStatus && (
                   <p className="text-sm font-semibold text-amber-500 animate-pulse">{sweepStatus}</p>
                 )}
@@ -637,7 +637,7 @@ export default function MatchesPage() {
                     )}
                   </button>
                 </div>
-                
+
                 {sweepStatus && (
                   <div className="rounded-xl bg-amber-500/10 p-3 text-sm font-semibold text-amber-500 text-center animate-pulse">
                     {sweepStatus}
@@ -648,7 +648,7 @@ export default function MatchesPage() {
                   {generatedMatchResults.map((item, index) => {
                     const limit = memberRole === "investor" ? 10 : memberRole === "ecosystem_partner" ? 5 : 3;
                     const isLocked = !hasActiveSub && index >= limit;
-                    
+
                     if (isInvestor) {
                       const p = item as ProjectRecord & { owner_name?: string };
                       const existingScore = scoreMap.get(p.id);
@@ -969,36 +969,36 @@ export default function MatchesPage() {
                               </Link>
                             )}
                             {showArchived ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); void handleRestoreProject(project.id); }}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-2.5 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
-                                  >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3 shrink-0">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                    </svg>
-                                    Restore
-                                  </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); void handleRestoreProject(project.id); }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-2.5 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3 shrink-0">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                Restore
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={isGeneratingThis}
+                                onClick={(e) => { e.stopPropagation(); void handleFindInvestors(project.id); }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-primary)/30 bg-(--color-primary)/5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                              >
+                                {isGeneratingThis ? (
+                                  <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                  </svg>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    disabled={isGeneratingThis}
-                                    onClick={(e) => { e.stopPropagation(); void handleFindInvestors(project.id); }}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-primary)/30 bg-(--color-primary)/5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
-                                  >
-                                    {isGeneratingThis ? (
-                                      <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                      </svg>
-                                    ) : (
-                                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
-                                        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                                      </svg>
-                                    )}
-                                    {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate" : "Find investors"}
-                                  </button>
+                                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
+                                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                                  </svg>
                                 )}
+                                {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate" : "Find investors"}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1101,122 +1101,122 @@ export default function MatchesPage() {
                       <div key={p.id} className="relative rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden hover:shadow-md transition-shadow">
                         <div className={isLocked ? "blur-sm select-none pointer-events-none" : ""}>
                           <button type="button" onClick={() => handleToggleExpand(p)} className="w-full text-left p-5">
-                          <div className="flex items-center gap-4">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-(--color-ink) truncate">{p.name}</p>
-                              <div className="mt-1 flex flex-wrap gap-1.5">
-                                {p.stage && <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">{p.stage}</span>}
-                                {p.sector && <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{p.sector}</span>}
-                                {fundraisingStage && <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">{fundraisingStage}</span>}
-                              </div>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-3">
-                              {existingScore ? (
-                                <>
-                                  <div className="text-right">
-                                    <p className={`text-xl font-bold ${scoreColorClass(existingScore.fit_score)}`}>{existingScore.fit_score}%</p>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
-                                  </div>
-                                  <PieScore score={existingScore.fit_score} />
-                                </>
-                              ) : (
-                                <span className="text-xs text-(--color-muted)">Not yet scored</span>
-                              )}
-                              <svg className={`h-4 w-4 text-(--color-muted) transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </div>
-                          </div>
-                          {existingScore?.summary && <p className="mt-2 text-xs text-(--color-primary) line-clamp-1">{existingScore.summary}</p>}
-                        </button>
-
-                        {isExpanded && (
-                          <div className="border-t border-(--color-hairline) bg-(--color-surface-soft) p-5 space-y-5">
-                            <div>
-                              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Project details</p>
-                              {p.description && <p className="text-sm text-(--color-body) leading-relaxed">{p.description}</p>}
-                              <div className="mt-3 flex flex-wrap gap-4">
-                                {p.stage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Stage</p><p className="text-sm font-medium text-(--color-ink)">{p.stage}</p></div>}
-                                {p.sector && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p><p className="text-sm font-medium text-(--color-ink)">{p.sector}</p></div>}
-                                {fundraisingStage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p><p className="text-sm font-medium text-(--color-ink)">{fundraisingStage}</p></div>}
-                              </div>
-                            </div>
-                            <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4">
-                              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Founder profile</p>
-                              {founderLoading ? (
-                                <div className="h-16 animate-pulse rounded-lg bg-(--color-surface-soft)" />
-                              ) : founder ? (
-                                <div className="space-y-3">
-                                  <div>
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedFounder(founder)}
-                                      className="font-semibold text-(--color-ink) hover:text-(--color-primary) hover:underline text-left transition-colors"
-                                    >
-                                      {founder.full_name || "Unnamed founder"}
-                                    </button>
-                                    {founder.business_name && <p className="text-xs text-(--color-muted)">{founder.business_name}</p>}
-                                    {founder.role_title && <p className="text-xs text-(--color-muted)">{founder.role_title}</p>}
-                                  </div>
-                                  <div className="flex flex-wrap gap-3 text-xs text-(--color-muted)">
-                                    {founder.city && <span>📍 {founder.city}</span>}
-                                    {founder.sector && <span>🏭 {founder.sector}</span>}
-                                    {founder.years_in_operation && <span>🕐 {founder.years_in_operation} in operation</span>}
-                                    {founder.employee_band && <span>👥 {founder.employee_band} employees</span>}
-                                  </div>
-                                  {founder.short_bio && <p className="text-sm text-(--color-body) leading-relaxed">{founder.short_bio}</p>}
+                            <div className="flex items-center gap-4">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-(--color-ink) truncate">{p.name}</p>
+                                <div className="mt-1 flex flex-wrap gap-1.5">
+                                  {p.stage && <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">{p.stage}</span>}
+                                  {p.sector && <span className="rounded-full bg-(--color-surface-soft) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{p.sector}</span>}
+                                  {fundraisingStage && <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">{fundraisingStage}</span>}
                                 </div>
-                              ) : (
-                                <p className="text-sm text-(--color-muted)">Founder details unavailable.</p>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <ConnectButton
-                                projectId={p.id}
-                                ownerId={p.owner_id}
-                                userId={user?.id ?? ""}
-                                matchStatusByPartnerId={matchStatusByPartnerId}
-                                introRequests={introRequests}
-                                onRequest={handleRequestIntro}
-                                size="md"
-                              />
-                              {existingScore && (
-                                <Link
-                                  href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${existingScore.fit_score}&project=${p.id}`}
-                                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors"
-                                >
-                                  View compatibility breakdown
-                                </Link>
-                              )}
-                              <Link href={`/projects/${p.id}/investor`} className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-canvas) transition-colors">
-                                View full project →
-                              </Link>
-                              <button
-                                type="button"
-                                disabled={isScoringThis}
-                                onClick={(e) => { e.stopPropagation(); void handleScoreProject(p.id); }}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-3 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
-                              >
-                                {isScoringThis ? (
+                              </div>
+                              <div className="flex shrink-0 items-center gap-3">
+                                {existingScore ? (
                                   <>
-                                    <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
-                                    Exoasia Intelligence is scoring…
+                                    <div className="text-right">
+                                      <p className={`text-xl font-bold ${scoreColorClass(existingScore.fit_score)}`}>{existingScore.fit_score}%</p>
+                                      <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Fit score</p>
+                                    </div>
+                                    <PieScore score={existingScore.fit_score} />
                                   </>
                                 ) : (
-                                  <>
-                                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
-                                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                                    </svg>
-                                    {existingScore ? "Rescore" : "Score this project"}
-                                  </>
+                                  <span className="text-xs text-(--color-muted)">Not yet scored</span>
                                 )}
-                              </button>
+                                <svg className={`h-4 w-4 text-(--color-muted) transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                            {existingScore?.summary && <p className="mt-2 text-xs text-(--color-primary) line-clamp-1">{existingScore.summary}</p>}
+                          </button>
+
+                          {isExpanded && (
+                            <div className="border-t border-(--color-hairline) bg-(--color-surface-soft) p-5 space-y-5">
+                              <div>
+                                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Project details</p>
+                                {p.description && <p className="text-sm text-(--color-body) leading-relaxed">{p.description}</p>}
+                                <div className="mt-3 flex flex-wrap gap-4">
+                                  {p.stage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Stage</p><p className="text-sm font-medium text-(--color-ink)">{p.stage}</p></div>}
+                                  {p.sector && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p><p className="text-sm font-medium text-(--color-ink)">{p.sector}</p></div>}
+                                  {fundraisingStage && <div><p className="text-[10px] font-bold uppercase text-(--color-muted)">Fundraising stage</p><p className="text-sm font-medium text-(--color-ink)">{fundraisingStage}</p></div>}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4">
+                                <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Founder profile</p>
+                                {founderLoading ? (
+                                  <div className="h-16 animate-pulse rounded-lg bg-(--color-surface-soft)" />
+                                ) : founder ? (
+                                  <div className="space-y-3">
+                                    <div>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedFounder(founder)}
+                                        className="font-semibold text-(--color-ink) hover:text-(--color-primary) hover:underline text-left transition-colors"
+                                      >
+                                        {founder.full_name || "Unnamed founder"}
+                                      </button>
+                                      {founder.business_name && <p className="text-xs text-(--color-muted)">{founder.business_name}</p>}
+                                      {founder.role_title && <p className="text-xs text-(--color-muted)">{founder.role_title}</p>}
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 text-xs text-(--color-muted)">
+                                      {founder.city && <span>📍 {founder.city}</span>}
+                                      {founder.sector && <span>🏭 {founder.sector}</span>}
+                                      {founder.years_in_operation && <span>🕐 {founder.years_in_operation} in operation</span>}
+                                      {founder.employee_band && <span>👥 {founder.employee_band} employees</span>}
+                                    </div>
+                                    {founder.short_bio && <p className="text-sm text-(--color-body) leading-relaxed">{founder.short_bio}</p>}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-(--color-muted)">Founder details unavailable.</p>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <ConnectButton
+                                  projectId={p.id}
+                                  ownerId={p.owner_id}
+                                  userId={user?.id ?? ""}
+                                  matchStatusByPartnerId={matchStatusByPartnerId}
+                                  introRequests={introRequests}
+                                  onRequest={handleRequestIntro}
+                                  size="md"
+                                />
+                                {existingScore && (
+                                  <Link
+                                    href={`/matches/breakdown?a=${user?.id ?? ""}&b=${p.owner_id}&score=${existingScore.fit_score}&project=${p.id}`}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-500 hover:bg-indigo-500/25 transition-colors"
+                                  >
+                                    View compatibility breakdown
+                                  </Link>
+                                )}
+                                <Link href={`/projects/${p.id}/investor`} className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-canvas) transition-colors">
+                                  View full project →
+                                </Link>
+                                <button
+                                  type="button"
+                                  disabled={isScoringThis}
+                                  onClick={(e) => { e.stopPropagation(); void handleScoreProject(p.id); }}
+                                  className="inline-flex items-center gap-1.5 rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/5 px-3 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                                >
+                                  {isScoringThis ? (
+                                    <>
+                                      <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                      </svg>
+                                      Exoasia Intelligence is scoring…
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
+                                        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                                      </svg>
+                                      {existingScore ? "Rescore" : "Score this project"}
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                         {isLocked && (
                           <div className="absolute inset-0 flex items-center justify-center bg-(--color-canvas)/5 pointer-events-auto">
@@ -1541,7 +1541,7 @@ function FounderProfileModal({
               className="inline-flex items-center gap-2 text-sm text-(--color-primary) hover:underline"
             >
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
               </svg>
               LinkedIn profile
             </a>
@@ -1633,7 +1633,7 @@ function MatchList({
                 </div>
               ) : null}
             </div>
-            
+
             {m.is_locked ? (
               <div className="absolute inset-0 flex items-center justify-end px-4 bg-gradient-to-r from-transparent via-(--color-canvas)/80 to-(--color-canvas)">
                 <button
@@ -1705,10 +1705,10 @@ function CollabInviteCard({
     : `/matches/breakdown?a=${invite.partner_id}&b=${userId}`;
 
   const roleConfig =
-    invite.partner_role === "investor"         ? { label: "Investor",          style: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30" }
-    : invite.partner_role === "startup"        ? { label: "Founder",           style: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" }
-    : invite.partner_role === "ecosystem_partner" ? { label: "Ecosystem Partner", style: "bg-violet-500/15 text-violet-500 border-violet-500/30" }
-    : null;
+    invite.partner_role === "investor" ? { label: "Investor", style: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30" }
+      : invite.partner_role === "startup" ? { label: "Founder", style: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" }
+        : invite.partner_role === "ecosystem_partner" ? { label: "Ecosystem Partner", style: "bg-violet-500/15 text-violet-500 border-violet-500/30" }
+          : null;
 
   return (
     <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden">
@@ -1829,7 +1829,7 @@ function CollabInviteCard({
               className="inline-flex items-center gap-1.5 text-xs font-medium text-(--color-primary) hover:underline"
             >
               <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
               </svg>
               LinkedIn
             </a>

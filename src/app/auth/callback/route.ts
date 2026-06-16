@@ -96,6 +96,13 @@ export async function GET(request: Request) {
     }
   }
 
+  // Force users without a password (e.g. Google OAuth) to set one
+  const hasEmailProvider = user.app_metadata?.providers?.includes("email");
+  if (!hasEmailProvider) {
+    const finalNext = needsOnboarding ? "/onboarding" : next;
+    return NextResponse.redirect(`${origin}/reset-password?next=${encodeURIComponent(finalNext)}`);
+  }
+
   if (needsOnboarding) {
     return NextResponse.redirect(`${origin}/onboarding`);
   }

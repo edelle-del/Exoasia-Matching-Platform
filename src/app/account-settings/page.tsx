@@ -15,7 +15,7 @@ export default function AccountSettingsPage() {
   const [phoneError, setPhoneError] = useState("");
   const [phoneSuccess, setPhoneSuccess] = useState("");
 
-  const [passwordEmail, setPasswordEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
@@ -35,7 +35,6 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     if (!user?.id) return;
-    if (user.email) setPasswordEmail(user.email);
     supabase
       .from("profiles")
       .select("phone_whatsapp")
@@ -69,25 +68,23 @@ export default function AccountSettingsPage() {
     setPhoneSuccess("Phone number updated.");
   };
 
-  const handleSendResetLink = async (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
     setPasswordSuccess("");
-    if (!passwordEmail.trim()) {
-      setPasswordError("Please enter your email address.");
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters.");
       return;
     }
     setPasswordLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      passwordEmail.trim().toLowerCase(),
-      { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` },
-    );
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     setPasswordLoading(false);
     if (error) {
       setPasswordError(error.message);
       return;
     }
-    setPasswordSuccess("Reset link sent! Check your email.");
+    setNewPassword("");
+    setPasswordSuccess("Password updated successfully.");
   };
 
   const handleBugReport = async (e: React.FormEvent) => {
@@ -173,23 +170,24 @@ export default function AccountSettingsPage() {
         <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
           <h2 className="text-base font-semibold text-(--color-ink)">Change password</h2>
           <p className="mt-1 text-sm text-(--color-body)">
-            Confirm your email address and we&apos;ll send you a reset link.
+            Set a new password for your account. If you signed up with Google, this will allow you to sign in with your email and password as well.
           </p>
-          <form onSubmit={handleSendResetLink} className="mt-4 space-y-3">
+          <form onSubmit={handleUpdatePassword} className="mt-4 flex gap-2">
             <input
-              type="email"
-              className="gn-input"
-              placeholder="Your email address"
-              value={passwordEmail}
-              onChange={(e) => { setPasswordEmail(e.target.value); setPasswordError(""); setPasswordSuccess(""); }}
+              type="password"
+              className="gn-input flex-1"
+              placeholder="New password (min 8 characters)"
+              value={newPassword}
+              onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); setPasswordSuccess(""); }}
               required
+              minLength={8}
             />
             <button
               type="submit"
               disabled={passwordLoading}
-              className="gn-btn-primary disabled:opacity-50"
+              className="gn-btn-primary whitespace-nowrap disabled:opacity-50"
             >
-              {passwordLoading ? "Sending…" : "Send reset link"}
+              {passwordLoading ? "Updating..." : "Update"}
             </button>
           </form>
           {passwordError && <p className="mt-2 text-xs text-red-600">{passwordError}</p>}

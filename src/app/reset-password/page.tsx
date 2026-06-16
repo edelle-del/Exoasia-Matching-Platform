@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") ?? "/account-settings";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,7 +26,7 @@ export default function ResetPasswordPage() {
     setSubmitting(false);
     if (updateError) { setError(updateError.message); return; }
     setSuccess(true);
-    setTimeout(() => router.push("/account-settings"), 2500);
+    setTimeout(() => router.push(nextPath), 2500);
   };
 
   if (success) {
@@ -37,7 +39,7 @@ export default function ResetPasswordPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-700 text-(--color-ink)">Password updated</h1>
-          <p className="text-sm text-(--color-body)">Redirecting to account settings…</p>
+          <p className="text-sm text-(--color-body)">Redirecting…</p>
         </div>
       </div>
     );
@@ -47,8 +49,8 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-(--color-canvas) px-4 sm:px-6 py-20">
       <div className="mx-auto max-w-[480px] space-y-6">
         <div>
-          <h1 className="text-3xl font-700 text-(--color-ink)">Set new password</h1>
-          <p className="mt-2 text-sm text-(--color-body)">Choose a strong password for your account.</p>
+          <h1 className="text-3xl font-700 text-(--color-ink)">Set a password</h1>
+          <p className="mt-2 text-sm text-(--color-body)">Please set a strong password to secure your account and enable email login.</p>
         </div>
         <form onSubmit={handleSetPassword} className="space-y-4">
           {error && (
@@ -80,5 +82,13 @@ export default function ResetPasswordPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-(--color-canvas)" />}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

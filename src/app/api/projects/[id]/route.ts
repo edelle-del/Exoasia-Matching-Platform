@@ -47,11 +47,12 @@ export async function GET(
       .eq("id", data.owner_id)
       .single();
 
-    if (ownerProfile) {
-      data.owner_profile = ownerProfile;
-    }
+    const responseData = {
+      ...data,
+      ...(ownerProfile ? { owner_profile: ownerProfile } : {}),
+    };
 
-    return NextResponse.json({ project: data });
+    return NextResponse.json({ project: responseData });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

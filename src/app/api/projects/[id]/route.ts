@@ -39,6 +39,18 @@ export async function GET(
 
     if (error || !data)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    // Fetch the owner's profile to get their real name
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("full_name, business_name, email")
+      .eq("id", data.owner_id)
+      .single();
+
+    if (ownerProfile) {
+      data.owner_profile = ownerProfile;
+    }
+
     return NextResponse.json({ project: data });
   } catch (err) {
     return NextResponse.json(

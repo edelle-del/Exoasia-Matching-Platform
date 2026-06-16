@@ -125,32 +125,12 @@ export default function DashboardPage() {
       } else {
         const role = memberRole ?? "";
         
-        // Parallelize all requests
-        const promises: Promise<any>[] = [
+        // Parallelize initial requests
+        const [next, stats, dealCards] = await Promise.all([
           fetchDashboardSummary(supabase, user.id),
           fetchProjectPipelineStats(supabase, user.id, role),
           fetchDealCards(supabase, user.id),
-        ];
-
-        // Only fetch completeness if applicable
-        if (["startup", "founder", "investor", "ecosystem_partner"].includes(role)) {
-          promises.push(
-            fetch("/api/startup/completeness").then((r) => (r.ok ? r.json() : {}))
-          );
-        } else {
-          promises.push(Promise.resolve({}));
-        }
-
-        // Only fetch portfolio if applicable
-        if (role === "ecosystem_partner") {
-          promises.push(
-            fetch("/api/ecosystem/portfolio").then((r) => (r.ok ? r.json() : {}))
-          );
-        } else {
-          promises.push(Promise.resolve({}));
-        }
-
-        const [next, stats, dealCards, cData, pData] = await Promise.all(promises);
+        ]);
         if (!active) return;
 
         setSummary(next);
@@ -172,13 +152,34 @@ export default function DashboardPage() {
         }
         setDealStageCounts(counts);
 
-        setMissingCount(cData.missingCount ?? 0);
-        if (typeof cData.completedCount === "number" && typeof cData.totalCount === "number" && cData.totalCount > 0) {
-          setCompletenessPercent(Math.round((cData.completedCount / cData.totalCount) * 100));
+        // Fetch completeness and portfolio sequentially since they depend on the fresh profile role
+        const freshRole = next.profile?.member_role ?? "";
+        
+        if (["startup", "investor", "ecosystem_partner"].includes(freshRole)) {
+          try {
+            const cRes = await fetch("/api/startup/completeness");
+            if (active && cRes.ok) {
+              const cData = await cRes.json();
+              setMissingCount(cData.missingCount ?? 0);
+              if (typeof cData.completedCount === "number" && typeof cData.totalCount === "number" && cData.totalCount > 0) {
+                setCompletenessPercent(Math.round((cData.completedCount / cData.totalCount) * 100));
+              }
+            }
+          } catch (e) {
+            console.error(e);
+          }
         }
 
-        if (role === "ecosystem_partner") {
-          setPartnerStats(pData.stats ?? null);
+        if (freshRole === "ecosystem_partner") {
+          try {
+            const pRes = await fetch("/api/ecosystem/portfolio");
+            if (active && pRes.ok) {
+              const pData = await pRes.json();
+              setPartnerStats(pData.stats ?? null);
+            }
+          } catch (e) {
+            console.error(e);
+          }
         }
       }
       setIsLoading(false);
@@ -362,8 +363,17 @@ export default function DashboardPage() {
       : summary.profile?.member_role === "startup"
         ? "Founder Profile"
         : summary.profile?.member_role === "ecosystem_partner"
-          ? "Partner Profile"
+          ? "Ecosystem Profile"
           : "Member Portal";
+
+  const portalColorClass =
+    summary.profile?.member_role === "investor"
+      ? "bg-yellow-500/10 text-yellow-600"
+      : summary.profile?.member_role === "startup"
+        ? "bg-orange-500/10 text-orange-600"
+        : summary.profile?.member_role === "ecosystem_partner"
+          ? "bg-purple-500/10 text-purple-600"
+          : "bg-(--color-primary)/10 text-(--color-primary)";
 
   const { percent: profilePercent, nextStep: profileNextStep } =
     computeProfileStrength(summary.profile);
@@ -378,7 +388,7 @@ export default function DashboardPage() {
         {/* Row 0: Greeting (profile strength inline next to name) */}
         <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-5 sm:p-8">
           <div className="min-w-0">
-            <span className="inline-flex items-center rounded-full bg-(--color-primary)/10 px-2.5 py-0.5 text-xs font-semibold text-(--color-primary)">
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${portalColorClass}`}>
               {isLoading ? "Member Portal" : portalLabel}
             </span>
             <div className="mt-3 flex flex-wrap items-center gap-3">

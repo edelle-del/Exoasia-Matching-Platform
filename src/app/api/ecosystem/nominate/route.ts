@@ -103,17 +103,48 @@ export async function POST(request: Request) {
 
         const partnerName = partnerProfile?.business_name || partnerProfile?.full_name || "An ecosystem partner";
 
-        await admin.auth.admin.inviteUserByEmail(email.toLowerCase().trim(), {
-          redirectTo: acceptUrl,
-          data: {
-            account_status: "invited",
-            invite_inviter_name: partnerName,
-            invite_type: "ecosystem_partner",
-            ...(message ? { invite_message: message.trim() } : {}),
-          },
-        });
-      } catch {
-        // Non-fatal: invitee may already have an account or email service unavailable
+          // Attempt to generate an invite link (works if user does not exist)
+          let linkRes = await admin.auth.admin.generateLink({
+            type: "invite",
+            email: email.toLowerCase().trim(),
+            options: {
+              redirectTo: acceptUrl,
+              data: {
+                account_status: "invited",
+                invite_inviter_name: partnerName,
+                invite_type: "ecosystem_partner",
+                ...(message ? { invite_message: message.trim() } : {}),
+              },
+            },
+          });
+
+          // If the user already exists, fallback to magic link
+          if (linkRes.error?.message?.includes("already registered")) {
+             linkRes = await admin.auth.admin.generateLink({
+               type: "magiclink",
+               email: email.toLowerCase().trim(),
+               options: { redirectTo: acceptUrl },
+             });
+          }
+
+          if (linkRes.error) {
+             throw linkRes.error;
+          }
+
+          const actionLink = linkRes.data?.properties?.action_link;
+          if (actionLink) {
+            const { sendInviteEmailBrevo } = await import("@/lib/email/brevo");
+            await sendInviteEmailBrevo(
+              email.toLowerCase().trim(),
+              actionLink,
+              partnerName,
+              undefined,
+              true, // isEcosystem
+              message?.trim()
+            );
+          }
+      } catch (inviteErr) {
+        console.error("Failed to generate link or send ecosystem invite email:", inviteErr);
       }
     }
 

@@ -283,6 +283,7 @@ function NewMemberStep({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -301,8 +302,15 @@ function NewMemberStep({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) { setError((json as { error?: string }).error ?? "Failed to send invite. Please try again."); setBusy(false); return; }
+      
       setSent(true);
-      setTimeout(() => { onSuccess(); }, 1800);
+      
+      // If we got an actionLink back, display it so they can copy it manually
+      if (json.actionLink) {
+        setGeneratedLink(json.actionLink);
+      } else {
+        setTimeout(() => { onSuccess(); }, 1800);
+      }
     } catch {
       setError("Network error. Please try again.");
       setBusy(false);
@@ -319,6 +327,34 @@ function NewMemberStep({
         </div>
         <p className="text-sm font-semibold text-[#F4F4FF]">Invite sent!</p>
         <p className="text-xs text-[#8B8BA7]">{email} will receive an invite link to join as cofounder.</p>
+        
+        {generatedLink && (
+          <div className="mt-4 w-full">
+            <p className="text-xs text-rose-400 font-medium mb-2">If email delivery fails, you can manually send them this secure link:</p>
+            <div className="flex items-center gap-2">
+              <input 
+                type="text" 
+                readOnly 
+                value={generatedLink} 
+                className="w-full rounded-lg border border-[#2A2A3E] bg-[#1A1A26] px-3 py-2 text-xs text-[#8B8BA7] outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => { navigator.clipboard.writeText(generatedLink); alert("Copied!"); }}
+                className="rounded-lg bg-[#2A2A3E] px-3 py-2 text-xs font-semibold text-[#F4F4FF] hover:bg-violet-600 transition"
+              >
+                Copy
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={onSuccess}
+              className="mt-6 w-full rounded-xl border border-[#2A2A3E] px-4 py-2.5 text-sm font-semibold text-[#8B8BA7] transition hover:bg-[#1A1A26] hover:text-[#F4F4FF]"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     );
   }

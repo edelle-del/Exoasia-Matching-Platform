@@ -1,5 +1,10 @@
 type JwtPayload = {
   user_role?: string;
+  app_metadata?: {
+    provider?: string;
+    providers?: string[];
+  };
+  amr?: Array<{ method: string; timestamp: number }>;
 };
 
 function decodeBase64Url(value: string) {

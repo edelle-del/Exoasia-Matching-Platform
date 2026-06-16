@@ -68,6 +68,7 @@ export default function AdminUsersPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
+  const [manualCopyLink, setManualCopyLink] = useState<string | null>(null);
 
   // Debounce Search
   useEffect(() => {
@@ -140,10 +141,14 @@ export default function AdminUsersPage() {
       if (!res.ok) {
         setInviteError(data.error ?? "Failed to invite admin.");
       } else {
-        setToast(`Invite sent to ${inviteEmail}.`);
-        setTimeout(() => setToast(null), 3500);
-        setShowInviteAdmin(false);
-        setInviteEmail("");
+        if (data.actionLink) {
+          setManualCopyLink(data.actionLink);
+        } else {
+          setToast(`Invite sent to ${inviteEmail}.`);
+          setTimeout(() => setToast(null), 3500);
+          setShowInviteAdmin(false);
+          setInviteEmail("");
+        }
         void fetchUsers();
       }
     } catch {
@@ -219,36 +224,76 @@ export default function AdminUsersPage() {
                 Send an invite to a new platform administrator. They will receive an email to set their password.
               </p>
             </div>
-            <form onSubmit={handleInviteAdmin} className="flex flex-col gap-4">
-              <input
-                type="email"
-                placeholder="admin@exoasia.org"
-                value={inviteEmail}
-                onChange={(e) => { setInviteEmail(e.target.value); setInviteError(""); }}
-                className="w-full rounded-[10px] border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) focus:border-(--color-primary) outline-none transition-colors"
-                required
-              />
-              {inviteError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 border border-red-200">{inviteError}</p>
-              )}
-              <div className="flex gap-3">
+            {manualCopyLink ? (
+              <div className="flex flex-col gap-4">
+                <div className="rounded-lg bg-amber-50 p-4 border border-amber-200">
+                  <p className="text-sm text-amber-800 font-medium mb-2">
+                    Invite processed! If the email is delayed, you can securely copy and share this link directly with the administrator:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={manualCopyLink}
+                      className="w-full rounded bg-white px-2 py-1.5 text-xs text-amber-900 border border-amber-300 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(manualCopyLink);
+                        setToast("Link copied to clipboard!");
+                        setTimeout(() => setToast(null), 3500);
+                      }}
+                      className="shrink-0 rounded bg-amber-200 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-300 transition-colors"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setShowInviteAdmin(false)}
-                  disabled={inviteLoading}
-                  className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-hairline) transition-colors disabled:opacity-40"
+                  onClick={() => {
+                    setShowInviteAdmin(false);
+                    setManualCopyLink(null);
+                    setInviteEmail("");
+                  }}
+                  className="w-full rounded-xl bg-(--color-ink) py-2.5 text-sm font-semibold text-(--color-canvas) hover:opacity-90 transition-opacity"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={inviteLoading}
-                  className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {inviteLoading ? "Sending…" : "Send Invite"}
+                  Done
                 </button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleInviteAdmin} className="flex flex-col gap-4">
+                <input
+                  type="email"
+                  placeholder="admin@exoasia.org"
+                  value={inviteEmail}
+                  onChange={(e) => { setInviteEmail(e.target.value); setInviteError(""); }}
+                  className="w-full rounded-[10px] border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) focus:border-(--color-primary) outline-none transition-colors"
+                  required
+                />
+                {inviteError && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 border border-red-200">{inviteError}</p>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteAdmin(false)}
+                    disabled={inviteLoading}
+                    className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-hairline) transition-colors disabled:opacity-40"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={inviteLoading}
+                    className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {inviteLoading ? "Sending…" : "Send Invite"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -468,7 +513,7 @@ export default function AdminUsersPage() {
               ← Back to Dashboard
             </Link>
             <button
-              onClick={() => { setShowInviteAdmin(true); setInviteError(""); setInviteEmail(""); }}
+              onClick={() => { setShowInviteAdmin(true); setInviteError(""); setInviteEmail(""); setManualCopyLink(null); }}
               className="text-sm font-semibold text-white bg-(--color-primary) px-4 py-2 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
             >
               + Invite Admin

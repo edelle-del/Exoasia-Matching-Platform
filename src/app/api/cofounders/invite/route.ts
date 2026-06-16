@@ -115,18 +115,63 @@ export async function POST(request: Request) {
           inviterProfile?.full_name || inviterProfile?.business_name || "A founder";
         const projectName = (projectData as { name?: string } | null)?.name || null;
 
-        await admin.auth.admin.inviteUserByEmail(uid_value.trim(), {
-          redirectTo: acceptUrl,
-          data: {
-            account_status: "invited",
-            invite_inviter_name: inviterName,
-            ...(projectName ? { invite_project_name: projectName } : {}),
-            ...(client_context?.location ? { invite_location: client_context.location } : {}),
-            ...(client_context?.browser  ? { invite_browser:  client_context.browser  } : {}),
-          },
-        });
-      } catch {
-        // Non-fatal: user may already exist in auth.
+          console.log("Generating link for:", uid_value.trim());
+          let linkRes = await admin.auth.admin.generateLink({
+            type: "invite",
+            email: uid_value.trim(),
+            options: {
+              redirectTo: acceptUrl,
+              data: {
+                account_status: "invited",
+                invite_inviter_name: inviterName,
+                ...(projectName ? { invite_project_name: projectName } : {}),
+                ...(client_context?.location ? { invite_location: client_context.location } : {}),
+                ...(client_context?.browser  ? { invite_browser:  client_context.browser  } : {}),
+              },
+            },
+          });
+
+          console.log("Generate link response error (if any):", linkRes.error?.message);
+
+          // If the user already exists, generateLink for invite throws an error.
+          // We can fallback to generating a magiclink to log them in and redirect them.
+          if (linkRes.error?.message?.includes("already registered")) {
+             console.log("User exists, falling back to magic link...");
+             linkRes = await admin.auth.admin.generateLink({
+               type: "magiclink",
+               email: uid_value.trim(),
+               options: { redirectTo: acceptUrl },
+             });
+             console.log("Magic link response error (if any):", linkRes.error?.message);
+          }
+
+          if (linkRes.error) {
+             throw linkRes.error;
+          }
+
+          const actionLink = linkRes.data?.properties?.action_link;
+          console.log("Action link generated:", actionLink ? "YES" : "NO");
+          
+          if (actionLink) {
+            console.log("Attempting to send Brevo email to:", uid_value.trim());
+            const { sendInviteEmailBrevo } = await import("@/lib/email/brevo");
+            await sendInviteEmailBrevo(
+              uid_value.trim(),
+              actionLink,
+              inviterName,
+              projectName,
+              false
+            );
+            console.log("Brevo email sent successfully!");
+          } else {
+            console.log("No action link returned from Supabase!");
+          }
+          
+          return NextResponse.json({ invite: data, actionLink }, { status: 201 });
+      } catch (inviteErr) {
+        console.error("Failed to generate link or send invite email:", inviteErr);
+        // We still return 201 because the invite was technically created in our DB
+        return NextResponse.json({ invite: data }, { status: 201 });
       }
     }
 

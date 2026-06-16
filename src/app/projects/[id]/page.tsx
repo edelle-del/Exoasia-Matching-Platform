@@ -1122,49 +1122,7 @@ export default function ProjectDetailPage({
         </div>
       )}
 
-      {profileUnlockConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-7 shadow-xl flex flex-col gap-5">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
-                Unlock Profile
-              </p>
-              <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
-                View full investor profile
-              </h2>
-              <p className="mt-2 text-sm text-(--color-body)">
-                {hasActivePlan
-                  ? "Included free with your subscription. You get the full profile — thesis, portfolio, contact signals — plus the compatibility breakdown. Once unlocked, it's permanent."
-                  : <>This will deduct <span className="font-semibold text-(--color-ink)">1 credit</span> from your balance. You get the full profile — thesis, portfolio, contact signals — plus the compatibility breakdown. Once unlocked, it&apos;s permanent.</>
-                }
-              </p>
-            </div>
-            {profileUnlockError && (
-              <p className="rounded-lg bg-red-50 px-4 py-2.5 text-xs text-red-700">
-                {profileUnlockError}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => { setProfileUnlockConfirm(null); setProfileUnlockError(""); }}
-                disabled={profileUnlocking}
-                className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors disabled:opacity-40"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleUnlockProfile()}
-                disabled={profileUnlocking}
-                className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {profileUnlocking ? "Unlocking…" : hasActivePlan ? "View Profile — Free" : "Unlock for free (beta)"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {redoConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
@@ -2255,38 +2213,77 @@ export default function ProjectDetailPage({
               )}
 
               {/* ── Team section ── */}
-              {/* Owner: full management (accepted + pending + invite) */}
-              {isOwner && (
+              {/* Team: visible to all team members, management only for owner */}
+              {isTeamMember && (
                 <div className="rounded-xl border border-(--color-hairline) p-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-(--color-ink)">Team</h2>
                     <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setInviteModalOpen(true)}
-                        className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-violet-700"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Invite Co-founder
-                      </button>
+                      {isOwner && (
+                        <button
+                          type="button"
+                          onClick={() => setInviteModalOpen(true)}
+                          className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-violet-700"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                          </svg>
+                          Invite Co-founder
+                        </button>
+                      )}
                       <span className="text-xs text-(--color-muted)">
-                        {cofounders.length} accepted · {pendingInvites.length} pending
+                        1 owner · {cofounders.length} accepted {isOwner && pendingInvites.length > 0 && `· ${pendingInvites.length} pending`}
                       </span>
                     </div>
                   </div>
 
+                  <ul className="space-y-2">
+                    {/* Main Founder / Owner */}
+                    <li className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-xs font-bold text-emerald-600">
+                          {(() => {
+                            const p: any = project;
+                            let name = p.owner_profile?.full_name || p.owner_profile?.business_name;
+                            if (!name) {
+                              const reportProfile = (p.venture_readiness_report as any)?.profile;
+                              name = reportProfile?.first_name || reportProfile?.last_name ? `${reportProfile.first_name || ""} ${reportProfile.last_name || ""}`.trim() : "Project Owner";
+                            }
+                            return name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+                          })()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-(--color-ink) truncate">
+                            {(() => {
+                              const p: any = project;
+                              let name = p.owner_profile?.full_name || p.owner_profile?.business_name;
+                              if (!name) {
+                                const reportProfile = (p.venture_readiness_report as any)?.profile;
+                                name = reportProfile?.first_name || reportProfile?.last_name ? `${reportProfile.first_name || ""} ${reportProfile.last_name || ""}`.trim() : "Project Owner";
+                              }
+                              return name;
+                            })()}
+                          </p>
+                          <p className="text-xs text-(--color-muted) truncate">Project Owner</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                          Owner
+                        </span>
+                      </div>
+                    </li>
+
                   {/* Accepted cofounders */}
                   {cofounders.length > 0 && (
-                    <ul className="space-y-2">
+                    <>
                       {cofounders.map((c) => {
                         const name = c.profile?.full_name || c.profile?.business_name || "Team member";
                         const initials = name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
                         return (
                           <li key={c.id} className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-xs font-bold text-violet-300">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-xs font-bold text-violet-600">
                                 {initials}
                               </div>
                               <div className="min-w-0">
@@ -2297,28 +2294,31 @@ export default function ProjectDetailPage({
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
-                                Accepted
+                              <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-600">
+                                Co-founder
                               </span>
-                              <button
-                                type="button"
-                                disabled={removingLinkId === c.id}
-                                onClick={() => void handleRemoveCofounder(c.id)}
-                                className="rounded-lg px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/10 disabled:opacity-50 transition"
-                              >
-                                {removingLinkId === c.id ? "…" : "Remove"}
-                              </button>
+                              {isOwner && (
+                                <button
+                                  type="button"
+                                  disabled={removingLinkId === c.id}
+                                  onClick={() => void handleRemoveCofounder(c.id)}
+                                  className="rounded-lg px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/10 disabled:opacity-50 transition"
+                                >
+                                  {removingLinkId === c.id ? "…" : "Remove"}
+                                </button>
+                              )}
                             </div>
                           </li>
                         );
                       })}
-                    </ul>
+                    </>
                   )}
+                  </ul>
 
-                  {/* Pending invites */}
-                  {pendingInvites.length > 0 && (
+                  {/* Pending invites (only owner sees this) */}
+                  {isOwner && pendingInvites.length > 0 && (
                     <>
-                      {cofounders.length > 0 && <hr className="border-t border-(--color-hairline)" />}
+                      <hr className="border-t border-(--color-hairline) my-3" />
                       <ul className="space-y-2">
                         {pendingInvites.map((inv) => (
                           <li key={inv.id} className="flex items-center justify-between gap-3">
@@ -2332,7 +2332,7 @@ export default function ProjectDetailPage({
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
+                              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
                                 Pending
                               </span>
                               <button
@@ -2349,11 +2349,6 @@ export default function ProjectDetailPage({
                       </ul>
                     </>
                   )}
-
-                  {cofounders.length === 0 && pendingInvites.length === 0 && (
-                    <p className="text-xs text-(--color-muted) text-center py-2">No co-founders yet.</p>
-                  )}
-
                 </div>
               )}
 
@@ -2480,10 +2475,9 @@ export default function ProjectDetailPage({
             <div className="space-y-3">
               {investorMatches.map((m, idx) => {
                 // Locked = beyond free limit AND not a subscriber AND not individually unlocked via credit
-                const locked = idx >= FREE_TIER_MATCH_LIMIT && !hasActivePlan && !unlockedProfiles.has(m.investor_profile_id);
-                const profileUnlocked = hasActivePlan || unlockedProfiles.has(m.investor_profile_id);
-                const isExpanded =
-                  !locked && profileUnlocked && expandedInvestorId === m.investor_profile_id;
+                const locked = false;
+                const profileUnlocked = true;
+                const isExpanded = expandedInvestorId === m.investor_profile_id;
 
                 let investorType: string | null = null;
                 let targetStages: string[] = [];
@@ -2509,11 +2503,6 @@ export default function ProjectDetailPage({
                         type="button"
                         disabled={locked}
                         onClick={() => {
-                          if (locked) return;
-                          if (!profileUnlocked) {
-                            setProfileUnlockConfirm(m.investor_profile_id);
-                            return;
-                          }
                           setExpandedInvestorId(
                             isExpanded ? null : m.investor_profile_id,
                           );
@@ -2599,13 +2588,8 @@ export default function ProjectDetailPage({
                           </div>
                         </div>
                         <p className="mt-2 text-xs font-medium text-(--color-primary)">
-                          {locked ? "Match limit reached" : m.summary}
+                          {m.summary}
                         </p>
-                        {!locked && !profileUnlocked && (
-                          <p className="mt-1 text-[11px] text-(--color-muted)">
-                            🔒 <span className="font-semibold text-(--color-primary)">Unlock full profile + breakdown for free (beta)</span> — thesis, portfolio, compatibility
-                          </p>
-                        )}
                       </button>
 
                       {/* Expanded investor profile — investor-page style */}

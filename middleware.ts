@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { getRoleFromAccessToken } from "@/lib/auth/jwt";
+import { getRoleFromAccessToken, decodeJwtPayload } from "@/lib/auth/jwt";
 import {
   canAccessPath,
   getHomePathForRole,
@@ -73,6 +73,26 @@ export async function middleware(request: NextRequest) {
       const redirectUrl = new URL("/not-authorized", origin);
       redirectUrl.search = request.nextUrl.search;
       return NextResponse.redirect(redirectUrl);
+    }
+
+    // Guardrail: Block authenticated returning users (Google OAuth) from /reset-password
+    if (pathname === "/reset-password" || pathname === "/setup-password") {
+      const payload = decodeJwtPayload(session?.access_token || "");
+      const isGoogleOAuth = payload?.app_metadata?.provider === "google" || user.app_metadata?.providers?.includes("google");
+      const isRecovery = payload?.amr?.some(a => a.method === "recovery");
+      
+      if (isGoogleOAuth && !isRecovery) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.full_name) {
+          const redirectUrl = new URL(getHomePathForRole(role), origin);
+          return NextResponse.redirect(redirectUrl);
+        }
+      }
     }
 
     // Block members from accessing the app until onboarding is complete

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getRoleFromAccessToken } from "@/lib/auth/jwt";
 import { CreateAnnouncementForm } from "./_components/CreateAnnouncementForm";
+import { AnnouncementCard } from "./_components/AnnouncementCard";
 
 export default async function AnnouncementsPage() {
   const supabase = await createClient();
@@ -15,11 +16,15 @@ export default async function AnnouncementsPage() {
   const role = getRoleFromAccessToken(session?.access_token);
   const canCreate = role === "admin" || role === "advisor";
 
-  // Fetch announcements
-  const { data: announcements } = await supabase
+  // Fetch announcements with their likes
+  const { data: announcements, error } = await supabase
     .from("announcements")
-    .select("*")
+    .select("*, announcement_likes(user_id)")
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching announcements:", error);
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-8 px-4 sm:px-6 py-10">
@@ -37,24 +42,22 @@ export default async function AnnouncementsPage() {
             <p className="text-sm font-semibold text-(--color-ink)">No announcements yet</p>
           </div>
         ) : (
-          announcements.map((announcement) => (
-            <div key={announcement.id} className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
-              {announcement.is_featured && (
-                <span className="mb-3 inline-block rounded-full bg-(--color-primary)/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-(--color-primary)">
-                  Featured
-                </span>
-              )}
-              <h2 className="text-xl font-bold text-(--color-ink)">{announcement.title}</h2>
-              <p className="mt-1 text-xs text-(--color-muted)">
-                {new Date(announcement.created_at).toLocaleDateString(undefined, {
-                  year: 'numeric', month: 'long', day: 'numeric'
-                })}
-              </p>
-              <div className="mt-4 text-sm text-(--color-body) whitespace-pre-wrap leading-relaxed">
-                {announcement.content}
-              </div>
-            </div>
-          ))
+          announcements.map((announcement) => {
+            const likes = announcement.announcement_likes || [];
+            const initialLikes = likes.length;
+            const initialLiked = likes.some((like: any) => like.user_id === user.id);
+
+            return (
+              <AnnouncementCard
+                key={announcement.id}
+                announcement={announcement}
+                currentUserId={user.id}
+                canDelete={canCreate}
+                initialLikes={initialLikes}
+                initialLiked={initialLiked}
+              />
+            );
+          })
         )}
       </div>
     </div>

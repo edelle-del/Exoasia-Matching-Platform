@@ -15,7 +15,6 @@ export default function AccountSettingsPage() {
   const [phoneError, setPhoneError] = useState("");
   const [phoneSuccess, setPhoneSuccess] = useState("");
 
-  const [newPassword, setNewPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
@@ -68,23 +67,20 @@ export default function AccountSettingsPage() {
     setPhoneSuccess("Phone number updated.");
   };
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendResetEmail = async () => {
+    if (!user?.email) return;
     setPasswordError("");
     setPasswordSuccess("");
-    if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters.");
-      return;
-    }
     setPasswordLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
     setPasswordLoading(false);
     if (error) {
       setPasswordError(error.message);
-      return;
+    } else {
+      setPasswordSuccess("Password reset email sent. Please check your inbox.");
     }
-    setNewPassword("");
-    setPasswordSuccess("Password updated successfully.");
   };
 
   const handleBugReport = async (e: React.FormEvent) => {
@@ -168,28 +164,18 @@ export default function AccountSettingsPage() {
 
         {/* Password */}
         <section className="rounded-[16px] border border-(--color-hairline) bg-(--color-canvas) p-6">
-          <h2 className="text-base font-semibold text-(--color-ink)">Change password</h2>
+          <h2 className="text-base font-semibold text-(--color-ink)">Reset password</h2>
           <p className="mt-1 text-sm text-(--color-body)">
-            Set a new password for your account. If you signed up with Google, this will allow you to sign in with your email and password as well.
+            We will send a password reset link to your registered email address.
           </p>
-          <form onSubmit={handleUpdatePassword} className="mt-4 flex gap-2">
-            <input
-              type="password"
-              className="gn-input flex-1"
-              placeholder="New password (min 8 characters)"
-              value={newPassword}
-              onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); setPasswordSuccess(""); }}
-              required
-              minLength={8}
-            />
-            <button
-              type="submit"
-              disabled={passwordLoading}
-              className="gn-btn-primary whitespace-nowrap disabled:opacity-50"
-            >
-              {passwordLoading ? "Updating..." : "Update"}
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={() => void handleSendResetEmail()}
+            disabled={passwordLoading}
+            className="gn-btn-primary mt-4 whitespace-nowrap disabled:opacity-50"
+          >
+            {passwordLoading ? "Sending..." : "Send reset email"}
+          </button>
           {passwordError && <p className="mt-2 text-xs text-red-600">{passwordError}</p>}
           {passwordSuccess && <p className="mt-2 text-xs text-green-600">{passwordSuccess}</p>}
         </section>

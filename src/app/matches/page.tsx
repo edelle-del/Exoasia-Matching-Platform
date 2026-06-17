@@ -639,7 +639,7 @@ export default function MatchesPage() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 sm:-mx-6 px-4 sm:px-6 snap-x snap-mandatory">
                   {displayedProjects.map((project) => {
                     const scores = projectScores.filter((s) => s.project_id === project.id);
                     const bestScore = scores.length > 0 ? scores[0].fit_score : null;
@@ -647,78 +647,103 @@ export default function MatchesPage() {
                     const alreadyGenerated = generatedProjects.has(project.id);
 
                     return (
-                      <div
+                      <article
                         key={project.id}
                         role="link"
                         tabIndex={0}
                         onClick={() => router.push(`/projects/${project.id}`)}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push(`/projects/${project.id}`); }}
-                        className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden cursor-pointer hover:border-(--color-primary)/40 hover:bg-(--color-surface-soft)/50 transition-colors"
+                        className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden shrink-0 w-[340px] snap-start flex flex-col cursor-pointer hover:border-(--color-primary)/40 hover:bg-(--color-surface-soft)/50 transition-colors"
                       >
-                        <div className="flex items-center justify-between gap-3 px-5 py-5">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-semibold text-(--color-ink)">{project.name}</h3>
-                              {project.stage && (
-                                <span className="rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[10px] font-medium text-(--color-primary)">{project.stage}</span>
-                              )}
-                              {project.sector && (
-                                <span className="rounded-full bg-(--color-surface-soft) border border-(--color-hairline) px-2 py-0.5 text-[10px] font-medium text-(--color-muted)">{project.sector}</span>
-                              )}
-                            </div>
-                            <p className="mt-1 text-xs text-(--color-muted)">
-                              {scores.length > 0
-                                ? `${scores.length} investor match${scores.length !== 1 ? "es" : ""}${bestScore !== null ? ` · ${bestScore}% best fit` : ""}`
-                                : "No investor matches yet"}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            {scores.length > 0 && (
-                              <Link
-                                href={`/projects/${project.id}?tab=matches`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-2.5 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
-                              >
-                                <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                {scores.length} match{scores.length !== 1 ? "es" : ""}
-                              </Link>
+                        {/* Top accent strip */}
+                        <div className="h-1 w-full bg-gradient-to-r from-violet-500 to-indigo-500" />
+                        
+                        <div className="p-6 flex flex-col flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            {project.stage && (
+                              <span className="rounded-full bg-(--color-primary)/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-(--color-primary)">
+                                {project.stage}
+                              </span>
                             )}
-                            {showArchived ? (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); void handleRestoreProject(project.id); }}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-hairline) bg-(--color-canvas) px-2.5 py-1.5 text-xs font-medium text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors"
-                              >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3 shrink-0">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                </svg>
-                                Restore
-                              </button>
-                            ) : (
+                            {project.sector && (
+                              <span className="rounded-full bg-(--color-surface-soft) border border-(--color-hairline) px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-(--color-muted)">
+                                {project.sector}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-lg font-bold text-(--color-ink) mb-4 line-clamp-2">{project.name}</h3>
+                          
+                          <div className="space-y-2 mt-auto">
+                            {/* Created At */}
+                            <div className="flex items-center gap-2 text-sm text-(--color-body)">
+                              <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span>{new Date(project.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                            </div>
+
+                            {/* Total Matches */}
+                            <div className="flex items-center gap-2 text-sm text-(--color-body)">
+                              <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <span>{scores.length} total match{scores.length !== 1 ? "es" : ""}</span>
+                            </div>
+
+                            {/* Highest Score */}
+                            <div className="flex items-center gap-2 text-sm text-(--color-body)">
+                              <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                              </svg>
+                              <span>{bestScore !== null ? `${bestScore}% best fit` : "No scores yet"}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-6 flex flex-col gap-3">
+                            {!showArchived ? (
                               <button
                                 type="button"
                                 disabled={isGeneratingThis}
                                 onClick={(e) => { e.stopPropagation(); void handleFindInvestors(project.id); }}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-(--color-primary)/30 bg-(--color-primary)/5 px-2.5 py-1.5 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 disabled:opacity-50 transition-colors"
+                                className="w-full rounded-xl bg-(--color-primary) px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
                               >
                                 {isGeneratingThis ? (
-                                  <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none">
+                                  <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                   </svg>
                                 ) : (
-                                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0">
+                                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
                                     <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                                   </svg>
                                 )}
-                                {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate" : "Find investors"}
+                                {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate Matches" : "Find Investors"}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); void handleRestoreProject(project.id); }}
+                                className="w-full rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors flex items-center justify-center gap-2"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                Restore Project
+                              </button>
+                            )}
+                            
+                            {scores.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/projects/${project.id}?tab=matches`); }}
+                                className="w-full rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-surface-soft) transition-colors flex items-center justify-center gap-2"
+                              >
+                                View Matches
                               </button>
                             )}
                           </div>
                         </div>
-                      </div>
+                      </article>
                     );
                   })}
                 </div>

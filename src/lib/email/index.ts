@@ -4,6 +4,7 @@ const ADMIN_EMAIL = "exoasia.seanjaredsantos@gmail.com";
 const FROM = "onboarding@resend.dev";
 
 function getResend() {
+  if (!process.env.RESEND_API_KEY) return null;
   return new Resend(process.env.RESEND_API_KEY);
 }
 
@@ -13,17 +14,24 @@ export async function sendNewSignupNotification(user: {
   location?: string;
   browser?: string;
 }) {
+  const resend = getResend();
+  if (!resend) {
+    console.warn("Skipping new signup notification: RESEND_API_KEY not found.");
+    return;
+  }
+
   const signedUpAt = new Date(user.createdAt).toLocaleString("en-PH", {
     timeZone: "Asia/Manila",
     dateStyle: "full",
     timeStyle: "short",
   });
 
-  await getResend().emails.send({
-    from: FROM,
-    to: ADMIN_EMAIL,
-    subject: `New signup: ${user.email}`,
-    html: `
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: ADMIN_EMAIL,
+      subject: `New signup: ${user.email}`,
+      html: `
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -79,5 +87,8 @@ export async function sendNewSignupNotification(user: {
   </table>
 </body>
 </html>`,
-  });
+    });
+  } catch (error) {
+    console.error("Failed to send signup notification:", error);
+  }
 }

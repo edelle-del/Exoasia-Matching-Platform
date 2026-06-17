@@ -30,6 +30,7 @@ type Project = {
   description: string | null;
   stage: string | null;
   sector: string | null;
+  pitch_deck_url: string | null;
   venture_readiness_report:
     | VentureReadinessReport
     | RawVentureReadinessReport
@@ -1934,21 +1935,51 @@ export default function ProjectDetailPage({
               </div>
             </div>
           ) : (
-            <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
-                Data Room
-              </p>
-              <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
-                Startup data room
-              </h2>
+            <div className="mb-6 space-y-6">
+              {/* Pitch deck */}
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Pitch deck</p>
+                <h2 className="mt-1 text-base font-semibold text-(--color-ink)">Startup pitch deck</h2>
+                {project.pitch_deck_url ? (
+                  <div className="mt-3">
+                    <a
+                      href={project.pitch_deck_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-500/20 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      View pitch deck (Free access)
+                    </a>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-3">
+                    <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-(--color-muted)">This startup hasn&apos;t added their pitch deck yet.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Data room */}
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">
+                  Data Room
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-(--color-ink)">
+                  Other documents
+                </h2>
               {dataRoomStatus === "loading" && (
                 <p className="mt-2 text-sm text-(--color-muted)">Loading…</p>
               )}
               {dataRoomStatus === "none" && (
                 <>
                   <p className="mt-1 text-sm text-(--color-body)">
-                    Request access to view this startup&apos;s pitch deck,
-                    financials, and other documents.
+                    Request access to view this startup&apos;s data room documents.
                   </p>
                   <div className="mt-4">
                     <button
@@ -2020,6 +2051,7 @@ export default function ProjectDetailPage({
                   )}
                 </>
               )}
+            </div>
             </div>
           )}
 

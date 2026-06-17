@@ -14,6 +14,7 @@ type Project = {
   description: string | null;
   stage: string | null;
   sector: string | null;
+  pitch_deck_url: string | null;
   is_active: boolean;
   created_at: string;
 };
@@ -90,6 +91,9 @@ export default function InvestorProjectOverviewPage() {
   const [snapshotUnlockError, setSnapshotUnlockError] = useState("");
   const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
 
+  const [dataRoomStatus, setDataRoomStatus] = useState<"loading" | "none" | "pending" | "approved" | "denied">("loading");
+  const [dataRoomRequesting, setDataRoomRequesting] = useState(false);
+
   useEffect(() => {
     if (!user?.id || !id) return;
     void (async () => {
@@ -97,7 +101,7 @@ export default function InvestorProjectOverviewPage() {
 
       const { data: proj } = await supabase
         .from("projects")
-        .select("id, owner_id, name, description, stage, sector, is_active, created_at")
+        .select("id, owner_id, name, description, stage, sector, pitch_deck_url, is_active, created_at")
         .eq("id", id)
         .single();
 
@@ -151,6 +155,18 @@ export default function InvestorProjectOverviewPage() {
         if (d.success && d.snapshot) setFinancialSnapshot(d.snapshot);
       }
       setSnapshotChecked(true);
+
+      // Fetch data room access status
+      fetch(`/api/data-room/${proj.owner_id}/request`)
+        .then((r) => r.json())
+        .then((data: { request?: { status: string } | null }) => {
+          const s = data.request?.status;
+          if (!s) setDataRoomStatus("none");
+          else if (s === "approved") setDataRoomStatus("approved");
+          else if (s === "pending") setDataRoomStatus("pending");
+          else setDataRoomStatus("denied");
+        })
+        .catch(() => setDataRoomStatus("none"));
     })();
   }, [supabase, user?.id, id]);
 
@@ -183,6 +199,21 @@ export default function InvestorProjectOverviewPage() {
       }
     } finally {
       setSnapshotUnlocking(false);
+    }
+  };
+
+  const handleDataRoomRequest = async () => {
+    if (!project) return;
+    setDataRoomRequesting(true);
+    try {
+      const res = await fetch(`/api/data-room/${project.owner_id}/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) setDataRoomStatus("pending");
+    } finally {
+      setDataRoomRequesting(false);
     }
   };
 
@@ -457,6 +488,35 @@ export default function InvestorProjectOverviewPage() {
           )}
         </section>
 
+        {/* Pitch deck */}
+        <section className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted) mb-1">Pitch deck</p>
+          <h2 className="text-base font-semibold text-(--color-ink)">Startup pitch deck</h2>
+          {project.pitch_deck_url ? (
+            <div className="mt-4">
+              <a
+                href={project.pitch_deck_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-500/20 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                View pitch deck (Free access)
+              </a>
+            </div>
+          ) : (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3">
+              <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-(--color-muted)">This startup hasn&apos;t added their pitch deck yet.</p>
+            </div>
+          )}
+        </section>
+
         {/* Financial snapshot */}
         {snapshotChecked && (
           <section className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
@@ -531,6 +591,61 @@ export default function InvestorProjectOverviewPage() {
             )}
           </section>
         )}
+
+        {/* Data room */}
+        <section className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted) mb-1">Data Room</p>
+          <h2 className="text-base font-semibold text-(--color-ink)">Other documents</h2>
+          {dataRoomStatus === "loading" && (
+            <p className="mt-2 text-sm text-(--color-muted)">Loading…</p>
+          )}
+          {dataRoomStatus === "none" && (
+            <>
+              <p className="mt-2 text-sm text-(--color-body)">
+                Request access to view this startup&apos;s data room.
+              </p>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  disabled={dataRoomRequesting}
+                  onClick={() => void handleDataRoomRequest()}
+                  className="gn-btn-primary text-sm disabled:opacity-50"
+                >
+                  {dataRoomRequesting ? "Sending…" : "Request access"}
+                </button>
+              </div>
+            </>
+          )}
+          {dataRoomStatus === "pending" && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+              <svg className="h-4 w-4 shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm text-amber-800">Your access request is pending approval by the startup.</p>
+            </div>
+          )}
+          {dataRoomStatus === "denied" && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <svg className="h-4 w-4 shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <p className="text-sm text-red-800">Your access request was declined.</p>
+            </div>
+          )}
+          {dataRoomStatus === "approved" && (
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+                <svg className="h-4 w-4 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-sm font-medium text-emerald-800">Access granted</p>
+              </div>
+              <p className="text-sm text-(--color-body)">
+                The startup has approved your request. They should have shared their Drive folder with your email.
+              </p>
+            </div>
+          )}
+        </section>
 
         {/* Actions */}
         <section className="flex flex-wrap gap-3">

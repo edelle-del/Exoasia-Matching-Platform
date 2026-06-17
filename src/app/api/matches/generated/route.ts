@@ -53,7 +53,7 @@ export async function GET() {
           id: p.id,
           project_id: p.id,
           owner_id: p.owner_id,
-          project_name: p.name,
+          name: p.name,
           stage: p.stage,
           sector: p.sector,
           description: p.description,
@@ -74,7 +74,7 @@ export async function GET() {
         return {
           ...r,
           owner_name: isLocked ? "Hidden Startup" : r.owner_name,
-          project_name: isLocked ? "Confidential Project" : r.project_name,
+          name: isLocked ? "Confidential Project" : r.name,
           description: isLocked ? "Description locked due to visibility limits." : r.description,
           is_locked: isLocked,
         };

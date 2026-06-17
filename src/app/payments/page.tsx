@@ -192,10 +192,25 @@ export default function PaymentsPage() {
   const [creditRoleFilter, setCreditRoleFilter] = useState<CreditRole>("startup");
   const [creditHistory, setCreditHistory] = useState<{ id: string; change_amount: number; reason: string | null; created_at: string }[]>([]);
   const [planModal, setPlanModal] = useState<typeof DURATION_PLANS[0] | null>(null);
+  const [selectedPackId, setSelectedPackId] = useState<string>("bundle-100");
+
+  const [showRequestCredits, setShowRequestCredits] = useState(false);
+  const [requestCreditsAmount, setRequestCreditsAmount] = useState<number | "">("");
+  const [requestCreditsReason, setRequestCreditsReason] = useState("");
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
     if (memberRole === "investor" || memberRole === "startup" || memberRole === "ecosystem_partner") {
       setCreditRoleFilter(memberRole);
+    }
+    
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("request") === "true") {
+        setShowRequestCredits(true);
+      }
     }
   }, [memberRole]);
 
@@ -245,6 +260,30 @@ export default function PaymentsPage() {
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleRequestCredits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestCreditsAmount || !requestCreditsReason) return;
+    setSubmittingRequest(true);
+    setRequestError("");
+    try {
+      const res = await fetch("/api/user/credit-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(requestCreditsAmount), reason: requestCreditsReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit request.");
+      
+      showToast("Credit request submitted successfully! It will be reviewed by an admin.");
+      setShowRequestCredits(false);
+      setRequestCreditsAmount("");
+      setRequestCreditsReason("");
+    } catch (err: any) {
+      setRequestError(err.message);
+    }
+    setSubmittingRequest(false);
   };
 
   const handleUpgrade = async (planId: string) => {
@@ -333,7 +372,66 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {/* ── Plan detail modal ── */}
+      {/* ── Request Credits Modal ── */}
+      {showRequestCredits && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[24px] bg-[#1A0B2E] border border-white/10 p-7 shadow-2xl relative">
+            <h3 className="font-display text-xl text-white">Request Custom Top-up</h3>
+            <p className="mt-2 text-sm text-white/50 mb-6 leading-relaxed">
+              Submit a request to the network administrators for additional credits.
+            </p>
+            <form onSubmit={handleRequestCredits} className="flex flex-col gap-4">
+              <div>
+                <label className="block fa-eyebrow text-[0.65rem] text-white/50 mb-1.5">AMOUNT NEEDED</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 50"
+                  value={requestCreditsAmount}
+                  onChange={(e) => { setRequestCreditsAmount(e.target.value === "" ? "" : Number(e.target.value)); setRequestError(""); }}
+                  className="w-full rounded-[12px] bg-white/[0.03] border border-white/10 px-4 py-3 text-white placeholder-white/20 focus:border-[#FF6B1F] focus:outline-none transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block fa-eyebrow text-[0.65rem] text-white/50 mb-1.5">REASON / RATIONALE</label>
+                <input
+                  type="text"
+                  placeholder="Why do you need these credits?"
+                  value={requestCreditsReason}
+                  onChange={(e) => setRequestCreditsReason(e.target.value)}
+                  className="w-full rounded-[12px] bg-white/[0.03] border border-white/10 px-4 py-3 text-white placeholder-white/20 focus:border-[#FF6B1F] focus:outline-none transition-colors"
+                  required
+                />
+              </div>
+              {requestError && (
+                <div className="rounded-[10px] bg-red-500/10 px-3 py-2 text-xs text-red-400 border border-red-500/20">
+                  {requestError}
+                </div>
+              )}
+              <div className="flex gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowRequestCredits(false); setRequestError(""); }}
+                  disabled={submittingRequest}
+                  className="flex-1 rounded-[12px] bg-white/5 py-3 text-sm font-bold text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingRequest}
+                  className="flex-1 rounded-[12px] fa-gradient-primary py-3 text-sm font-bold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {submittingRequest ? "Submitting..." : "Submit Request"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Plan Modal ── */}
       {planModal && (() => {
         const planRole: "startup" | "investor" | "ecosystem_partner" =
           memberRole === "investor" || memberRole === "ecosystem_partner" ? memberRole : "startup";
@@ -493,6 +591,13 @@ export default function PaymentsPage() {
                   className="fa-gradient-primary rounded-[10px] px-5 py-2.5 text-sm font-bold text-white border-none cursor-pointer hover:opacity-90 transition-opacity"
                 >
                   Top up credits
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRequestCredits(true)}
+                  className="rounded-[10px] px-5 py-2.5 text-sm font-bold bg-white/5 text-white/80 border border-white/10 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                >
+                  Request custom top-up
                 </button>
                 <button
                   type="button"
@@ -679,17 +784,44 @@ export default function PaymentsPage() {
           </h2>
           <div className="rounded-[20px] bg-[#2D0A28] border border-[#C9A040]/20 p-7 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-8">
             {/* Left — pricing */}
-            <div className="shrink-0">
-              <span className="fa-eyebrow text-[0.6rem] text-white/35">MATCH BUNDLE</span>
-              <div className="mt-2 flex items-end gap-3">
-                <p className="font-display text-[3.2rem] leading-none text-[#FF6B1F]">100</p>
-                <div className="mb-1.5">
-                  <p className="fa-eyebrow text-[0.62rem]">CREDITS</p>
-                  <p className="text-white/30 text-[0.68rem] font-mono">$0.99 / credit</p>
-                </div>
+            <div className="shrink-0 flex flex-col gap-3 min-w-[200px]">
+              <span className="fa-eyebrow text-[0.6rem] text-white/35">SELECT BUNDLE</span>
+              <div className="flex flex-col gap-2 mt-1">
+                {CREDIT_PACKAGES.map((pkg) => (
+                  <label
+                    key={pkg.id}
+                    className={[
+                      "flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all",
+                      selectedPackId === pkg.id
+                        ? "bg-[#FF6B1F]/10 border-[#FF6B1F]"
+                        : "bg-white/[0.02] border-white/10 hover:border-white/30"
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={[
+                        "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
+                        selectedPackId === pkg.id ? "border-[#FF6B1F]" : "border-white/30"
+                      ].join(" ")}>
+                        {selectedPackId === pkg.id && <div className="w-2 h-2 rounded-full bg-[#FF6B1F]" />}
+                      </div>
+                      <div>
+                        <p className={["font-display leading-none text-lg", selectedPackId === pkg.id ? "text-[#FF6B1F]" : "text-white"].join(" ")}>{pkg.credits}</p>
+                        <p className="fa-eyebrow text-[0.55rem] mt-0.5">CREDITS</p>
+                      </div>
+                    </div>
+                    <p className="font-semibold text-white/90">${pkg.price}</p>
+                    <input
+                      type="radio"
+                      name="credit-bundle"
+                      value={pkg.id}
+                      checked={selectedPackId === pkg.id}
+                      onChange={() => setSelectedPackId(pkg.id)}
+                      className="sr-only"
+                    />
+                  </label>
+                ))}
               </div>
-              <p className="font-display text-[1.5rem] text-white mt-3">$99</p>
-              <p className="text-white/30 text-[0.68rem] font-mono mt-0.5">one-time purchase · credits never expire</p>
+              <p className="text-white/30 text-[0.68rem] font-mono mt-1 text-center">one-time purchase · never expires</p>
             </div>
 
             {/* Divider */}
@@ -702,9 +834,9 @@ export default function PaymentsPage() {
                 {[
                   "Unlock additional blurred investor, founder, or partner matches (3 cr each)",
                   "Bypass exhausted weekly view allowances with on-demand fallback unlocks (1 cr each)",
-                  "Request warm intros to matched parameters and send community requests (Free)",
+                  "Request warm intros to matched parameters and send community requests",
                   "Run comprehensive database-wide background AI matching sweeps via the Create Matches engine",
-                  "Retake your full Venture Readiness Assessment on confidence.exoasia.org (uses full 100 cr bundle)",
+                  "Retake your full Venture Readiness Assessment on confidence.exoasia.org",
                   "Credits never expire and work across both Free and Paid subscription tiers",
                 ].map((line) => (
                   <li key={line} className="flex gap-2 text-sm text-white/65">
@@ -714,10 +846,10 @@ export default function PaymentsPage() {
               </ul>
               <button
                 type="button"
-                disabled
-                className="self-start px-6 py-2.5 rounded-[10px] text-sm font-bold text-white border border-white/15 bg-transparent cursor-not-allowed opacity-40"
+                onClick={() => handleBuyPack(selectedPackId)}
+                className="self-start px-6 py-2.5 rounded-[10px] text-sm font-bold text-white fa-gradient-primary border-none cursor-pointer hover:opacity-90 transition-opacity"
               >
-                Coming soon
+                Buy {CREDIT_PACKAGES.find(p => p.id === selectedPackId)?.credits} Credits
               </button>
             </div>
           </div>
@@ -835,39 +967,52 @@ export default function PaymentsPage() {
               No transactions yet
             </div>
           ) : (
-            <div className="rounded-[16px] overflow-hidden border border-white/[0.07]">
-              {creditHistory.map((tx, i) => (
-                <div
-                  key={tx.id}
-                  className={[
-                    "flex items-center gap-4 px-5 py-4",
-                    i < creditHistory.length - 1 ? "border-b border-white/[0.05]" : "",
-                    i % 2 === 0 ? "bg-[#2D0A28]" : "bg-[#1A0B2E]",
-                  ].join(" ")}
-                >
-                  <div className={[
-                    "flex items-center justify-center w-9 h-9 rounded-full shrink-0",
-                    tx.change_amount > 0 ? "bg-emerald-500/15" : "bg-[#FF6B1F]/12",
-                  ].join(" ")}>
-                    <span className={tx.change_amount > 0 ? "text-emerald-400 text-sm" : "text-[#FF6B1F] text-sm"}>
-                      {tx.change_amount > 0 ? "↓" : "↑"}
+            <>
+              <div className="rounded-[16px] overflow-hidden border border-white/[0.07]">
+                {(showAllHistory ? creditHistory : creditHistory.slice(0, 10)).map((tx, i, arr) => (
+                  <div
+                    key={tx.id}
+                    className={[
+                      "flex items-center gap-4 px-5 py-4",
+                      i < arr.length - 1 ? "border-b border-white/[0.05]" : "",
+                      i % 2 === 0 ? "bg-[#2D0A28]" : "bg-[#1A0B2E]",
+                    ].join(" ")}
+                  >
+                    <div className={[
+                      "flex items-center justify-center w-9 h-9 rounded-full shrink-0",
+                      tx.change_amount > 0 ? "bg-emerald-500/15" : "bg-[#FF6B1F]/12",
+                    ].join(" ")}>
+                      <span className={tx.change_amount > 0 ? "text-emerald-400 text-sm" : "text-[#FF6B1F] text-sm"}>
+                        {tx.change_amount > 0 ? "↓" : "↑"}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/85 font-semibold text-sm">{tx.reason ?? "Credit transaction"}</p>
+                      <p className="text-white/30 text-[0.7rem] font-mono mt-0.5">
+                        {new Date(tx.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                      </p>
+                    </div>
+                    <span className={[
+                      "font-bold text-sm shrink-0",
+                      tx.change_amount > 0 ? "text-emerald-400" : "text-[#FF6B1F]",
+                    ].join(" ")}>
+                      {tx.change_amount > 0 ? "+" : ""}{tx.change_amount} cr
                     </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white/85 font-semibold text-sm">{tx.reason ?? "Credit transaction"}</p>
-                    <p className="text-white/30 text-[0.7rem] font-mono mt-0.5">
-                      {new Date(tx.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                    </p>
-                  </div>
-                  <span className={[
-                    "font-bold text-sm shrink-0",
-                    tx.change_amount > 0 ? "text-emerald-400" : "text-[#FF6B1F]",
-                  ].join(" ")}>
-                    {tx.change_amount > 0 ? "+" : ""}{tx.change_amount} cr
-                  </span>
+                ))}
+              </div>
+              {creditHistory.length > 10 && (
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllHistory((prev) => !prev)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/[0.1] bg-white/[0.03] text-white/60 text-xs font-semibold hover:bg-white/[0.06] hover:text-white/90 transition-colors"
+                  >
+                    {showAllHistory ? "Show less" : `Show all ${creditHistory.length} transactions`}
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </section>
 

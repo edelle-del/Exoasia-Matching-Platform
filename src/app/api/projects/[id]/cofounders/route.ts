@@ -62,12 +62,12 @@ export async function GET(
       .eq("id", id)
       .single();
 
-    let pendingInvites: { id: string; uid_value: string; created_at: string; expires_at: string }[] = [];
+    let pendingInvites: { id: string; uid_value: string; token: string; created_at: string; expires_at: string }[] = [];
 
     if (project?.owner_id === user.id) {
       const { data: invites } = await admin
         .from("cofounder_invites")
-        .select("id, uid_value, created_at, expires_at")
+        .select("id, uid_value, token, created_at, expires_at")
         .eq("project_id", id)
         .eq("inviter_id", user.id)
         .eq("status", "pending")

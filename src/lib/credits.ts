@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 //
 // To restore the full Hybrid SaaS + Premium Add-On model: set to false.
 // ─────────────────────────────────────────────────────────────────────────────
-export const BYPASS_CREDIT_GATES = true;
+export const BYPASS_CREDIT_GATES = false;
 
 export class InsufficientCreditsError extends Error {
   readonly balance: number;
@@ -26,7 +26,7 @@ export const CREDIT_COSTS = {
   // ── Startup (Founder) allowances ──────────────────────────────────────────
   UNLOCK_INVESTOR_PROFILE:  { base: 1,  reason: "Unlock investor profile (fallback)" },
   SEND_COFOUNDER_INVITE:    { base: 0,  reason: "Cofounder email invite (always free)" },
-  REQUEST_INTRO_INVESTOR:   { base: 3,  reason: "Intro request to investor (fallback)" },
+  REQUEST_INTRO_INVESTOR:   { base: 2,  reason: "Intro request to investor (fallback)" },
 
   // ── Investor allowances ───────────────────────────────────────────────────
   VIEW_PITCH_DECK:          { base: 1,  reason: "View startup pitch deck (fallback)" },

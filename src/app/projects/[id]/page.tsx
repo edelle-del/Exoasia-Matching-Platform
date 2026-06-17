@@ -59,6 +59,7 @@ type Cofounder = {
 type PendingInvite = {
   id: string;
   uid_value: string;
+  token: string;
   created_at: string;
   expires_at: string;
 };
@@ -374,6 +375,9 @@ export default function ProjectDetailPage({
   const [introMatchIds, setIntroMatchIds] = useState<Map<string, string>>(
     new Map(),
   ); // investorId → matchId
+  const [introMatchDetails, setIntroMatchDetails] = useState<Map<string, { status: string, myStatus: string, counterpartStatus: string }>>(
+    new Map(),
+  );
   const [unlockedProfiles, setUnlockedProfiles] = useState<Set<string>>(new Set());
   const [profileUnlockConfirm, setProfileUnlockConfirm] = useState<string | null>(null);
   const [profileUnlocking, setProfileUnlocking] = useState(false);
@@ -382,9 +386,6 @@ export default function ProjectDetailPage({
   const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
   const [financialSnapshot, setFinancialSnapshot] = useState<{ revenue: string; burn_rate: string; runway: string } | null>(null);
   const [snapshotChecked, setSnapshotChecked] = useState(false);
-  const [snapshotUnlockConfirm, setSnapshotUnlockConfirm] = useState(false);
-  const [snapshotUnlocking, setSnapshotUnlocking] = useState(false);
-  const [snapshotUnlockError, setSnapshotUnlockError] = useState("");
   const [activeTab, setActiveTab] = useState<"details" | "matches">(
     searchParams.get("tab") === "matches" ? "matches" : "details",
   );
@@ -484,7 +485,7 @@ export default function ProjectDetailPage({
           if (matches.length > 0) {
             const { data: existingMatches } = await supabase
               .from("matches")
-              .select("id, member_a_id, member_b_id")
+              .select("id, member_a_id, member_b_id, status, member_a_status, member_b_status")
               .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`)
               .not("status", "eq", "declined");
 
@@ -509,6 +510,19 @@ export default function ProjectDetailPage({
                 for (const m of matches) {
                   const mId = partnerMatchMap.get(m.investor_profile_id);
                   if (mId) next.set(m.investor_profile_id, mId);
+                }
+                return next;
+              });
+              setIntroMatchDetails((prev) => {
+                const next = new Map(prev);
+                for (const em of existingMatches) {
+                  const isA = em.member_a_id === user.id;
+                  const partnerId = isA ? em.member_b_id : em.member_a_id;
+                  next.set(partnerId, {
+                    status: em.status,
+                    myStatus: isA ? em.member_a_status : em.member_b_status,
+                    counterpartStatus: isA ? em.member_b_status : em.member_a_status,
+                  });
                 }
                 return next;
               });
@@ -548,27 +562,7 @@ export default function ProjectDetailPage({
       setSnapshotChecked(true);
       return;
     }
-    // Check if investor has already unlocked the financial snapshot
-    supabase
-      .from("ad_credit_ledger")
-      .select("reason")
-      .eq("member_id", user.id)
-      .eq("reason", `Unlock financial snapshot: ${id}`)
-      .maybeSingle()
-      .then(({ data: lockRow }) => {
-        if (lockRow) {
-          fetch("/api/projects/financial-snapshot/unlock", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ projectId: id }),
-          })
-            .then((r) => r.json())
-            .then((d: { success?: boolean; snapshot?: { revenue: string; burn_rate: string; runway: string } | null }) => {
-              if (d.success && d.snapshot) setFinancialSnapshot(d.snapshot);
-            });
-        }
-        setSnapshotChecked(true);
-      });
+    // Check if investor has data room access
     fetch(`/api/data-room/${project.owner_id}/request`)
       .then((r) => r.json())
       .then((data: { request?: { status: string } | null }) => {
@@ -619,36 +613,6 @@ export default function ProjectDetailPage({
     }
   };
 
-  const handleUnlockSnapshot = async () => {
-    setSnapshotUnlocking(true);
-    setSnapshotUnlockError("");
-    try {
-      const res = await fetch("/api/projects/financial-snapshot/unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: id }),
-      });
-      const data = (await res.json()) as {
-        success?: boolean;
-        snapshot?: { revenue: string; burn_rate: string; runway: string } | null;
-        needed?: number;
-        balance?: number;
-      };
-      if (res.status === 402 && data.needed !== undefined && data.balance !== undefined) {
-        setInsufficientCredits({ needed: data.needed, balance: data.balance });
-        setSnapshotUnlockConfirm(false);
-        return;
-      }
-      if (res.ok && data.success) {
-        setFinancialSnapshot(data.snapshot ?? null);
-        setSnapshotUnlockConfirm(false);
-      } else {
-        setSnapshotUnlockError((data as { error?: string }).error ?? "Failed to unlock.");
-      }
-    } finally {
-      setSnapshotUnlocking(false);
-    }
-  };
 
   const handleSave = async (e: { preventDefault(): void }) => {
     e.preventDefault();
@@ -1336,6 +1300,152 @@ export default function ProjectDetailPage({
       {/* ── Project Details tab (always visible for non-team-members) ── */}
       {(!isTeamMember || activeTab === "details") && (
         <div role="tabpanel" id="project-panel-details" aria-labelledby="project-tab-details" className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
+          <div className="mb-8">
+          {editing ? (
+            <form onSubmit={handleSave} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="proj-name"
+                  className="text-sm font-semibold text-(--color-ink)"
+                >
+                  Project name
+                </label>
+                <input
+                  id="proj-name"
+                  className="gn-input mt-1"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="proj-desc"
+                  className="text-sm font-semibold text-(--color-ink)"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="proj-desc"
+                  className="gn-input mt-1 h-28"
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, description: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="proj-stage"
+                    className="text-sm font-semibold text-(--color-ink)"
+                  >
+                    Stage
+                  </label>
+                  <select
+                    id="proj-stage"
+                    className="gn-input mt-1"
+                    value={form.stage}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, stage: e.target.value }))
+                    }
+                  >
+                    <option value="">Select stage</option>
+                    {projectStages.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="proj-sector"
+                    className="text-sm font-semibold text-(--color-ink)"
+                  >
+                    Sector
+                  </label>
+                  <select
+                    id="proj-sector"
+                    className="gn-input mt-1"
+                    value={form.sector}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, sector: e.target.value }))
+                    }
+                  >
+                    <option value="">Select sector</option>
+                    {sectorOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="gn-btn-primary disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save changes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="gn-btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-5">
+              <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5 md:p-6">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Overview</p>
+                    <h2 className="mt-1 text-base font-semibold text-(--color-ink)">About the project</h2>
+                  </div>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                      className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-3 py-1.5 text-xs font-semibold text-(--color-ink) transition-colors hover:bg-(--color-surface-soft)"
+                    >
+                      Edit details
+                    </button>
+                  )}
+                </div>
+                {project.description ? (
+                  <p className="text-sm text-(--color-body) whitespace-pre-wrap leading-relaxed">{project.description}</p>
+                ) : (
+                  <p className="text-sm text-(--color-muted) italic">
+                    No description added yet.
+                  </p>
+                )}
+                
+                {(project.stage || project.sector) && (
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    {project.stage && (
+                      <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-3">
+                        <p className="text-[10px] font-bold uppercase text-(--color-muted)">Stage</p>
+                        <p className="mt-1 text-sm font-semibold text-(--color-ink)">{project.stage}</p>
+                      </div>
+                    )}
+                    {project.sector && (
+                      <div className="rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-3">
+                        <p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p>
+                        <p className="mt-1 text-sm font-semibold text-(--color-ink)">{project.sector}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          </div>
           {report && (
         <section className="mb-6">
           <div className="w-full">
@@ -2056,63 +2166,25 @@ export default function ProjectDetailPage({
           )}
 
           {/* ── Financial snapshot (investor unlock) ── */}
-          {!isTeamMember && snapshotChecked && (
+          {!isTeamMember && dataRoomStatus === "approved" && (project as any).financial_snapshot && (
             <div className="mb-6 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">Financial Snapshot</p>
               <h2 className="mt-1 text-base font-semibold text-(--color-ink)">Revenue, burn rate & runway</h2>
-              {financialSnapshot ? (
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Revenue</p>
-                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.revenue || "—"}</p>
-                  </div>
-                  <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Monthly burn</p>
-                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.burn_rate || "—"}</p>
-                  </div>
-                  <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Runway</p>
-                    <p className="text-sm font-semibold text-(--color-ink)">{financialSnapshot.runway || "—"}</p>
-                  </div>
-                  <p className="col-span-3 text-[11px] text-(--color-muted)">Self-reported figures provided by the startup.</p>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Revenue</p>
+                  <p className="text-sm font-semibold text-(--color-ink)">{(project as any).financial_snapshot.revenue || "—"}</p>
                 </div>
-              ) : snapshotUnlockConfirm ? (
-                <div className="mt-3 space-y-2">
-                  <p className="text-sm text-(--color-body)">{hasActivePlan ? "Included free with your subscription." : <>This will deduct <strong>1 credit</strong> from your balance.</>} Unlocks this startup&apos;s revenue, burn rate, and runway.</p>
-                  {snapshotUnlockError && <p className="text-xs text-red-600">{snapshotUnlockError}</p>}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={snapshotUnlocking}
-                      onClick={() => void handleUnlockSnapshot()}
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                    >
-                      {snapshotUnlocking ? "Unlocking…" : hasActivePlan ? "View — Free" : "Unlock for free (beta)"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSnapshotUnlockConfirm(false)}
-                      className="text-sm text-(--color-muted) hover:text-(--color-ink)"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Monthly burn</p>
+                  <p className="text-sm font-semibold text-(--color-ink)">{(project as any).financial_snapshot.burn_rate || "—"}</p>
                 </div>
-              ) : (
-                <div className="mt-3">
-                  <p className="text-sm text-(--color-body) mb-3">Self-reported revenue estimates, monthly burn, and runway — shared only with investors who signal genuine intent.</p>
-                  <button
-                    type="button"
-                    onClick={() => setSnapshotUnlockConfirm(true)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-500/20 transition-colors"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    {hasActivePlan ? "View financial snapshot — Free" : "Unlock financial snapshot for free (beta)"}
-                  </button>
+                <div className="rounded-lg border border-(--color-hairline) bg-(--color-canvas) p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-muted) mb-1">Runway</p>
+                  <p className="text-sm font-semibold text-(--color-ink)">{(project as any).financial_snapshot.runway || "—"}</p>
                 </div>
-              )}
+                <p className="col-span-3 text-[11px] text-(--color-muted)">Self-reported figures provided by the startup.</p>
+              </div>
             </div>
           )}
 
@@ -2135,114 +2207,7 @@ export default function ProjectDetailPage({
             </div>
           )}
 
-          {editing ? (
-            <form onSubmit={handleSave} className="space-y-5">
-              <div>
-                <label
-                  htmlFor="proj-name"
-                  className="text-sm font-semibold text-(--color-ink)"
-                >
-                  Project name
-                </label>
-                <input
-                  id="proj-name"
-                  className="gn-input mt-1"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="proj-desc"
-                  className="text-sm font-semibold text-(--color-ink)"
-                >
-                  Description
-                </label>
-                <textarea
-                  id="proj-desc"
-                  className="gn-input mt-1 h-28"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, description: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="proj-stage"
-                    className="text-sm font-semibold text-(--color-ink)"
-                  >
-                    Stage
-                  </label>
-                  <select
-                    id="proj-stage"
-                    className="gn-input mt-1"
-                    value={form.stage}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, stage: e.target.value }))
-                    }
-                  >
-                    <option value="">Select stage</option>
-                    {projectStages.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label
-                    htmlFor="proj-sector"
-                    className="text-sm font-semibold text-(--color-ink)"
-                  >
-                    Sector
-                  </label>
-                  <select
-                    id="proj-sector"
-                    className="gn-input mt-1"
-                    value={form.sector}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, sector: e.target.value }))
-                    }
-                  >
-                    <option value="">Select sector</option>
-                    {sectorOptions.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="gn-btn-primary disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : "Save changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className="gn-btn-secondary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-5">
-              {project.description ? (
-                <p className="text-(--color-body)">{project.description}</p>
-              ) : (
-                <p className="text-(--color-muted) italic">
-                  No description added yet.
-                </p>
-              )}
+
 
               {/* ── Team section ── */}
               {/* Team: visible to all team members, management only for owner */}
@@ -2369,6 +2334,17 @@ export default function ProjectDetailPage({
                               </span>
                               <button
                                 type="button"
+                                onClick={() => {
+                                  const link = `${window.location.origin}/accept-invite?token=${inv.token}`;
+                                  navigator.clipboard.writeText(link);
+                                  alert("Invite link copied to clipboard!");
+                                }}
+                                className="rounded-lg px-2 py-1 text-xs font-medium text-(--color-primary) hover:bg-(--color-primary)/10 transition"
+                              >
+                                Copy link
+                              </button>
+                              <button
+                                type="button"
                                 disabled={cancellingInviteId === inv.id}
                                 onClick={() => void handleCancelInvite(inv.id)}
                                 className="rounded-lg px-2 py-1 text-xs font-medium text-(--color-muted) hover:bg-(--color-hairline) disabled:opacity-50 transition"
@@ -2418,8 +2394,6 @@ export default function ProjectDetailPage({
                   </ul>
                 </div>
               )}
-            </div>
-          )}
         </div>
       )}
 
@@ -2777,11 +2751,67 @@ export default function ProjectDetailPage({
                                 const hasMatchId = introMatchIds.has(
                                   m.investor_profile_id,
                                 );
+                                const matchDetails = introMatchDetails.get(m.investor_profile_id);
+                                  
                                 if (isDone) {
+                                  if (matchDetails) {
+                                    const isMutuallyAccepted = 
+                                      matchDetails.status === "introduced" || 
+                                      (matchDetails.myStatus === "accepted" && matchDetails.counterpartStatus === "accepted");
+
+                                    if (isMutuallyAccepted) {
+                                      return (
+                                        <div className="flex items-center gap-2">
+                                          <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-bold text-emerald-600">
+                                            Connected ✓
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+                                    if (matchDetails.myStatus === "pending") {
+                                      return (
+                                        <div className="flex items-center gap-2">
+                                          <span className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-bold text-violet-600">
+                                            Investor requested · pending your response
+                                          </span>
+                                          {hasMatchId && (
+                                            <button
+                                              type="button"
+                                              disabled={isCancelling}
+                                              onClick={() => void handleCancelIntro(m.investor_profile_id)}
+                                              className="rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-medium text-(--color-muted) hover:border-rose-300 hover:text-rose-500 disabled:opacity-50 transition-colors"
+                                            >
+                                              Cancel
+                                            </button>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                    if (matchDetails.counterpartStatus === "pending") {
+                                      return (
+                                        <div className="flex items-center gap-2">
+                                          <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-600">
+                                            Pending investor response
+                                          </span>
+                                          {hasMatchId && (
+                                            <button
+                                              type="button"
+                                              disabled={isCancelling}
+                                              onClick={() => void handleCancelIntro(m.investor_profile_id)}
+                                              className="rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-medium text-(--color-muted) hover:border-rose-300 hover:text-rose-500 disabled:opacity-50 transition-colors"
+                                            >
+                                              Cancel
+                                            </button>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                  }
+
                                   return (
                                     <div className="flex items-center gap-2">
                                       <span className="rounded-xl border border-(--color-primary)/30 bg-(--color-primary)/20 px-4 py-2.5 text-sm font-bold text-(--color-primary)">
-                                        Intro requested ✓
+                                        Pending investor response
                                       </span>
                                       {hasMatchId && (
                                         <button

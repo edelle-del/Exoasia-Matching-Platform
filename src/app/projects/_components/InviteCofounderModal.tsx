@@ -305,9 +305,12 @@ function NewMemberStep({
       
       setSent(true);
       
-      // If we got an actionLink back, display it so they can copy it manually
-      if (json.actionLink) {
-        setGeneratedLink(json.actionLink);
+      // Always display a link so they can copy it manually just in case
+      const fallbackLink = json.invite?.token ? `${window.location.origin}/accept-invite?token=${json.invite.token}` : null;
+      const linkToShow = json.actionLink || fallbackLink;
+      
+      if (linkToShow) {
+        setGeneratedLink(linkToShow);
       } else {
         setTimeout(() => { onSuccess(); }, 1800);
       }

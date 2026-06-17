@@ -13,7 +13,6 @@ export type QuotaAction =
 
 export const WEEKLY_LIMITS: Record<string, Partial<Record<QuotaAction, number>>> = {
   startup: {
-    view_investor_profile: 3,
     request_intro_investor: 2,
     unlock_community_profile: 5,
     request_community_intro: 2,
@@ -33,20 +32,25 @@ export const WEEKLY_LIMITS: Record<string, Partial<Record<QuotaAction, number>>>
 
 export function getCurrentWeekStart(): Date {
   const now = new Date();
-  // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  const dayOfWeek = now.getDay();
+  
+  // Enforce Asia/Manila (UTC+8) timezone for resets
+  const phtNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  
+  const dayOfWeek = phtNow.getUTCDay(); // 0 = Sunday, 1 = Monday
   let daysSinceMonday = (dayOfWeek + 6) % 7;
 
-  // If today is Monday but before 6:00 AM, we belong to previous week's Monday
-  if (daysSinceMonday === 0 && now.getHours() < 6) {
+  // If today is Monday but before 6:00 AM PHT, we belong to previous week's Monday
+  if (daysSinceMonday === 0 && phtNow.getUTCHours() < 6) {
     daysSinceMonday = 7;
   }
 
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - daysSinceMonday);
-  weekStart.setHours(6, 0, 0, 0);
+  // Calculate the Monday 6:00 AM in PHT
+  const phtWeekStart = new Date(phtNow.getTime());
+  phtWeekStart.setUTCDate(phtNow.getUTCDate() - daysSinceMonday);
+  phtWeekStart.setUTCHours(6, 0, 0, 0);
 
-  return weekStart;
+  // Convert back to true UTC Date object
+  return new Date(phtWeekStart.getTime() - 8 * 60 * 60 * 1000);
 }
 
 export async function checkWeeklyQuota(

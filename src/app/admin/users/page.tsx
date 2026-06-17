@@ -22,6 +22,7 @@ type AdminUser = {
   employee_band: string | null;
   annual_revenue_estimate: string | null;
   short_bio: string | null;
+  credits: number;
 };
 
 function rolePill(role: string | null) {
@@ -63,6 +64,13 @@ export default function AdminUsersPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+
+  // Grant Credits Modal
+  const [grantUser, setGrantUser] = useState<AdminUser | null>(null);
+  const [grantAmount, setGrantAmount] = useState<number | "">("");
+  const [grantReason, setGrantReason] = useState("");
+  const [isGranting, setIsGranting] = useState(false);
+  const [grantError, setGrantError] = useState("");
 
   const [showInviteAdmin, setShowInviteAdmin] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -125,6 +133,35 @@ export default function AdminUsersPage() {
       setDeleteError("Something went wrong. Please try again.");
     }
     setDeleting(false);
+  };
+
+  const handleGrantCredits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!grantUser || !grantAmount) return;
+    setIsGranting(true);
+    setGrantError("");
+    try {
+      const res = await fetch(`/api/admin/users/${grantUser.id}/credits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(grantAmount), reason: grantReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGrantError(data.error ?? "Failed to grant credits.");
+        setIsGranting(false);
+        return;
+      }
+      setToast(`Granted ${grantAmount} credits to ${grantUser.full_name ?? grantUser.email}.`);
+      setTimeout(() => setToast(null), 3500);
+      setGrantUser(null);
+      setGrantAmount("");
+      setGrantReason("");
+      void fetchUsers();
+    } catch {
+      setGrantError("Something went wrong. Please try again.");
+    }
+    setIsGranting(false);
   };
 
   const handleInviteAdmin = async (e: React.FormEvent) => {
@@ -499,6 +536,65 @@ export default function AdminUsersPage() {
         </div>
       )}
 
+      {/* Grant Credits Modal */}
+      {grantUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-7 shadow-2xl flex flex-col gap-4 relative">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-(--color-primary)">Ad-Hoc Action</p>
+              <h2 className="mt-1 text-lg font-bold text-(--color-ink)">Grant Credits</h2>
+              <p className="mt-2 text-sm text-(--color-body)">
+                Add credits manually to <span className="font-semibold text-(--color-ink)">{grantUser.full_name ?? grantUser.email}</span>.
+              </p>
+            </div>
+            <form onSubmit={handleGrantCredits} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-medium text-(--color-body) mb-1.5">Amount</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 50"
+                  value={grantAmount}
+                  onChange={(e) => { setGrantAmount(e.target.value === "" ? "" : Number(e.target.value)); setGrantError(""); }}
+                  className="w-full rounded-[10px] border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) focus:border-(--color-primary) outline-none transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-(--color-body) mb-1.5">Reason (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Refund, Bonus, Admin Grant"
+                  value={grantReason}
+                  onChange={(e) => setGrantReason(e.target.value)}
+                  className="w-full rounded-[10px] border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) focus:border-(--color-primary) outline-none transition-colors"
+                />
+              </div>
+              {grantError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 border border-red-200">{grantError}</p>
+              )}
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => { setGrantUser(null); setGrantError(""); }}
+                  disabled={isGranting}
+                  className="flex-1 rounded-xl border border-(--color-hairline) bg-(--color-canvas) py-2.5 text-sm font-semibold text-(--color-ink) hover:bg-(--color-hairline) transition-colors disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isGranting}
+                  className="flex-1 rounded-xl bg-(--color-primary) py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isGranting ? "Granting…" : "Grant Credits"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto w-full max-w-7xl space-y-8">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -590,6 +686,7 @@ export default function AdminUsersPage() {
                   <th className="px-6 py-4 font-semibold text-(--color-muted) text-xs uppercase tracking-wider">User</th>
                   <th className="px-6 py-4 font-semibold text-(--color-muted) text-xs uppercase tracking-wider">Platform Role</th>
                   <th className="px-6 py-4 font-semibold text-(--color-muted) text-xs uppercase tracking-wider">Network Status</th>
+                  <th className="px-6 py-4 font-semibold text-(--color-muted) text-xs uppercase tracking-wider">Credits</th>
                   <th className="px-6 py-4 font-semibold text-(--color-muted) text-xs uppercase tracking-wider">Joined</th>
                   <th className="px-6 py-4 font-semibold text-(--color-muted) text-xs uppercase tracking-wider text-right">Actions</th>
                 </tr>
@@ -601,6 +698,7 @@ export default function AdminUsersPage() {
                       <td className="px-6 py-4"><div className="h-10 bg-(--color-surface-soft) rounded animate-pulse w-48"></div></td>
                       <td className="px-6 py-4"><div className="h-6 bg-(--color-surface-soft) rounded animate-pulse w-20"></div></td>
                       <td className="px-6 py-4"><div className="h-6 bg-(--color-surface-soft) rounded animate-pulse w-32"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-(--color-surface-soft) rounded animate-pulse w-16"></div></td>
                       <td className="px-6 py-4"><div className="h-4 bg-(--color-surface-soft) rounded animate-pulse w-24"></div></td>
                       <td className="px-6 py-4"><div className="h-8 bg-(--color-surface-soft) rounded animate-pulse w-16 ml-auto"></div></td>
                     </tr>
@@ -649,11 +747,21 @@ export default function AdminUsersPage() {
                           </div>
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-xs font-bold text-(--color-primary)">
+                        {u.credits} cr
+                      </td>
                       <td className="px-6 py-4 text-xs text-(--color-muted)">
                         {new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setGrantUser(u)}
+                            className="p-2 rounded-lg text-(--color-muted) hover:text-(--color-primary) hover:bg-(--color-primary)/10 transition-colors text-xs font-semibold uppercase tracking-widest mr-2"
+                            title="Grant Credits"
+                          >
+                            Grant Credits
+                          </button>
                           <button
                             onClick={() => setExpandedRow(expandedRow === u.id ? null : u.id)}
                             className="p-2 rounded-lg text-(--color-muted) hover:text-(--color-primary) hover:bg-(--color-primary)/10 transition-colors"

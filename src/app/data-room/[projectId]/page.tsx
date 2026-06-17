@@ -359,7 +359,7 @@ export default function ProjectDataRoomPage({
               <ol className="space-y-1.5 text-sm text-(--color-body) list-decimal list-inside">
                 <li>Upload your pitch deck to any platform — Canva, Docsend, Notion, Google Slides, or a direct PDF link.</li>
                 <li>Paste the link below. Keep it <strong>view-only</strong> so investors cannot edit.</li>
-                <li>Investors pay <strong>3 credits</strong> to unlock the link.</li>
+                <li>Investors can request access only to those startups they mutually matched with.</li>
                 <li>You can update or remove the link at any time. Investors who already unlocked it retain access.</li>
               </ol>
             </section>
@@ -374,7 +374,7 @@ export default function ProjectDataRoomPage({
                 </div>
                 <div>
                   <p className="font-semibold text-(--color-ink)">Pitch deck link</p>
-                  <p className="text-xs text-(--color-muted)">Investors pay 3 credits to access · Canva, Docsend, Notion, or any URL</p>
+                  <p className="text-xs text-(--color-muted)">Canva, Docsend, Notion, or any URL. Investors can request access only to those startups they mutually matched with.</p>
                 </div>
               </div>
 
@@ -419,7 +419,7 @@ export default function ProjectDataRoomPage({
               <ol className="space-y-1.5 text-sm text-(--color-body) list-decimal list-inside">
                 <li>Fill in your current revenue stage, monthly burn rate, and runway.</li>
                 <li>These are self-reported estimates — be honest, but you control what you share.</li>
-                <li>Investors pay <strong>5 credits</strong> to view this data, filtering for those with genuine investment intent.</li>
+                <li>Investors can request access only to those startups they mutually matched with.</li>
                 <li>You can update the figures at any time as your numbers change.</li>
               </ol>
             </section>
@@ -434,7 +434,7 @@ export default function ProjectDataRoomPage({
                 </div>
                 <div>
                   <p className="font-semibold text-(--color-ink)">Financial snapshot</p>
-                  <p className="text-xs text-(--color-muted)">Investors pay 5 credits to unlock · self-reported figures</p>
+                  <p className="text-xs text-(--color-muted)">Self-reported figures. Investors can request access only to those startups they mutually matched with.</p>
                 </div>
               </div>
 

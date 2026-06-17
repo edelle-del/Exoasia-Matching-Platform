@@ -111,7 +111,25 @@ export default function SignInPage() {
     setIsSubmitting(false);
 
     if (error) {
-      setLoginError(error);
+      if (error === "Invalid login credentials") {
+        try {
+          const res = await fetch("/api/auth/check-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: loginData.email.trim() }),
+          });
+          const { exists } = await res.json();
+          if (exists) {
+            setLoginError("Password is incorrect");
+          } else {
+            setLoginError("Email is incorrect");
+          }
+        } catch {
+          setLoginError("Invalid login credentials");
+        }
+      } else {
+        setLoginError(error);
+      }
       return;
     }
 

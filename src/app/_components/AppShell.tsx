@@ -24,7 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <AnnouncementModal />
       <TopHeader />
-      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden pt-14 md:pt-0 md:pl-14">{children}</div>
+      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden pt-14 md:pt-0 md:pl-56">{children}</div>
     </div>
   );
 }

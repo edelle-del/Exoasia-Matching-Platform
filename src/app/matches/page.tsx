@@ -180,27 +180,6 @@ export default function MatchesPage() {
         setProjects(userProjects);
 
         if (userProjects.length > 0) {
-          const { data: scores } = await supabase
-            .from("project_match_scores")
-            .select("id, project_id, investor_profile_id, fit_score, generated_at")
-            .in("project_id", userProjects.map((p) => p.id))
-            .order("fit_score", { ascending: false });
-
-          const investorIds = [...new Set((scores ?? []).map((s) => s.investor_profile_id))];
-          let nameMap = new Map<string, string>();
-          if (investorIds.length > 0) {
-            const { data: investors } = await supabase
-              .from("profiles")
-              .select("id, full_name, business_name")
-              .in("id", investorIds);
-            nameMap = new Map(
-              (investors ?? []).map((p) => [p.id, p.business_name || p.full_name || "Verified investor"]),
-            );
-          }
-          setProjectScores(
-            (scores ?? []).map((s) => ({ ...s, investor_name: nameMap.get(s.investor_profile_id) ?? "Verified investor" })),
-          );
-
           // Check which projects already have generated matches
           const results = await Promise.all(
             userProjects.map(async (p) => {
@@ -222,24 +201,36 @@ export default function MatchesPage() {
 
       // ── Investor ─────────────────────────────────────────────────────────────
       if (role === "investor") {
-        const allProjects = await fetchAllStartupProjects(supabase);
-        setProjects(allProjects);
-
-        if (allProjects.length > 0) {
-          const res = await fetch("/api/projects/my-match-scores");
-          const data = (await res.json()) as { scores?: MatchScore[] };
-          const map = new Map<string, MatchScore>();
-          (data.scores ?? []).forEach((s) => map.set(s.project_id, s));
-          setScoreMap(map);
-        }
+        // Projects and score map will be populated from /api/matches/generated below
       }
 
-      // Fetch generated matches globally (for "Create Matches" tab)
+      // Fetch generated matches globally (for server-side masking)
       try {
         const genRes = await fetch("/api/matches/generated");
         if (genRes.ok) {
           const genData = await genRes.json();
-          setGeneratedMatches(genData.matches || []);
+          const maskedMatches = genData.matches || [];
+          setGeneratedMatches(maskedMatches);
+
+          if (role === "startup") {
+            // Apply masked scores to projectScores
+            setProjectScores(maskedMatches);
+          } else if (role === "investor") {
+            // Populate projects and score map for investors from the single endpoint
+            setProjects(maskedMatches);
+            const map = new Map<string, MatchScore>();
+            maskedMatches.forEach((s: any) => {
+              if (s.fit_score > 0) {
+                map.set(s.project_id, {
+                  project_id: s.project_id,
+                  fit_score: s.fit_score,
+                  summary: s.summary,
+                  generated_at: s.generated_at
+                });
+              }
+            });
+            setScoreMap(map);
+          }
         }
       } catch (e) {
         console.error("Failed to fetch generated matches", e);
@@ -273,6 +264,26 @@ export default function MatchesPage() {
     setUnlockingId(match.id);
     try {
       const res = await fetch(`/api/matches/${match.id}/unlock`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 402) {
+          alert(`Insufficient credits: needed ${data.required}, have ${data.balance}`);
+        } else {
+          alert(`Error: ${data.error}`);
+        }
+        return;
+      }
+      setReloadKey(k => k + 1);
+    } finally {
+      setUnlockingId(null);
+    }
+  };
+
+  const handleUnlockGeneratedMatch = async (projectId: string) => {
+    if (!user?.id) return;
+    setUnlockingId(projectId);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/unlock`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 402) {
@@ -824,9 +835,8 @@ export default function MatchesPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {generatedMatches.map((item, index) => {
-                    const limit = 10;
-                    const isLocked = !hasActiveSub && index >= limit;
+                  {generatedMatches.map((item) => {
+                    const isLocked = item.is_locked;
                     const p = item as ProjectRecord & { owner_name?: string };
                     const existingScore = scoreMap.get(p.id);
                     const isScoringThis = scoring.has(p.id);
@@ -961,13 +971,24 @@ export default function MatchesPage() {
                           )}
                         </div>
                         {isLocked && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-(--color-canvas)/5 pointer-events-auto">
+                          <div className="absolute inset-0 flex items-center justify-end px-4 bg-gradient-to-r from-transparent via-(--color-canvas)/80 to-(--color-canvas) pointer-events-auto">
                             <button
                               type="button"
-                              onClick={() => router.push("/payments")}
-                              className="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-500 hover:bg-amber-500/20 transition-colors shadow-sm backdrop-blur-md"
+                              disabled={unlockingId === p.id}
+                              onClick={() => void handleUnlockGeneratedMatch(p.id)}
+                              className="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-500 hover:bg-amber-500/20 transition-colors shadow-sm backdrop-blur-md disabled:opacity-50"
                             >
-                              Upgrade to Unlock Matches
+                              {unlockingId === p.id ? (
+                                <span className="flex items-center gap-1">
+                                  <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                                  Unlocking...
+                                </span>
+                              ) : (
+                                <>
+                                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                  Unlock Match (3 Credits)
+                                </>
+                              )}
                             </button>
                           </div>
                         )}
@@ -1335,10 +1356,27 @@ function MatchList({
         const score = m.fit_score ?? 0;
         const name = m.counterpart_name ?? "Verified member";
         const myStatus = m.member_a_id === userId ? m.member_a_status : m.member_b_status;
+        const counterpartStatus = m.member_a_id === userId ? m.member_b_status : m.member_a_status;
         const initiatedByCounterpart = myStatus === "pending";
         const canRespond = initiatedByCounterpart && !!onRespond;
         const isResponding = respondingId === m.id;
         const isUnlocking = unlockingId === m.id;
+
+        let displayLabel = sc.label;
+        let displayPill = sc.pill;
+
+        if (m.status === "accepted" || m.status === "introduced") {
+          displayLabel = "Connected";
+          displayPill = "bg-emerald-500/15 text-emerald-500";
+        } else if (m.status === "pending") {
+          if (myStatus === "pending") {
+            displayLabel = "Pending (awaiting your response)";
+            displayPill = "bg-violet-500/15 text-violet-500";
+          } else {
+            displayLabel = "Pending (awaiting counterpart)";
+            displayPill = "bg-amber-500/15 text-amber-500";
+          }
+        }
 
         return (
           <div key={m.id} className="relative flex items-center gap-4 rounded-xl border border-(--color-hairline) bg-(--color-canvas) p-4 overflow-hidden">
@@ -1348,7 +1386,7 @@ function MatchList({
             <div className={`min-w-0 flex-1 ${m.is_locked ? 'blur-sm select-none' : ''}`}>
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold text-(--color-ink)">{subscriptionActive ? name : "Upgrade to unlock"}</p>
-                {!canRespond && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${sc.pill}`}>{sc.label}</span>}
+                {!canRespond && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${displayPill}`}>{displayLabel}</span>}
               </div>
               {canRespond && userRole === "startup" && subscriptionActive && (
                 <p className="mb-1 text-xs font-medium text-amber-400">

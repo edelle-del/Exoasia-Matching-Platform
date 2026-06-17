@@ -95,6 +95,34 @@ export async function PATCH(
       } catch {
         // Non-critical — match status update already succeeded
       }
+    } else if (decision === "declined") {
+      try {
+        await admin
+          .from("deal_cards")
+          .update({
+            stage: "lost",
+            close_reason_code: "Intro declined",
+            last_updated_at: new Date().toISOString(),
+          })
+          .eq("match_id", matchId)
+          .eq("stage", "discover");
+
+        // Fallback for older deal cards without match_id
+        await admin
+          .from("deal_cards")
+          .update({
+            stage: "lost",
+            close_reason_code: "Intro declined",
+            last_updated_at: new Date().toISOString(),
+          })
+          .or(
+            `and(buyer_member_id.eq.${match.member_a_id},provider_member_id.eq.${match.member_b_id}),` +
+            `and(buyer_member_id.eq.${match.member_b_id},provider_member_id.eq.${match.member_a_id})`,
+          )
+          .eq("stage", "discover");
+      } catch {
+        // Non-critical
+      }
     }
 
     return NextResponse.json({ success: true, status: nextStatus });

@@ -18,6 +18,8 @@ import {
   PartnerDealOverviewCard,
   DealBoardSnapshotCard,
   NotificationsCard,
+  QuotaStatusWidget,
+  type QuotaItem,
   type NotificationItem,
 } from "./_components/MemberWidgets";
 import {
@@ -108,6 +110,7 @@ export default function DashboardPage() {
   } | null>(null);
   const [missingCount, setMissingCount] = useState(0);
   const [completenessPercent, setCompletenessPercent] = useState<number | null>(null);
+  const [quotas, setQuotas] = useState<QuotaItem[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -199,6 +202,13 @@ export default function DashboardPage() {
       .then((data) => {
         setUnreadCount(data.unreadCount ?? 0);
         setNotifications(data.notifications ?? []);
+      })
+      .catch(() => {});
+      
+    fetch("/api/quotas/summary")
+      .then((r) => r.json())
+      .then((data) => {
+        setQuotas(data.quotas ?? []);
       })
       .catch(() => {});
   }, [user?.id]);
@@ -414,26 +424,30 @@ export default function DashboardPage() {
               {isEcosystemPartner
                 ? isLoading
                   ? "Loading portfolio…"
-                  : `${partnerStats?.total_companies ?? 0} ${(partnerStats?.total_companies ?? 0) === 1 ? "company" : "companies"} in portfolio · ${partnerStats?.active_matches ?? 0} active deals`
-                : `You're a member at Stage ${summary.profile?.stage || "0"} · Verification ${summary.profile?.verification_status || "unverified"}`
+                  : `${partnerStats?.total_companies ?? 0} ${(partnerStats?.total_companies ?? 0) === 1 ? "company" : "companies"} in portfolio · ${partnerStats?.active_matches ?? 0} active deals · Free Tier`
+                : `You're a member at Stage ${summary.profile?.stage || "0"} · Verification ${summary.profile?.verification_status || "unverified"} · Free Tier`
               }
             </p>
-            {isEcosystemPartner && (
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="flex flex-col border-r border-(--color-hairline) pr-4 mr-1">
+                <span className="text-[10px] font-bold tracking-widest text-(--color-muted) uppercase">Credits</span>
+                <span className="font-mono text-xl font-bold text-(--color-primary)">
+                  {isLoading ? "..." : summary.credits}
+                </span>
+              </div>
               <Link
                 href="/payments"
-                className="mt-4 pt-4 border-t border-(--color-hairline) flex items-center justify-between group"
+                className="gn-btn-primary !h-10 !text-xs !px-5"
               >
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.1em] text-(--color-muted)">Credits</p>
-                  <p className="font-mono mt-0.5 text-2xl font-semibold text-(--color-primary)">
-                    {isLoading ? "..." : summary.credits}
-                  </p>
-                </div>
-                <span className="text-xs font-medium text-(--color-primary)/50 group-hover:text-(--color-primary) transition-colors">
-                  Top up →
-                </span>
+                Top up Credits
               </Link>
-            )}
+              <Link
+                href="/payments?request=true"
+                className="gn-btn-secondary !h-10 !text-xs !px-5"
+              >
+                Request Credits
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -457,15 +471,9 @@ export default function DashboardPage() {
         ) : (
           /* ── Startup / investor layout ────────────────────────── */
           <>
-            {/* Row 1: Credits + Pipeline stats */}
+            {/* Row 1: Pipeline stats */}
             <section className="space-y-3">
-              <div className={`grid grid-cols-2 gap-4 ${isInvestor ? "lg:grid-cols-3" : "lg:grid-cols-4"}`} aria-live="polite" aria-label="Key metrics">
-                <MetricCard
-                  label="Credits"
-                  value={isLoading ? "..." : String(summary.credits)}
-                  valueColor="text-(--color-primary)"
-                  href="/payments"
-                />
+              <div className={`grid grid-cols-2 gap-4 ${isInvestor ? "lg:grid-cols-2" : "lg:grid-cols-3"}`} aria-live="polite" aria-label="Key metrics">
                 <MetricCard
                   label={isInvestor ? "Opportunities" : "Projects"}
                   value={
@@ -520,8 +528,8 @@ export default function DashboardPage() {
               )}
             </section>
 
-            {/* Row 2: Deal board graph + Notifications */}
-            <section className="grid gap-6 lg:grid-cols-2">
+            {/* Row 2: Deal board graph + Notifications + Quotas */}
+            <section className="grid gap-6 lg:grid-cols-3">
               <DealBoardSnapshotCard
                 stageCounts={dealStageCounts}
                 isLoading={isLoading}
@@ -529,6 +537,10 @@ export default function DashboardPage() {
               <NotificationsCard
                 notifications={notifications}
                 isLoading={isLoading}
+              />
+              <QuotaStatusWidget 
+                quotas={quotas} 
+                isLoading={isLoading} 
               />
             </section>
           </>

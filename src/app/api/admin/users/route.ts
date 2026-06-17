@@ -59,9 +59,18 @@ export async function GET(request: Request) {
 
     const rolesMap = new Map(userRoles?.map(ur => [ur.user_id, ur.role]));
 
+    // Fetch credits for these profiles
+    const { data: creditsData } = await admin.from("ad_credit_ledger").select("member_id, change_amount").in("member_id", profileIds);
+    const creditsMap = new Map<string, number>();
+    (creditsData || []).forEach(row => {
+      const current = creditsMap.get(row.member_id) ?? 0;
+      creditsMap.set(row.member_id, current + row.change_amount);
+    });
+
     const users = profiles.map(p => ({
       ...p,
       app_role: rolesMap.get(p.id) ?? "member",
+      credits: creditsMap.get(p.id) ?? 0,
     }));
 
     return NextResponse.json({

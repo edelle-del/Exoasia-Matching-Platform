@@ -109,6 +109,15 @@ export async function GET() {
       : { data: [] };
     const partnerMap = new Map((partnerProfiles ?? []).map((p: { id: string; full_name: string | null; business_name: string | null }) => [p.id, p]));
 
+    // ── 7. Async Background Jobs (Bulk Sweep) ─────────────────────────────────
+    const { data: bgJobs } = await admin
+      .from("background_jobs")
+      .select("id, job_type, status, created_at, updated_at")
+      .eq("user_id", user.id)
+      .in("status", ["completed", "failed"])
+      .order("updated_at", { ascending: false })
+      .limit(10);
+
     // ── Helpers ──────────────────────────────────────────────────────────────
     type NamedProfile = { full_name?: string | null; business_name?: string | null } | null | undefined;
     const getName = (p: NamedProfile) => p?.full_name || p?.business_name || "a verified member";
@@ -246,6 +255,26 @@ export async function GET() {
       };
     });
 
+    type BgJobRow = { id: string; job_type: string; status: string; created_at: string; updated_at: string };
+
+    const jobNotifications = (bgJobs ?? []).map((job: BgJobRow) => {
+      const isCompleted = job.status === "completed";
+      let title = isCompleted ? "Matching sweep complete" : "Matching sweep failed";
+      let body = isCompleted 
+        ? "Your AI matching sweep from this morning is complete. Review 3 new unlocked prospects."
+        : "There was an error generating your AI matches. Credits were refunded.";
+      
+      return {
+        id: `job-${job.id}`,
+        kind: "member" as const, // Re-using kinds
+        type: isCompleted ? "accepted" as const : "declined" as const,
+        title,
+        body,
+        href: `/api/jobs/${job.id}/acknowledge`, // We'll intercept this on frontend
+        date: job.updated_at ?? job.created_at,
+      };
+    });
+
     const all = [
       ...matchNotifications,
       ...sentInviteNotifications,
@@ -253,6 +282,7 @@ export async function GET() {
       ...dataRoomNotifications,
       ...portfolioNotifications,
       ...newMemberNotifications,
+      ...jobNotifications,
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const unreadCount =

@@ -121,6 +121,29 @@ export async function POST(
           `and(buyer_member_id.eq.${match.member_b_id},provider_member_id.eq.${match.member_a_id})`,
         )
         .eq("stage", "discover");
+    } else if (decision === "declined" && match) {
+      await admin
+        .from("deal_cards")
+        .update({
+          stage: "lost",
+          close_reason_code: "Intro declined",
+          last_updated_at: new Date().toISOString(),
+        })
+        .eq("match_id", match.id)
+        .eq("stage", "discover");
+
+      await admin
+        .from("deal_cards")
+        .update({
+          stage: "lost",
+          close_reason_code: "Intro declined",
+          last_updated_at: new Date().toISOString(),
+        })
+        .or(
+          `and(buyer_member_id.eq.${match.member_a_id},provider_member_id.eq.${match.member_b_id}),` +
+          `and(buyer_member_id.eq.${match.member_b_id},provider_member_id.eq.${match.member_a_id})`,
+        )
+        .eq("stage", "discover");
     }
 
     return NextResponse.json({

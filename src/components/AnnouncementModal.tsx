@@ -16,11 +16,13 @@ type Announcement = {
 function AnnouncementItem({
   announcement,
   userId,
+  isMain = false,
 }: {
   announcement: Announcement;
   userId: string | null;
+  isMain?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(isMain);
   const postLikes = announcement.announcement_likes || [];
   const [likes, setLikes] = useState(postLikes.length);
   const [liked, setLiked] = useState(
@@ -58,42 +60,50 @@ function AnnouncementItem({
   };
 
   return (
-    <div className="border-b border-(--color-hairline) last:border-0">
+    <div className={`border-b border-(--color-hairline) last:border-0 ${isMain ? 'h-full flex flex-col' : ''}`}>
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full py-4 text-left flex items-start justify-between gap-4 group"
+        onClick={() => !isMain && setIsExpanded(!isExpanded)}
+        className={`w-full py-4 text-left flex items-start justify-between gap-4 ${!isMain ? 'group' : 'cursor-default'}`}
       >
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h4 className="text-sm font-bold text-(--color-ink) group-hover:text-(--color-primary) transition-colors">
-              {announcement.title}
-            </h4>
-            {announcement.is_featured && (
-              <span className="shrink-0 inline-block rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-(--color-primary)">
-                Featured
-              </span>
-            )}
+          <div className="flex flex-col items-start gap-1">
+            <div className="flex items-start gap-2">
+              {announcement.is_featured && isMain && (
+                <span className="shrink-0 inline-block rounded-full bg-(--color-primary)/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-(--color-primary) mt-1">
+                  Featured
+                </span>
+              )}
+              <h4 className={`${isMain ? 'text-2xl font-black tracking-tight' : 'text-xs font-bold leading-tight'} text-(--color-ink) whitespace-normal ${!isMain && 'group-hover:text-(--color-primary)'} transition-colors text-left`}>
+                {announcement.title}
+              </h4>
+            </div>
+            <p className={`text-[10px] text-(--color-muted) shrink-0 whitespace-nowrap ${!isMain && 'font-medium'}`}>
+              {new Date(announcement.created_at).toLocaleDateString(undefined, isMain ? {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              } : {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
           </div>
-          <p className="mt-1 text-xs text-(--color-muted)">
-            ({new Date(announcement.created_at).toLocaleDateString(undefined, {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })})
-          </p>
         </div>
-        <div className="text-(--color-muted) shrink-0 mt-1">
-          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </div>
+        {!isMain && (
+          <div className="text-(--color-muted) shrink-0 mt-1">
+            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
+        )}
       </button>
 
       {isExpanded && (
         <div className="pb-5 pt-1">
-          <div className="text-sm text-(--color-body) whitespace-pre-wrap leading-relaxed">
+          <div className={`text-sm text-(--color-body) whitespace-pre-wrap leading-relaxed ${isMain ? 'text-base flex-1' : ''}`}>
             {announcement.content}
           </div>
-          <div className="mt-4 flex justify-end">
+          <div className={`mt-4 flex justify-end ${isMain ? 'border-t border-(--color-hairline) pt-4' : ''}`}>
             <button
               onClick={handleLike}
               disabled={isLiking || !userId || liked}
@@ -191,10 +201,14 @@ export default function AnnouncementModal() {
     setIsOpen(false);
   };
 
+  const featuredAnnouncement = announcements.find((a) => a.is_featured);
+  const mainAnnouncement = featuredAnnouncement || announcements[0];
+  const otherAnnouncements = announcements.filter((a) => a.id !== mainAnnouncement?.id);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-(--color-canvas) shadow-xl max-h-[85vh] flex flex-col">
-        <div className="p-6 shrink-0 border-b border-(--color-hairline)">
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl bg-(--color-canvas) shadow-xl max-h-[85vh] flex flex-col">
+        <div className="p-6 shrink-0 border-b border-(--color-hairline) flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <h3 className="text-xs font-black uppercase tracking-widest text-(--color-ink)">
               Announcements
@@ -208,19 +222,44 @@ export default function AnnouncementModal() {
               })}
             </p>
           </div>
+          <button
+            onClick={handleDismiss}
+            className="rounded-xl bg-(--color-ink) px-5 py-2.5 text-sm font-bold text-(--color-canvas) hover:opacity-90 transition-opacity hidden sm:block"
+          >
+            Got it
+          </button>
         </div>
 
-        <div className="overflow-y-auto px-6 py-2">
-          {announcements.map((announcement) => (
-            <AnnouncementItem
-              key={announcement.id}
-              announcement={announcement}
-              userId={userId}
-            />
-          ))}
+        <div className="overflow-y-auto px-6 py-4 flex-1">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            {mainAnnouncement && (
+              <div className="lg:col-span-2 rounded-2xl border border-(--color-primary)/20 bg-(--color-surface-soft) p-6">
+                <AnnouncementItem
+                  announcement={mainAnnouncement}
+                  userId={userId}
+                  isMain={true}
+                />
+              </div>
+            )}
+            
+            <div className="lg:col-span-1 space-y-1">
+              <h3 className="font-semibold text-xs uppercase tracking-widest text-(--color-muted) mb-2">Previous Updates</h3>
+              {otherAnnouncements.length === 0 ? (
+                <p className="text-xs text-(--color-muted)">No other announcements.</p>
+              ) : (
+                otherAnnouncements.map((announcement) => (
+                  <AnnouncementItem
+                    key={announcement.id}
+                    announcement={announcement}
+                    userId={userId}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="shrink-0 border-t border-(--color-hairline) bg-(--color-surface-soft) px-6 py-4 flex justify-end">
+        <div className="shrink-0 border-t border-(--color-hairline) bg-(--color-surface-soft) px-6 py-4 flex justify-end sm:hidden">
           <button
             onClick={handleDismiss}
             className="rounded-xl bg-(--color-ink) px-5 py-2.5 text-sm font-bold text-(--color-canvas) hover:opacity-90 transition-opacity"

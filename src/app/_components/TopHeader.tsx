@@ -30,6 +30,16 @@ const ICONS = {
   signIn: "ri-login-box-line",
   docs: "ri-book-open-line",
   announcements: "ri-notification-3-line",
+  creditRequests: "ri-bank-card-line",
+  messages: "ri-message-3-line",
+  guide: "ri-compass-3-line",
+  track: "ri-route-line",
+  leaderboard: "ri-trophy-line",
+  badges: "ri-medal-line",
+  kudos: "ri-thumb-up-line",
+  rituals: "ri-calendar-event-line",
+  alumni: "ri-group-2-line",
+  launchpad: "ri-rocket-line",
 };
 
 function Icon({ name, className = "" }: { name: string; className?: string }) {
@@ -43,9 +53,17 @@ function Icon({ name, className = "" }: { name: string; className?: string }) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
+    <span className="whitespace-nowrap opacity-100">
       {children}
     </span>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-4 mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-white/40 whitespace-nowrap opacity-100">
+      {children}
+    </div>
   );
 }
 
@@ -66,7 +84,7 @@ function NavLink({
   return (
     <Link
       href={href}
-      className={`group/link flex w-full items-center gap-0 rounded-xl px-[10px] py-2.5 text-sm font-semibold transition-all duration-300 group-hover/sidebar:gap-3 group-hover/sidebar:px-3 ${
+      className={`group/link flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all duration-300 ${
         isActive
           ? "bg-[#FF6B1F] text-white shadow-sm"
           : "text-white/60 hover:bg-white/10 hover:text-white"
@@ -79,7 +97,7 @@ function NavLink({
 }
 
 const NAV_ITEM_CLASS =
-  "group/link flex w-full items-center gap-0 rounded-xl px-[10px] py-2.5 text-sm font-semibold transition-all duration-300 group-hover/sidebar:gap-3 group-hover/sidebar:px-3";
+  "group/link flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all duration-300";
 
 function RequestsNavItem() {
   const pathname = usePathname();
@@ -107,7 +125,7 @@ function RequestsNavItem() {
   return (
     <Link
       href="/requests"
-      className={`group/link relative flex w-full items-center gap-0 rounded-xl px-[10px] py-2.5 text-sm font-semibold transition-all duration-300 group-hover/sidebar:gap-3 group-hover/sidebar:px-3 ${
+      className={`group/link relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all duration-300 ${
         isActive
           ? "bg-[#FF6B1F] text-white shadow-sm"
           : "text-white/60 hover:bg-white/10 hover:text-white"
@@ -157,6 +175,15 @@ export default function TopHeader() {
     ? "Account"
     : displayName.split(" ")[0] || "Account";
 
+  const getDisplayRole = () => {
+    if (role === "admin") return "ADMIN";
+    if (role === "advisor") return "ADVISOR";
+    if (memberRole === "startup") return "FOUNDER";
+    if (memberRole === "investor") return "INVESTOR";
+    if (memberRole === "ecosystem_partner") return "PARTNER";
+    return "MEMBER";
+  };
+
   const LogoContent = () => (
     <div className="flex shrink-0 items-center gap-3">
       <Image
@@ -166,7 +193,7 @@ export default function TopHeader() {
         height={28}
         className="shrink-0 rounded"
       />
-      <span className="flex items-center gap-1.5 md:max-w-0 md:overflow-hidden md:whitespace-nowrap md:opacity-0 md:transition-all md:duration-300 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100">
+      <span className="flex items-center gap-1.5 whitespace-nowrap opacity-100">
         <span className="block text-[11px] font-black tracking-widest text-white leading-tight uppercase">
           FOUNDERS ARENA
         </span>
@@ -214,28 +241,20 @@ export default function TopHeader() {
 
       {isMemberView && (
         <>
-          <NavLink
-            href="/deal-board"
-            label="Deal board"
-            icon={ICONS.dealBoard}
-          />
-          <NavLink
-            href="/matches"
-            label="Matches"
-            icon={ICONS.matches}
-          />
+          <SectionLabel>Me:</SectionLabel>
+          <NavLink href="/profile" label="My Profile" icon={ICONS.profile} />
+
+          <SectionLabel>Program:</SectionLabel>
+          <NavLink href="/deal-board" label="Deal board" icon={ICONS.dealBoard} />
+          <NavLink href="/matches" label="Matches" icon={ICONS.matches} />
           <RequestsNavItem />
-          <NavLink
-            href="/data-room"
-            label="Data Room"
-            icon={ICONS.dataRoom}
-          />
+          <NavLink href="/data-room" label="Data Room" icon={ICONS.dataRoom} />
+
+          <SectionLabel>Culture:</SectionLabel>
+          <NavLink href="/community" label="Community" icon={ICONS.community} />
           <NavLink href="/events" label="Events" icon={ICONS.events} />
-          <NavLink
-            href="/community"
-            label="Community"
-            icon={ICONS.community}
-          />
+          <NavLink href="/announcements" label="Announcements" icon={ICONS.announcements} />
+
         </>
       )}
 
@@ -272,11 +291,19 @@ export default function TopHeader() {
             icon={ICONS.networkGraph}
           />
           {role === "admin" && (
-            <NavLink
-              href="/admin/users"
-              label="User management"
-              icon={ICONS.members}
-            />
+            <>
+              <SectionLabel>Admin</SectionLabel>
+              <NavLink
+                href="/admin/users"
+                label="User management"
+                icon={ICONS.members}
+              />
+              <NavLink
+                href="/admin/credit-requests"
+                label="Credit Requests"
+                icon={ICONS.creditRequests}
+              />
+            </>
           )}
         </>
       )}
@@ -292,17 +319,22 @@ export default function TopHeader() {
   );
 
   const BottomProfile = () => (
-    <div className="space-y-1 border-t border-white/20 px-2 py-3">
+    <div className="space-y-1 border-t border-white/20 px-2 py-3 mt-auto">
       {signedIn && (
         <>
           <Link
             href="/profile"
-            className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white`}
+            className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white mb-2`}
           >
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 text-[10px] font-semibold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-semibold text-white">
               {initials || "?"}
             </div>
-            <Label>{firstName}</Label>
+            <div className="flex flex-col whitespace-nowrap opacity-100">
+              <span className="font-bold text-white text-sm">{displayName}</span>
+              <span className="text-[10px] font-semibold text-[#FF6B1F] uppercase tracking-wider">
+                {getDisplayRole()}
+              </span>
+            </div>
           </Link>
 
           <button
@@ -357,7 +389,7 @@ export default function TopHeader() {
       )}
 
       {/* Desktop Sidebar */}
-      <aside className="fa-sidebar group/sidebar hidden md:flex fixed top-0 left-0 z-40 h-screen w-14 flex-col bg-[#0a0a0f] border-r border-white/10 shadow-xl transition-all duration-300 hover:w-56">
+      <aside className="fa-sidebar hidden md:flex fixed top-0 left-0 z-40 h-screen w-56 flex-col bg-[#0a0a0f] border-r border-white/10 shadow-xl">
         {/* Logo */}
         <div className="flex items-center gap-3 px-3 py-5">
           <Link href="/" className="flex shrink-0 items-center gap-3">
@@ -366,7 +398,7 @@ export default function TopHeader() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-2 overflow-y-auto px-2">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <NavLinks />
         </nav>
 

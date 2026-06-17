@@ -12,6 +12,87 @@ export function getGreeting() {
   return "Good evening";
 }
 
+// ─── QuotaStatusWidget ────────────────────────────────────────────────────────
+
+export type QuotaItem = {
+  action: string;
+  limit: number;
+  used: number;
+  remaining: number;
+  isPaid: boolean;
+};
+
+type QuotaStatusWidgetProps = {
+  quotas: QuotaItem[];
+  isLoading?: boolean;
+};
+
+export function QuotaStatusWidget({ quotas, isLoading }: QuotaStatusWidgetProps) {
+  // Only show relevant quotas
+  const displayQuotas = quotas.filter(q => 
+    q.action === "request_community_intro" || 
+    q.action === "request_intro_investor" || 
+    q.action === "unlock_community_profile" ||
+    q.action === "request_intro_startup"
+  );
+
+  const getLabel = (action: string) => {
+    switch (action) {
+      case "request_community_intro": return "Community Intros";
+      case "request_intro_investor": return "Investor Intros";
+      case "request_intro_startup": return "Startup Intros";
+      case "unlock_community_profile": return "Profile Unlocks";
+      default: return action;
+    }
+  };
+
+  return (
+    <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-5 sm:p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-(--color-ink)">Weekly Allowance</p>
+          <p className="mt-0.5 text-xs text-(--color-muted)">Free weekly quota usage</p>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 rounded-lg bg-(--color-surface-strong)" />
+            <div className="h-10 rounded-lg bg-(--color-surface-strong)" />
+          </div>
+        ) : displayQuotas.length === 0 ? (
+          <p className="text-sm text-(--color-muted)">No active quotas tracked.</p>
+        ) : (
+          displayQuotas.map(q => {
+            const isUnlimited = q.isPaid || q.limit === Infinity;
+            const pct = isUnlimited ? 0 : Math.min(100, Math.max(0, (q.used / q.limit) * 100));
+            
+            return (
+              <div key={q.action} className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-(--color-ink)">{getLabel(q.action)}</span>
+                  <span className="font-semibold text-(--color-primary)">
+                    {isUnlimited ? "Unlimited" : `${q.remaining} of ${q.limit} left`}
+                  </span>
+                </div>
+                {!isUnlimited && (
+                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-(--color-surface-strong)">
+                    <div
+                      className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : "bg-(--color-primary)"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── HeroSection ─────────────────────────────────────────────────────────────
 
 type HeroSectionProps = {
@@ -489,16 +570,6 @@ const DEAL_STAGES: { label: string; shortLabel: string; fill: string }[] = [
   { label: "On Hold",         shortLabel: "On Hold",     fill: "#94A3B8" },
 ];
 
-// Chart geometry constants
-const VW = 600;
-const CHART_H = 130;
-const TOP_PAD = 26;   // space above bars for count labels
-const BOT_PAD = 34;   // space below baseline for stage labels
-const VH = TOP_PAD + CHART_H + BOT_PAD; // 190
-const SLOT_W = VW / DEAL_STAGES.length; // 100
-const BAR_W = 52;
-const BAR_R = 4;
-
 type DealBoardSnapshotCardProps = {
   stageCounts: Record<string, number>;
   isLoading?: boolean;
@@ -513,109 +584,46 @@ export function DealBoardSnapshotCard({
     1,
   );
 
-  const baselineY = TOP_PAD + CHART_H;
-
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <p className="text-sm font-semibold text-(--color-ink)">Projects by stage</p>
         <Link
           href="/deal-board"
-          className="inline-flex min-h-[44px] items-center text-xs font-semibold text-(--color-primary) hover:underline"
+          className="inline-flex items-center text-xs font-semibold text-(--color-primary) hover:underline"
         >
           Deal board →
         </Link>
       </div>
 
-      <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:overflow-visible sm:px-0">
-      <svg
-        viewBox={`0 0 ${VW} ${VH}`}
-        className="w-full min-w-[480px]"
-        role="img"
-        focusable="false"
-        aria-label="Deal stage distribution bar chart"
-      >
-        {/* Horizontal grid lines at 25 / 50 / 75 / 100 % */}
-        {[0.25, 0.5, 0.75, 1].map((frac) => {
-          const y = TOP_PAD + CHART_H * (1 - frac);
-          return (
-            <line
-              key={frac}
-              x1={0}
-              y1={y}
-              x2={VW}
-              y2={y}
-              stroke="var(--color-hairline)"
-              strokeWidth={1}
-            />
-          );
-        })}
-
-        {/* Baseline */}
-        <line
-          x1={0}
-          y1={baselineY}
-          x2={VW}
-          y2={baselineY}
-          stroke="var(--color-hairline)"
-          strokeWidth={1.5}
-        />
-
-        {/* Bars + labels */}
-        {DEAL_STAGES.map((s, i) => {
+      <div className="space-y-4 pb-2">
+        {DEAL_STAGES.map((s) => {
           const count = stageCounts[s.label] ?? 0;
-          const barH = isLoading ? 0 : (count / maxCount) * CHART_H;
-          const barX = i * SLOT_W + (SLOT_W - BAR_W) / 2;
-          const barY = baselineY - barH;
-          const cx = i * SLOT_W + SLOT_W / 2;
-
+          const pct = isLoading ? 0 : (count / maxCount) * 100;
+          
           return (
-            <g key={s.label}>
-              {/* Bar */}
-              {barH > 0 && (
-                <rect
-                  x={barX}
-                  y={barY}
-                  width={BAR_W}
-                  height={barH}
-                  rx={BAR_R}
-                  fill={s.fill}
-                  opacity={0.88}
-                >
-                  <title>
-                    {s.label}: {count} project{count !== 1 ? "s" : ""}
-                  </title>
-                </rect>
-              )}
-
-              {/* Count above bar (or at baseline if zero) */}
-              <text
-                x={cx}
-                y={barH > 0 ? barY - 6 : baselineY - 6}
-                textAnchor="middle"
-                fontSize={14}
-                fontWeight={700}
-                fontFamily="'JetBrains Mono', monospace"
-                fill={barH > 0 ? "var(--color-ink)" : "var(--color-muted)"}
+            <div key={s.label} className="flex items-center gap-3">
+              <span className="w-24 shrink-0 text-xs font-medium text-(--color-muted)">{s.shortLabel}</span>
+              <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-(--color-surface-strong)">
+                {!isLoading && pct > 0 && (
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%`, backgroundColor: s.fill }}
+                  />
+                )}
+                {isLoading && (
+                  <div className="absolute inset-0 animate-pulse rounded-full bg-(--color-surface-strong)" />
+                )}
+              </div>
+              <span 
+                className="w-8 text-right font-mono text-sm font-bold tabular-nums"
+                style={{ color: !isLoading && count > 0 ? s.fill : "var(--color-muted)" }}
               >
-                {isLoading ? "" : count}
-              </text>
-
-              {/* Stage label below baseline */}
-              <text
-                x={cx}
-                y={baselineY + 20}
-                textAnchor="middle"
-                fontSize={11}
-                fontWeight={600}
-                fill="var(--color-muted)"
-              >
-                {s.shortLabel}
-              </text>
-            </g>
+                {isLoading ? "…" : count || "—"}
+              </span>
+            </div>
           );
         })}
-      </svg>
       </div>
     </div>
   );
@@ -656,9 +664,24 @@ type NotificationsCardProps = {
   notifications: NotificationItem[];
   isLoading?: boolean;
 };
+import { useRouter } from "next/navigation";
 
 export function NotificationsCard({ notifications, isLoading }: NotificationsCardProps) {
   const shown = notifications.slice(0, 3);
+  const router = useRouter();
+
+  const handleNotificationClick = async (e: React.MouseEvent<HTMLAnchorElement>, n: NotificationItem) => {
+    if (n.href.startsWith("/api/jobs/")) {
+      e.preventDefault();
+      try {
+        await fetch(n.href, { method: "POST" });
+        router.push("/matches");
+      } catch (err) {
+        console.error(err);
+        router.push("/matches");
+      }
+    }
+  };
 
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
@@ -692,9 +715,13 @@ export function NotificationsCard({ notifications, isLoading }: NotificationsCar
                   aria-hidden="true"
                 />
                 <div className="min-w-0 pb-4">
-                  <p className="text-sm font-medium leading-snug text-(--color-ink)">
+                  <Link 
+                    href={n.href} 
+                    onClick={(e) => handleNotificationClick(e, n)}
+                    className="text-sm font-medium leading-snug text-(--color-ink) hover:underline cursor-pointer"
+                  >
                     {n.title}
-                  </p>
+                  </Link>
                   <p className="truncate text-xs text-(--color-muted)">{n.body}</p>
                   <p className="mt-0.5 text-[0.65rem] text-(--color-muted)">
                     {relativeTime(n.date)}

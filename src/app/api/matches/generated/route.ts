@@ -20,16 +20,14 @@ export async function GET() {
 
     const role = profile?.member_role || "startup";
 
-    // Unlocked asset check
-    const { data: ledgerUnlocks } = await admin
-      .from("ad_credit_ledger")
-      .select("reason")
-      .eq("member_id", user.id)
-      .ilike("reason", "Permanently unlock match card:%");
+    // Unlocked asset check via dedicated table
+    const { data: unlockedData } = await admin
+      .from("user_unlocked_assets")
+      .select("asset_id")
+      .eq("user_id", user.id)
+      .eq("asset_type", "match");
 
-    const unlockedMatchIds = new Set((ledgerUnlocks ?? []).map(row => 
-      (row.reason as string).replace("Permanently unlock match card: ", "").trim()
-    ));
+    const unlockedMatchIds = new Set((unlockedData ?? []).map(row => row.asset_id));
 
     if (role === "investor") {
       // Investors see Projects
@@ -73,9 +71,9 @@ export async function GET() {
         const isLocked = index >= limit && !unlockedMatchIds.has(r.id);
         return {
           ...r,
-          owner_name: isLocked ? "Hidden Startup" : r.owner_name,
-          name: isLocked ? "Confidential Project" : r.name,
-          description: isLocked ? "Description locked due to visibility limits." : r.description,
+          owner_name: isLocked ? "[LOCKED]" : r.owner_name,
+          name: isLocked ? "[LOCKED]" : r.name,
+          description: isLocked ? "[LOCKED]" : r.description,
           is_locked: isLocked,
         };
       });
@@ -125,14 +123,12 @@ export async function GET() {
 
       // Mask
       const masked = results.map((r, index) => {
-        // Here we use the score ID as the asset ID, or perhaps the profile ID. The prompt for match unblurring is usually the score ID or profile ID. 
-        // In my-matches, it uses match ID. 
-        // We'll use the profile ID or score ID depending on how page.tsx is set up. page.tsx uses "Permanently unlock match card: " + match.id.
+        // We use the score ID as the asset ID
         const isLocked = index >= limit && !unlockedMatchIds.has(r.id);
         return {
           ...r,
-          investor_name: isLocked ? "Hidden Investor" : r.investor_name,
-          summary: isLocked ? "Summary locked due to visibility limits." : r.summary,
+          investor_name: isLocked ? "[LOCKED]" : r.investor_name,
+          summary: isLocked ? "[LOCKED]" : r.summary,
           is_locked: isLocked,
         };
       });

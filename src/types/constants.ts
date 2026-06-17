@@ -130,7 +130,9 @@ export const DURATION_PLANS: DurationPlan[] = [
 ];
 
 export const CREDIT_PACKAGES: CreditPackage[] = [
-  { id: "match-bundle", name: "Match Bundle", credits: 100, price: 99 },
+  { id: "bundle-30", name: "Starter Bundle", credits: 30, price: 30 },
+  { id: "bundle-50", name: "Growth Bundle", credits: 50, price: 50 },
+  { id: "bundle-100", name: "Match Bundle", credits: 100, price: 99 },
 ];
 
 // Stage Configuration

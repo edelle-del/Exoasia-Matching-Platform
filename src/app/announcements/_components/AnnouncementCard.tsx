@@ -16,6 +16,8 @@ type AnnouncementProps = {
   canDelete: boolean;
   initialLikes: number;
   initialLiked: boolean;
+  isMain?: boolean;
+  defaultExpanded?: boolean;
 };
 
 export function AnnouncementCard({
@@ -24,9 +26,11 @@ export function AnnouncementCard({
   canDelete,
   initialLikes,
   initialLiked,
+  isMain = false,
+  defaultExpanded = false,
 }: AnnouncementProps) {
   const router = useRouter();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded || isMain);
   const [likes, setLikes] = useState(initialLikes);
   const [liked, setLiked] = useState(initialLiked);
   const [isLiking, setIsLiking] = useState(false);
@@ -86,31 +90,37 @@ export function AnnouncementCard({
   };
 
   return (
-    <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6">
+    <div className={`rounded-2xl border ${isMain ? 'border-(--color-primary)/20 bg-(--color-surface-soft) p-6' : 'border-(--color-hairline) bg-(--color-canvas) p-3 sm:p-4'} h-fit`}>
       <div className="flex items-start justify-between gap-4">
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex-1 text-left flex items-start gap-4 group"
+          onClick={() => !isMain && setIsExpanded(!isExpanded)}
+          className={`flex-1 text-left flex items-start gap-4 ${!isMain ? 'group' : 'cursor-default'}`}
         >
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-(--color-ink) group-hover:text-(--color-primary) transition-colors">
-                {announcement.title}
-              </h2>
-              {announcement.is_featured && (
-                <span className="shrink-0 inline-block rounded-full bg-(--color-primary)/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-(--color-primary)">
-                  Featured
-                </span>
-              )}
+            <div className="flex flex-col items-start gap-1 sm:gap-1.5">
+              <div className="flex items-start gap-2">
+                {announcement.is_featured && isMain && (
+                  <span className="shrink-0 inline-block rounded-full bg-(--color-primary)/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-(--color-primary) mt-1">
+                    Featured
+                  </span>
+                )}
+                <h2 className={`${isMain ? 'text-2xl font-black tracking-tight' : 'text-sm font-bold leading-tight'} text-(--color-ink) whitespace-normal ${!isMain && 'group-hover:text-(--color-primary)'} transition-colors text-left`}>
+                  {announcement.title}
+                </h2>
+              </div>
+              <p className={`text-xs text-(--color-muted) shrink-0 whitespace-nowrap ${!isMain && 'font-medium'}`}>
+                {new Date(announcement.created_at).toLocaleDateString(undefined, isMain ? {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                } : {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </p>
             </div>
-            <p className="mt-1 text-xs text-(--color-muted)">
-              ({new Date(announcement.created_at).toLocaleDateString(undefined, {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })})
-            </p>
           </div>
         </button>
 
@@ -126,8 +136,8 @@ export function AnnouncementCard({
             </button>
           )}
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-(--color-muted) p-2 hover:bg-(--color-surface-soft) rounded-full transition-colors"
+            onClick={() => !isMain && setIsExpanded(!isExpanded)}
+            className={`text-(--color-muted) p-2 hover:bg-(--color-surface-soft) rounded-full transition-colors ${isMain ? 'invisible' : ''}`}
           >
             {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </button>

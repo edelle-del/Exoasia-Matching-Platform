@@ -47,8 +47,8 @@ describe("CREDIT_COSTS structure", () => {
     expect(CREDIT_COSTS.REDO_ASSESSMENT.base).toBe(100);
   });
 
-  it("OPEN_MATCH_BUNDLE costs 1 credit per match", () => {
-    expect(CREDIT_COSTS.OPEN_MATCH_BUNDLE.base).toBe(1);
+  it("UNLOCK_MATCH costs 3 credits per match", () => {
+    expect(CREDIT_COSTS.UNLOCK_MATCH.base).toBe(3);
   });
 
   it("all outreach / intro actions cost exactly 1 credit", () => {
@@ -59,14 +59,11 @@ describe("CREDIT_COSTS structure", () => {
 
   it("all FREE_FOR_PAID_SUBSCRIBERS startup actions have base 1", () => {
     expect(CREDIT_COSTS.UNLOCK_INVESTOR_PROFILE.base).toBe(1);
-    expect(CREDIT_COSTS.REGENERATE_MATCH_REPORT.base).toBe(1);
-    expect(CREDIT_COSTS.SEND_COFOUNDER_INVITE.base).toBe(1);
   });
 
   it("all FREE_FOR_PAID_SUBSCRIBERS investor actions have base 1", () => {
     expect(CREDIT_COSTS.VIEW_PITCH_DECK.base).toBe(1);
     expect(CREDIT_COSTS.VIEW_FINANCIALS.base).toBe(1);
-    expect(CREDIT_COSTS.VIEW_COMPATIBILITY.base).toBe(1);
     expect(CREDIT_COSTS.EXPORT_PIPELINE_REPORT.base).toBe(1);
   });
 
@@ -76,8 +73,8 @@ describe("CREDIT_COSTS structure", () => {
     expect(CREDIT_COSTS.UNLOCK_COMMUNITY_PROFILE.base).toBe(1);
   });
 
-  it("ecosystem transactional actions cost 1 credit each", () => {
-    expect(CREDIT_COSTS.BULK_AI_MATCH_STARTUPS.base).toBe(1);
+  it("ecosystem transactional actions cost 1 or 3 credits each", () => {
+    expect(CREDIT_COSTS.BULK_MATCH_SWEEP_STARTUP.base).toBe(3);
     expect(CREDIT_COSTS.FEATURE_STARTUP_DIGEST.base).toBe(1);
     expect(CREDIT_COSTS.SEND_PARTNERSHIP_INVITE.base).toBe(1);
   });

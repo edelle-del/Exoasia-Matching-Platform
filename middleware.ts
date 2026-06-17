@@ -60,6 +60,12 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getSession();
     const role = getRoleFromAccessToken(session?.access_token);
 
+    // Force invited users to accept their invite before accessing any protected route
+    if (user.user_metadata?.account_status === "invited") {
+      const redirectUrl = new URL("/accept-invite", origin);
+      return NextResponse.redirect(redirectUrl);
+    }
+
     if (!canAccessPath(pathname, role)) {
       const redirectUrl = new URL(getHomePathForRole(role), origin);
       redirectUrl.search = request.nextUrl.search;

@@ -42,6 +42,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // Allow processing of Supabase Auth hashes or PKCE codes before redirecting!
+        if (typeof window !== "undefined") {
+          if (
+            window.location.hash.includes("access_token") ||
+            window.location.search.includes("code=")
+          ) {
+            return;
+          }
+        }
+
         try {
           const supabase = createClient();
           const { data } = await supabase.auth.getUser();

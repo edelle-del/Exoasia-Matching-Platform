@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/providers";
-import { Search, ChevronLeft, ChevronRight, Edit2, Trash2, X, AlertTriangle, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Edit2, Trash2, X, AlertTriangle, ShieldAlert, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 
 type AdminUser = {
   id: string;
@@ -566,8 +566,18 @@ export default function AdminUsersPage() {
             </select>
           </div>
           
-          <div className="text-xs font-medium text-(--color-muted) bg-(--color-canvas) px-3 py-1.5 rounded-lg border border-(--color-hairline)">
-            {totalUsers} {totalUsers === 1 ? 'user' : 'users'} found
+          <div className="flex items-center gap-3">
+            <div className="text-xs font-medium text-(--color-muted) bg-(--color-canvas) px-3 py-1.5 rounded-lg border border-(--color-hairline)">
+              {totalUsers} {totalUsers === 1 ? 'user' : 'users'} found
+            </div>
+            <button
+              onClick={() => void fetchUsers()}
+              disabled={isLoading}
+              className="flex items-center justify-center h-8 w-8 rounded-lg border border-(--color-hairline) bg-(--color-canvas) text-(--color-muted) hover:text-(--color-ink) hover:bg-(--color-hairline) transition-colors disabled:opacity-40"
+              title="Reload users"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
           </div>
         </div>
 

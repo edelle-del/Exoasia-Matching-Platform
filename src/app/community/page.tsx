@@ -9,6 +9,7 @@ import {
 } from "@/lib/app-data";
 import { SECTOR_OPTIONS } from "@/types/constants";
 import { InsufficientCreditsModal } from "@/app/_components/InsufficientCreditsModal";
+import ThreadsFeed from "./_components/ThreadsFeed";
 
 const PROJECT_STAGES = [
   "Pre-revenue Startups",
@@ -30,8 +31,11 @@ function roleBadgeConfig(role: string | null | undefined) {
   return null;
 }
 
+type Tab = "members" | "threads";
+
 export default function CommunityPage() {
   const supabase = useMemo(() => createClient(), []);
+  const [tab, setTab] = useState<Tab>("members");
   const [members, setMembers] = useState<CommunityMemberRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -96,8 +100,6 @@ export default function CommunityPage() {
     })();
   }, [supabase]);
 
-
-
   const countries = useMemo(
     () =>
       Array.from(
@@ -149,102 +151,138 @@ export default function CommunityPage() {
         <div className="mx-auto max-w-7xl">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
           <h1 className="mt-1 text-4xl font-bold tracking-tight text-(--color-ink)">Community</h1>
-          <p className="mt-1 text-sm text-(--color-muted)">Browse all members in the network.</p>
+          <p className="mt-1 text-sm text-(--color-muted)">Browse members and join the conversation.</p>
+
+          {/* Tabs */}
+          <div className="mt-5 flex gap-1 border-b border-(--color-hairline)">
+            <button
+              type="button"
+              onClick={() => setTab("members")}
+              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                tab === "members"
+                  ? "border-(--color-primary) text-(--color-primary)"
+                  : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
+              }`}
+            >
+              Members
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("threads")}
+              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                tab === "threads"
+                  ? "border-(--color-primary) text-(--color-primary)"
+                  : "border-transparent text-(--color-muted) hover:text-(--color-ink)"
+              }`}
+            >
+              Threads
+            </button>
+          </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 pt-6 pb-8">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2">
-          <input
-            type="text"
-            placeholder="Search by name, business, or bio…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 min-w-[200px] flex-1 rounded-[10px] border border-(--color-hairline) bg-(--color-canvas) px-3 text-sm text-(--color-ink) outline-none placeholder:text-(--color-muted) focus:border-(--color-primary)"
-          />
-          <FilterSelect
-            value={filterRole}
-            onChange={setFilterRole}
-            label="Role"
-            options={[
-              { value: "all", label: "All roles" },
-              { value: "startup", label: "Founders" },
-              { value: "investor", label: "Investors" },
-              { value: "ecosystem_partner", label: "Ecosystem Partners" },
-            ]}
-          />
-          <FilterSelect
-            value={filterSector}
-            onChange={setFilterSector}
-            label="Sector"
-            options={[
-              { value: "all", label: "All sectors" },
-              ...SECTOR_OPTIONS.map((s) => ({ value: s, label: s })),
-            ]}
-          />
-          <FilterSelect
-            value={filterCountry}
-            onChange={setFilterCountry}
-            label="Country"
-            options={[
-              { value: "all", label: "All countries" },
-              ...countries.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-          <FilterSelect
-            value={filterStage}
-            onChange={setFilterStage}
-            label="Project stage"
-            options={[
-              { value: "all", label: "All project stages" },
-              ...PROJECT_STAGES.map((s) => ({ value: s, label: s })),
-            ]}
-          />
-          <FilterSelect
-            value={filterVerification}
-            onChange={setFilterVerification}
-            label="Verification"
-            options={[
-              { value: "all", label: "All" },
-              { value: "verified", label: "Verified" },
-              { value: "pending", label: "Pending" },
-              { value: "unverified", label: "Unverified" },
-            ]}
-          />
-        </div>
+        {tab === "members" && (
+          <>
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="text"
+                placeholder="Search by name, business, or bio…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 min-w-[200px] flex-1 rounded-[10px] border border-(--color-hairline) bg-(--color-canvas) px-3 text-sm text-(--color-ink) outline-none placeholder:text-(--color-muted) focus:border-(--color-primary)"
+              />
+              <FilterSelect
+                value={filterRole}
+                onChange={setFilterRole}
+                label="Role"
+                options={[
+                  { value: "all", label: "All roles" },
+                  { value: "startup", label: "Founders" },
+                  { value: "investor", label: "Investors" },
+                  { value: "ecosystem_partner", label: "Ecosystem Partners" },
+                ]}
+              />
+              <FilterSelect
+                value={filterSector}
+                onChange={setFilterSector}
+                label="Sector"
+                options={[
+                  { value: "all", label: "All sectors" },
+                  ...SECTOR_OPTIONS.map((s) => ({ value: s, label: s })),
+                ]}
+              />
+              <FilterSelect
+                value={filterCountry}
+                onChange={setFilterCountry}
+                label="Country"
+                options={[
+                  { value: "all", label: "All countries" },
+                  ...countries.map((c) => ({ value: c, label: c })),
+                ]}
+              />
+              <FilterSelect
+                value={filterStage}
+                onChange={setFilterStage}
+                label="Project stage"
+                options={[
+                  { value: "all", label: "All project stages" },
+                  ...PROJECT_STAGES.map((s) => ({ value: s, label: s })),
+                ]}
+              />
+              <FilterSelect
+                value={filterVerification}
+                onChange={setFilterVerification}
+                label="Verification"
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "verified", label: "Verified" },
+                  { value: "pending", label: "Pending" },
+                  { value: "unverified", label: "Unverified" },
+                ]}
+              />
+            </div>
 
-        {!isLoading && (
-          <p className="text-xs text-(--color-muted)">
-            {filtered.length} member{filtered.length !== 1 ? "s" : ""}
-          </p>
+            {!isLoading && (
+              <p className="text-xs text-(--color-muted)">
+                {filtered.length} member{filtered.length !== 1 ? "s" : ""}
+              </p>
+            )}
+
+            {isLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-40 animate-pulse rounded-[16px] border border-(--color-hairline) bg-(--color-surface-soft)"
+                  />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="rounded-[16px] border border-(--color-hairline) bg-(--color-surface-soft) p-8 text-center text-sm text-(--color-body)">
+                No members match your filters.
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((m) => (
+                  <MemberCard
+                    key={m.id}
+                    member={m}
+                    onSelect={setSelectedMember}
+                    connectionStatus={connectionMap.get(m.id) ?? null}
+                    isCurrentUser={m.id === currentUserId}
+                    isUnlocked={m.id !== currentUserId && unlockedProfiles.has(m.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-40 animate-pulse rounded-[16px] border border-(--color-hairline) bg-(--color-surface-soft)"
-              />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-[16px] border border-(--color-hairline) bg-(--color-surface-soft) p-8 text-center text-sm text-(--color-body)">
-            No members match your filters.
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((m) => (
-              <MemberCard
-                key={m.id}
-                member={m}
-                onSelect={setSelectedMember}
-                connectionStatus={connectionMap.get(m.id) ?? null}
-                isCurrentUser={m.id === currentUserId}
-                isUnlocked={m.id !== currentUserId && unlockedProfiles.has(m.id)}
-              />
-            ))}
+        {tab === "threads" && (
+          <div className="max-w-2xl">
+            <ThreadsFeed currentUserId={currentUserId} />
           </div>
         )}
       </div>

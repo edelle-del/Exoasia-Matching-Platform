@@ -24,6 +24,7 @@ const ICONS = {
   manualMatch: "ri-magic-line",
   networkGraph: "ri-share-line",
   community: "ri-group-line",
+  featureRequests: "ri-lightbulb-line",
   ecosystem: "ri-organization-chart",
   profile: "ri-user-3-line",
   signOut: "ri-logout-box-r-line",
@@ -236,6 +237,7 @@ export default function TopHeader() {
             label="Community"
             icon={ICONS.community}
           />
+          <NavLink href="/feature-requests" label="Feature Requests" icon={ICONS.featureRequests} />
         </>
       )}
 
@@ -251,6 +253,7 @@ export default function TopHeader() {
           <SectionLabel>Culture:</SectionLabel>
           <NavLink href="/community" label="Community" icon={ICONS.community} />
           <NavLink href="/events" label="Events" icon={ICONS.events} />
+          <NavLink href="/feature-requests" label="Feature Requests" icon={ICONS.featureRequests} />
 
         </>
       )}

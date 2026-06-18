@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BYPASS_CREDIT_GATES } from "@/lib/credits";
-
-const UNLOCK_COST = 2;
+import { checkWeeklyQuota, incrementWeeklyQuota } from "@/lib/quotas";
 
 export async function POST(request: Request) {
   try {
@@ -31,32 +30,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, alreadyUnlocked: true });
     }
 
-    // Check balance
-    const { data: ledgerRows } = await admin
-      .from("ad_credit_ledger")
-      .select("change_amount")
-      .eq("member_id", user.id);
+    // Check free unlocks used this week via quota
+    const quota = await checkWeeklyQuota(user.id, "unlock_community_profile");
+    const isFree = quota.remaining > 0;
+    const cost = isFree ? 0 : 1;
 
-    const balance = (ledgerRows ?? []).reduce(
-      (sum, r) => sum + Number(r.change_amount ?? 0),
-      0,
-    );
+    // Check balance if not free
+    if (cost > 0) {
+      const { data: ledgerRows } = await admin
+        .from("ad_credit_ledger")
+        .select("change_amount")
+        .eq("member_id", user.id);
 
-    if (!BYPASS_CREDIT_GATES && balance < UNLOCK_COST) {
-      return NextResponse.json(
-        { error: `Insufficient credits. You need ${UNLOCK_COST} credits but have ${balance}.`, needed: UNLOCK_COST, balance },
-        { status: 402 },
+      const balance = (ledgerRows ?? []).reduce(
+        (sum, r) => sum + Number(r.change_amount ?? 0),
+        0,
       );
+
+      if (!BYPASS_CREDIT_GATES && balance < cost) {
+        return NextResponse.json(
+          { error: `Insufficient credits. You need ${cost} credit to unlock this profile.`, needed: cost, balance },
+          { status: 402 },
+        );
+      }
     }
 
     const { error: deductError } = await admin.from("ad_credit_ledger").insert({
       member_id: user.id,
-      change_amount: -UNLOCK_COST,
+      change_amount: -cost,
       reason: `Unlock community profile: ${memberId}`,
     });
 
     if (deductError) {
       return NextResponse.json({ error: deductError.message }, { status: 500 });
+    }
+
+    if (isFree) {
+      await incrementWeeklyQuota(user.id, "unlock_community_profile");
     }
 
     return NextResponse.json({ success: true, alreadyUnlocked: false });

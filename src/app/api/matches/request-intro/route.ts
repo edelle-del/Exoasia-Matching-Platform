@@ -104,7 +104,7 @@ export async function POST(req: Request) {
             fit_score: scoreRow?.fit_score ?? null,
             summary: scoreRow?.summary ?? null,
             rationale: "Member-initiated connection from project match",
-            status: "pending",
+            status: "approved",
             member_a_status,
             member_b_status,
             project_id: project_id,

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       fit_score: fit_score ?? null,
       summary: summary ?? null,
       rationale: "Manual advisor match",
-      status: "pending",
+      status: "approved",
       member_a_status: "pending",
       member_b_status: "pending",
       created_at: new Date().toISOString(),

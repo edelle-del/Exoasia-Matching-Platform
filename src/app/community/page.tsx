@@ -49,14 +49,15 @@ export default function CommunityPage() {
   const [filterVerification, setFilterVerification] = useState("all");
   const [selectedMember, setSelectedMember] = useState<CommunityMemberRecord | null>(null);
   const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
-  const [weeklyUnlocks, setWeeklyUnlocks] = useState({ used: 0, limit: 5 });
+  const [weeklyUnlocks, setWeeklyUnlocks] = useState({ used: 0, limit: 2 });
+  const [introQuota, setIntroQuota] = useState<{ remaining: number, total: number, isPaid: boolean } | null>(null);
 
   useEffect(() => {
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id ?? null);
 
-      const [data, matchesResult, ledgerResult] = await Promise.all([
+      const [data, matchesResult, ledgerResult, quotaResult] = await Promise.all([
         fetchCommunityMembers(supabase),
         user
           ? supabase
@@ -71,6 +72,9 @@ export default function CommunityPage() {
               .eq("member_id", user.id)
               .or("reason.ilike.Unlock community profile:%,reason.ilike.Unlock investor profile:%")
           : Promise.resolve({ data: null }),
+        user
+          ? fetch("/api/quotas/summary").then(r => r.json()).catch(() => null)
+          : Promise.resolve(null),
       ]);
 
       setMembers(data);
@@ -84,17 +88,9 @@ export default function CommunityPage() {
       }
       setConnectionMap(map);
 
-      if (user && ledgerResult.data && ledgerResult.data.length > 0) {
-        let thisWeekCount = 0;
-        const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday start
-
+      if (user && ledgerResult.data) {
         const ids = new Set(
           ledgerResult.data.map((r) => {
-            if (r.created_at && new Date(r.created_at) >= startOfWeek) {
-              thisWeekCount++;
-            }
             const reason = r.reason as string;
             return reason
               .replace("Unlock community profile: ", "")
@@ -103,7 +99,17 @@ export default function CommunityPage() {
           }),
         );
         setUnlockedProfiles(ids);
-        setWeeklyUnlocks({ used: thisWeekCount, limit: 5 });
+      }
+
+      if (quotaResult?.quotas) {
+        const comQuota = quotaResult.quotas.find((q: any) => q.action === "unlock_community_profile");
+        if (comQuota) {
+          setWeeklyUnlocks({ used: comQuota.used, limit: comQuota.limit });
+        }
+        const reqQuota = quotaResult.quotas.find((q: any) => q.action === "request_community_intro");
+        if (reqQuota) {
+          setIntroQuota(reqQuota);
+        }
       }
 
       setIsLoading(false);
@@ -312,6 +318,7 @@ export default function CommunityPage() {
           connectionStatus={connectionMap.get(selectedMember.id) ?? null}
           isUnlocked={selectedMember.id === currentUserId || unlockedProfiles.has(selectedMember.id)}
           weeklyUnlocks={weeklyUnlocks}
+          introQuota={introQuota}
           onUnlocked={handleProfileUnlocked}
           onInsufficientCredits={setInsufficientCredits}
           onClose={() => setSelectedMember(null)}
@@ -466,6 +473,7 @@ function MemberDetailModal({
   connectionStatus,
   isUnlocked: initialUnlocked,
   weeklyUnlocks,
+  introQuota,
   onUnlocked,
   onInsufficientCredits,
   onClose,
@@ -475,6 +483,7 @@ function MemberDetailModal({
   connectionStatus: ConnectionStatus;
   isUnlocked: boolean;
   weeklyUnlocks: { used: number; limit: number };
+  introQuota?: { remaining: number; total: number; isPaid: boolean } | null;
   onUnlocked: (memberId: string) => void;
   onInsufficientCredits: (data: { needed: number; balance: number }) => void;
   onClose: () => void;
@@ -567,6 +576,14 @@ function MemberDetailModal({
       setIntroStatus("error");
     }
   }, [m.id]);
+
+  const isFreeCommunityIntroToday = useMemo(() => {
+    const phtDay = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Manila",
+      weekday: "short",
+    }).format(new Date());
+    return phtDay === "Wed" || phtDay === "Sat";
+  }, []);
 
   let v2: Record<string, unknown> | null = null;
   try {
@@ -693,7 +710,11 @@ function MemberDetailModal({
                 disabled={unlocking}
                 className="w-full rounded-xl bg-(--color-primary) px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {unlocking ? "Unlocking…" : `Unlock full profile (${weeklyUnlocks.used}/${weeklyUnlocks.limit} unlocks this week)`}
+                {unlocking 
+                  ? "Unlocking…" 
+                  : weeklyUnlocks.used < weeklyUnlocks.limit 
+                    ? `Unlock full profile (Free — ${weeklyUnlocks.limit - weeklyUnlocks.used} left this week)` 
+                    : "Unlock full profile (Cost: 1 Credit)"}
               </button>
             </div>
           )}
@@ -882,7 +903,11 @@ function MemberDetailModal({
                       disabled={introStatus === "loading"}
                       className="w-full rounded-xl bg-(--color-primary) px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e55919] disabled:opacity-60"
                     >
-                      {introStatus === "error" ? "Failed — try again" : "Request intro to connect"}
+                      {introStatus === "error" ? "Failed — try again" : introQuota ? (
+                        introQuota.isPaid || introQuota.total === Infinity ? "Request intro to connect (Unlimited)" : 
+                        isFreeCommunityIntroToday && introQuota.remaining > 0 ? `Request intro to connect (${introQuota.remaining} free left)` :
+                        "Request intro to connect (Cost: 1 Credit)"
+                      ) : "Request intro to connect (Cost: 1 Credit)"}
                     </button>
                   )}
                 </div>

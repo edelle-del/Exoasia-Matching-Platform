@@ -144,6 +144,7 @@ export default function MatchesPage() {
   const [loadingFounders, setLoadingFounders] = useState<Set<string>>(new Set());
   const [selectedFounder, setSelectedFounder] = useState<FounderProfile | null>(null);
   const [generatedMatches, setGeneratedMatches] = useState<any[]>([]);
+  const [introQuota, setIntroQuota] = useState<{ remaining: number, total: number, isPaid: boolean } | null>(null);
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -173,6 +174,18 @@ export default function MatchesPage() {
       // ── Collab invites (all roles) ───────────────────────────────────────────
       const invitesRes = await fetch("/api/ecosystem/portfolio-invites").then((r) => r.json());
       setPortfolioInvites((invitesRes as { invites?: PortfolioInvite[] }).invites ?? []);
+
+      // ── Quotas ──────────────────────────────────────────────────────────────
+      try {
+        const qRes = await fetch("/api/quotas/summary").then(r => r.json());
+        if (qRes.quotas) {
+          const qAction = role === "startup" ? "request_intro_investor" : "request_intro_startup";
+          const q = qRes.quotas.find((x: any) => x.action === qAction);
+          if (q) setIntroQuota(q);
+        }
+      } catch (e) {
+        console.error("Failed to fetch quotas", e);
+      }
 
       // ── Startup ──────────────────────────────────────────────────────────────
       if (role === "startup") {
@@ -532,12 +545,12 @@ export default function MatchesPage() {
             <div>
               <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-(--color-muted)">FOUNDERS ARENA</p>
               <h1 className="ma-header-title">
-                {isInvestor ? "Projects & Pipeline" : "Your Matches"}
+                {(isInvestor || isEcosystemPartner) ? "Projects & Pipeline" : "Your Matches"}
               </h1>
               <p className="ma-header-desc">
                 {isLoading
                   ? "Loading…"
-                  : isInvestor
+                  : (isInvestor || isEcosystemPartner)
                     ? `${projects.length} project${projects.length !== 1 ? "s" : ""} · ${matches.length} intro${matches.length !== 1 ? "s" : ""}`
                     : isStartup
                       ? pendingCount > 0
@@ -728,7 +741,7 @@ export default function MatchesPage() {
                                     <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                                   </svg>
                                 )}
-                                {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate Matches" : "Find Investors"}
+                                {isGeneratingThis ? "Matching…" : alreadyGenerated ? "Regenerate Matches (3 Credits)" : "Generate first matches for free"}
                               </button>
                             ) : (
                               <button
@@ -763,8 +776,8 @@ export default function MatchesPage() {
           </>
         )}
 
-        {/* ── INVESTOR VIEW ──────────────────────────────────────────────────── */}
-        {isInvestor && (
+        {/* ── INVESTOR & ECOSYSTEM PARTNER VIEW ──────────────────────────────────────────────────── */}
+        {(isInvestor || isEcosystemPartner) && (
           <>
             {/* ── Collab invites ── */}
             {!isLoading && portfolioInvites.length > 0 && (
@@ -810,9 +823,9 @@ export default function MatchesPage() {
                       {scoreMap.size > 0 ? "Regenerating..." : "Processing..."}
                     </>
                   ) : scoreMap.size > 0 ? (
-                    "Regenerate Matches (1 Credit)"
+                    isEcosystemPartner ? "Regenerate Matches (8 Credits)" : "Regenerate Matches (3 Credits)"
                   ) : (
-                    "Create Matches (1 Credit)"
+                    isEcosystemPartner ? "Create Matches (8 Credits)" : "Create Matches (3 Credits)"
                   )}
                 </button>
               </div>
@@ -930,6 +943,7 @@ export default function MatchesPage() {
                                   matchStatusByPartnerId={matchStatusByPartnerId}
                                   introRequests={introRequests}
                                   onRequest={handleRequestIntro}
+                                  introQuota={introQuota}
                                   size="md"
                                 />
                                 {existingScore && (
@@ -1033,6 +1047,7 @@ function ConnectButton({
   matchStatusByPartnerId,
   introRequests,
   onRequest,
+  introQuota,
   size = "sm",
 }: {
   projectId: string;
@@ -1041,6 +1056,7 @@ function ConnectButton({
   matchStatusByPartnerId: Map<string, { status: string; myStatus: string }>;
   introRequests: Map<string, "requesting" | "done">;
   onRequest: (projectId: string, investorId: string) => Promise<void>;
+  introQuota?: { remaining: number, total: number, isPaid: boolean } | null;
   size?: "sm" | "md";
 }) {
   const key = `${projectId}:${userId}`;
@@ -1070,6 +1086,14 @@ function ConnectButton({
     return <span className={`${base} bg-amber-500/15 text-amber-500`}>Qualified — awaiting founder</span>;
   }
 
+  const isFreeIntroToday = useMemo(() => {
+    const phtDay = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Manila",
+      weekday: "short",
+    }).format(new Date());
+    return phtDay === "Mon" || phtDay === "Thu";
+  }, []);
+
   return (
     <button
       type="button"
@@ -1077,7 +1101,10 @@ function ConnectButton({
       onClick={() => void onRequest(projectId, userId)}
       className={`${base} bg-(--color-primary) text-white hover:opacity-90 disabled:opacity-50`}
     >
-      {reqState === "requesting" ? "Sending…" : "Add as Qualified"}
+      {reqState === "requesting" ? "Sending…" : introQuota ? (
+        introQuota.isPaid || introQuota.total === Infinity ? "Add as Qualified (Unlimited)" : 
+        isFreeIntroToday && introQuota.remaining > 0 ? `Add as Qualified (${introQuota.remaining} free left)` : "Add as Qualified (Cost: 3 Credits)"
+      ) : "Add as Qualified (Cost: 3 Credits)"}
     </button>
   );
 }
@@ -1447,7 +1474,7 @@ function MatchList({
                     </button>
                   </>
                 )}
-                <Link href={`/matches/${m.id}`} className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) hover:bg-(--color-hairline) hover:text-(--color-primary)" aria-label="View details">
+                <Link href={`/matches/breakdown?a=${m.member_a_id}&b=${m.member_b_id}${m.fit_score != null ? `&score=${m.fit_score}` : ""}${m.project_id ? `&project=${m.project_id}` : ""}`} className="flex h-8 w-8 items-center justify-center rounded-xl bg-(--color-surface-soft) text-(--color-muted) hover:bg-(--color-hairline) hover:text-(--color-primary)" aria-label="View details">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>

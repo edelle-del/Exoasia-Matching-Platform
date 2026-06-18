@@ -432,7 +432,7 @@ export default function DashboardPage() {
                 ? isLoading
                   ? "Loading portfolio…"
                   : `${partnerStats?.total_companies ?? 0} ${(partnerStats?.total_companies ?? 0) === 1 ? "company" : "companies"} in portfolio · ${partnerStats?.active_matches ?? 0} active deals · Free Tier`
-                : `You're a member at Stage ${summary.profile?.stage || "0"} · Verification ${summary.profile?.verification_status || "unverified"} · Free Tier`
+                : `Verification: ${summary.profile?.verification_status || "unverified"} · Free Tier`
               }
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">

@@ -25,7 +25,7 @@ export class InsufficientCreditsError extends Error {
 
 export const CREDIT_COSTS = {
   // ── Startup (Founder) allowances ──────────────────────────────────────────
-  UNLOCK_INVESTOR_PROFILE:  { base: 1,  reason: "Unlock investor profile (fallback)" },
+  UNLOCK_INVESTOR_PROFILE:  { base: 0,  reason: "Unlock investor profile (always free)" },
   SEND_COFOUNDER_INVITE:    { base: 0,  reason: "Cofounder email invite (always free)" },
   REQUEST_INTRO_INVESTOR:   { base: 2,  reason: "Intro request to investor (fallback)" },
 

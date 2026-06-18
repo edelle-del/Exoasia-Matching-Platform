@@ -88,6 +88,19 @@ export async function authorizeRequest(
       if (error) {
         throw new Error(`Failed to update daily usage: ${error.message}`);
       }
+
+      // Also increment weekly quota so the dashboard widget stays in sync
+      const { incrementWeeklyQuota } = await import("./quotas");
+      let quotaAction: import("./quotas").QuotaAction | null = null;
+      if (requestType === "intro_request") {
+        quotaAction = userRole === "startup" ? "request_intro_investor" : "request_intro_startup";
+      } else if (requestType === "community_request") {
+        quotaAction = "request_community_intro";
+      }
+      if (quotaAction) {
+        await incrementWeeklyQuota(userId, quotaAction);
+      }
+      
       return; // Authorized for free
     }
 

@@ -51,16 +51,19 @@ export function QuotaStatusWidget({ quotas, isLoading }: QuotaStatusWidgetProps)
       case "request_community_intro": return "Wed & Sat";
       case "request_intro_investor": return "Mon & Thu";
       case "request_intro_startup": return "Mon & Thu";
+      case "unlock_community_profile": return "Weekdays";
       default: return null;
     }
   };
+  const today = new Date();
+  const dayShort = today.toLocaleDateString("en-US", { weekday: "short" });
 
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-(--color-ink)">Weekly Allowance</p>
-          <p className="mt-0.5 text-xs text-(--color-muted)">Free weekly quota usage</p>
+          <p className="mt-0.5 text-xs text-(--color-muted)">Free weekly quota usage · Quotas reset every Monday 6:00 AM PHT</p>
         </div>
       </div>
       
@@ -77,6 +80,14 @@ export function QuotaStatusWidget({ quotas, isLoading }: QuotaStatusWidgetProps)
             const isUnlimited = q.isPaid || q.limit === Infinity;
             const pct = isUnlimited ? 0 : Math.min(100, Math.max(0, (q.used / q.limit) * 100));
             const schedule = getSchedule(q.action);
+            let isFreeToday = true;
+            if (schedule) {
+              if (schedule === "Weekdays") {
+                isFreeToday = !["Sat", "Sun"].includes(dayShort);
+              } else {
+                isFreeToday = schedule.includes(dayShort);
+              }
+            }
             
             return (
               <div key={q.action} className="flex flex-col gap-1.5">
@@ -88,7 +99,7 @@ export function QuotaStatusWidget({ quotas, isLoading }: QuotaStatusWidgetProps)
                     )}
                   </div>
                   <span className="font-semibold text-(--color-primary)">
-                    {isUnlimited ? "Unlimited" : `${q.remaining} of ${q.limit} left`}
+                    {isUnlimited ? "Unlimited" : (isFreeToday ? `${q.remaining} of ${q.limit} left today` : `0 of ${q.limit} left today`)}
                   </span>
                 </div>
                 {!isUnlimited && (
@@ -127,7 +138,7 @@ export function HeroSection({
   const isVerified = verificationStatus === "verified";
   const badgeLabel = isVerified
     ? "Verified Founder"
-    : `Stage ${stage ?? "0"} Member`;
+    : "Member";
 
   return (
     <section className="flex flex-col gap-6 rounded-3xl bg-(--color-surface-soft) border border-(--color-hairline) p-8 sm:flex-row sm:items-center sm:justify-between">

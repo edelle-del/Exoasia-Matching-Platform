@@ -382,6 +382,35 @@ export default function ProjectDetailPage({
   const [profileUnlockConfirm, setProfileUnlockConfirm] = useState<string | null>(null);
   const [profileUnlocking, setProfileUnlocking] = useState(false);
   const [profileUnlockError, setProfileUnlockError] = useState("");
+  const [unlockTarget, setUnlockTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
+  const handleUnlockMatch = async () => {
+    if (!unlockTarget) return;
+    setIsUnlocking(true);
+    try {
+      const res = await fetch("/api/ecosystem/unlock-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetId: unlockTarget.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 402) {
+          setInsufficientCredits({ needed: data.needed, balance: data.balance });
+        } else {
+          window.alert(data.error || "Failed to unlock.");
+        }
+      } else {
+        setUnlockedProfiles((prev) => new Set(prev).add(unlockTarget.id));
+      }
+    } catch (err) {
+      window.alert("Network error.");
+    } finally {
+      setIsUnlocking(false);
+      setUnlockTarget(null);
+    }
+  };
   const [introConfirm, setIntroConfirm] = useState<string | null>(null); // investor_profile_id
   const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
   const [financialSnapshot, setFinancialSnapshot] = useState<{ revenue: string; burn_rate: string; runway: string } | null>(null);
@@ -418,8 +447,29 @@ export default function ProjectDetailPage({
     string | null
   >(null);
   const [isMutuallyMatched, setIsMutuallyMatched] = useState(false);
+  const [introQuota, setIntroQuota] = useState<{ remaining: number, total: number, isPaid: boolean } | null>(null);
+
+  const isFreeIntroToday = useMemo(() => {
+    const phtDay = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Manila",
+      weekday: "short",
+    }).format(new Date());
+    return phtDay === "Mon" || phtDay === "Thu";
+  }, []);
 
   useEffect(() => {
+    if (user) {
+      fetch("/api/quotas/summary")
+        .then(r => r.json())
+        .then(data => {
+          if (data.quotas) {
+            const q = data.quotas.find((x: any) => x.action === "request_intro_investor");
+            if (q) setIntroQuota(q);
+          }
+        })
+        .catch(() => {});
+    }
+
     Promise.all([
       fetch(`/api/projects/${id}`).then((r) => r.json()),
       fetch(`/api/projects/${id}/cofounders`).then((r) => r.json()),
@@ -538,12 +588,12 @@ export default function ProjectDetailPage({
               .from("ad_credit_ledger")
               .select("reason")
               .eq("member_id", user.id)
-              .ilike("reason", "Unlock investor profile:%")
+              .ilike("reason", "Permanently unlock match card:%")
               .then(({ data: unlockRows }) => {
                 if (unlockRows && unlockRows.length > 0) {
                   const ids = new Set(
                     unlockRows.map((r) =>
-                      (r.reason as string).replace("Unlock investor profile: ", "").trim(),
+                      (r.reason as string).replace("Permanently unlock match card: ", "").trim(),
                     ),
                   );
                   setUnlockedProfiles(ids);
@@ -2505,7 +2555,7 @@ export default function ProjectDetailPage({
                   >
                     <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
                   </svg>
-                  {matchesGenerated ? "Regenerate" : "Find investors"}
+                  {matchesGenerated ? "Regenerate Matches (3 Credits)" : "Generate first matches for free"}
                 </>
               )}
             </button>
@@ -2523,7 +2573,7 @@ export default function ProjectDetailPage({
           ) : !matchesGenerated ? (
             <div className="rounded-xl border border-(--color-hairline) border-dashed p-10 text-center">
               <p className="text-sm text-(--color-muted)">
-                Click &ldquo;Find investors&rdquo; to generate AI-powered
+                Click &ldquo;Generate first matches for free&rdquo; to generate AI-powered
                 investor match scores for this project.
               </p>
             </div>
@@ -2535,8 +2585,8 @@ export default function ProjectDetailPage({
           ) : (
             <div className="space-y-3">
               {investorMatches.map((m, idx) => {
-                // Locked = beyond free limit AND not a subscriber AND not individually unlocked via credit
-                const locked = false;
+                // Locked = beyond limit AND not individually unlocked via credit
+                const locked = idx >= 3 && !unlockedProfiles.has(m.investor_profile_id);
                 const profileUnlocked = true;
                 const isExpanded = expandedInvestorId === m.investor_profile_id;
 
@@ -2915,8 +2965,14 @@ export default function ProjectDetailPage({
                                         </svg>
                                         Sending…
                                       </>
+                                    ) : introQuota ? (
+                                      introQuota.isPaid || introQuota.total === Infinity
+                                        ? "Request intro (Unlimited)"
+                                        : isFreeIntroToday && introQuota.remaining > 0
+                                          ? `Request intro (${introQuota.remaining} free left)`
+                                          : "Request intro (Cost: 2 Credits)"
                                     ) : (
-                                      "Request intro"
+                                      "Request intro (Cost: 2 Credits)"
                                     )}
                                   </button>
                                 );
@@ -2963,42 +3019,27 @@ export default function ProjectDetailPage({
                       )}
                     </div>
                     {locked && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-xl">
-                        <div className="flex flex-col items-center gap-2 rounded-2xl border border-(--color-hairline) bg-(--color-canvas) px-5 py-4 shadow-sm text-center">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 text-(--color-muted)">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-(--color-surface-soft)/50 pointer-events-auto">
+                        <button
+                          type="button"
+                          onClick={() => setUnlockTarget({ id: m.investor_profile_id, name: m.investor_name })}
+                          className="flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-bold text-white shadow-xl hover:bg-violet-500 transition-colors"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                           </svg>
-                          <button
-                            type="button"
-                            onClick={() => { setProfileUnlockConfirm(m.investor_profile_id); }}
-                            className="text-xs font-bold text-(--color-primary) hover:opacity-70 transition-opacity"
-                          >
-                            Unlock this match for free (beta)
-                          </button>
-                          <span className="text-[10px] text-(--color-muted)">or</span>
-                          <Link
-                            href="/payments"
-                            className="text-[10px] font-semibold text-(--color-muted) hover:text-(--color-ink) underline underline-offset-2 transition-colors"
-                          >
-                            Subscribe for full access →
-                          </Link>
-                        </div>
+                          Unlock for 3cr
+                        </button>
                       </div>
                     )}
                   </div>
                 );
               })}
-              {!hasActivePlan && investorMatches.length > FREE_TIER_MATCH_LIMIT && (
+              {investorMatches.length > 3 && (
                 <p className="pt-1 text-center text-xs text-(--color-muted)">
-                  {investorMatches.filter((_, i) => i >= FREE_TIER_MATCH_LIMIT && !unlockedProfiles.has(_.investor_profile_id)).length} match
-                  {investorMatches.filter((_, i) => i >= FREE_TIER_MATCH_LIMIT && !unlockedProfiles.has(_.investor_profile_id)).length !== 1 ? "es" : ""}{" "}
-                  locked.{" "}
-                  <span className="font-semibold text-(--color-primary)">Unlock for free (beta)</span>
-                  {" "}or{" "}
-                  <Link href="/payments" className="font-semibold text-(--color-primary) underline underline-offset-2">
-                    subscribe for full access
-                  </Link>.
+                  {investorMatches.filter((_, i) => i >= 3 && !unlockedProfiles.has(_.investor_profile_id)).length} match
+                  {investorMatches.filter((_, i) => i >= 3 && !unlockedProfiles.has(_.investor_profile_id)).length !== 1 ? "es" : ""}{" "}
+                  locked. Spend 3cr per match to unblur.
                 </p>
               )}
             </div>
@@ -3028,6 +3069,45 @@ export default function ProjectDetailPage({
           cofounder={profileModalCofounder}
           onClose={() => setProfileModalCofounder(null)}
         />
+      )}
+
+      {unlockTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm" onClick={() => !isUnlocking && setUnlockTarget(null)}>
+          <div className="w-full max-w-sm space-y-4 rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/20 text-violet-600">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-(--color-ink)">Unlock Match</p>
+              <p className="mt-1 text-sm text-(--color-muted)">
+                You are about to unlock the full profile for <strong>{unlockTarget.name}</strong>.
+              </p>
+              <p className="mt-4 rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-2 text-xs font-medium text-violet-700">
+                This will deduct <strong className="text-(--color-ink)">3 credits</strong> from your account.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setUnlockTarget(null)}
+                disabled={isUnlocking}
+                className="flex-1 rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-semibold text-(--color-muted) hover:bg-(--color-surface-soft) disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUnlockMatch}
+                disabled={isUnlocking}
+                className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-50"
+              >
+                {isUnlocking ? "Unlocking…" : "Unlock"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

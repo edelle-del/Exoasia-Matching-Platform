@@ -1,9 +1,10 @@
 "use client";
 
 import type { Session, User } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoleFromAccessToken } from "@/lib/auth/jwt";
+import { AlertTriangle } from "lucide-react";
 
 type AuthContextType = {
   user: User | null;
@@ -40,6 +41,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [memberRole, setMemberRole] = useState<string | null>(null);
   const [stage, setStage] = useState<string | null>(null);
   const [memberRoleLoaded, setMemberRoleLoaded] = useState(false);
+  const [sessionConflictError, setSessionConflictError] = useState(false);
+  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -63,6 +66,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       if (error) {
         setSession(null);
         setUser(null);
+        userIdRef.current = null;
         setMemberRole(null);
         setMemberRoleLoaded(true);
         setIsLoading(false);
@@ -70,6 +74,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
       setSession(data.session ?? null);
       setUser(data.session?.user ?? null);
+      userIdRef.current = data.session?.user?.id ?? null;
       if (data.session?.user) {
         await fetchProfileData(data.session.user.id);
       } else {
@@ -83,6 +88,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      const currentUserId = userIdRef.current;
+      const nextUserId = nextSession?.user?.id ?? null;
+
+      if (currentUserId && nextUserId && currentUserId !== nextUserId) {
+        setSessionConflictError(true);
+        setSession(null);
+        setUser(null);
+        setMemberRole(null);
+        setStage(null);
+        setMemberRoleLoaded(true);
+        return;
+      }
+
+      userIdRef.current = nextUserId;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
@@ -156,7 +175,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {sessionConflictError && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-7 shadow-2xl flex flex-col gap-4 relative text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 mb-2">
+              <AlertTriangle className="h-6 w-6 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-bold text-(--color-ink)">Session Terminated</h2>
+            <p className="text-sm text-(--color-body)">
+              Another session was detected with a different account. For your security, this tab has been automatically logged out.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 w-full rounded-xl bg-(--color-ink) py-2.5 text-sm font-semibold text-(--color-canvas) hover:opacity-90 transition-opacity"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      )}
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

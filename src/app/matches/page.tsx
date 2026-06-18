@@ -940,7 +940,7 @@ export default function MatchesPage() {
                                     View compatibility breakdown
                                   </Link>
                                 )}
-                                <Link href={`/projects/${p.id}/investor`} className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-canvas) transition-colors">
+                                <Link href={`/projects/${p.id}`} className="inline-flex items-center gap-2 rounded-xl border border-(--color-hairline) px-4 py-2 text-sm font-semibold text-(--color-ink) hover:bg-(--color-canvas) transition-colors">
                                   View full project →
                                 </Link>
                                 <button

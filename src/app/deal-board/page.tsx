@@ -14,6 +14,7 @@ const BOARD_COLUMNS = [
   "Negotiation",
   "Closed Won",
   "On Hold",
+  "Aborted",
 ] as const;
 
 const STAGE_DB: Record<string, string> = {
@@ -22,7 +23,8 @@ const STAGE_DB: Record<string, string> = {
   "Proposal":        "proposal",
   "Negotiation":     "negotiation",
   "Closed Won":      "won",
-  "On Hold":         "lost",
+  "On Hold":         "on_hold",
+  "Aborted":         "lost",
 };
 
 const STAGE_LABEL: Record<string, string> = {
@@ -32,6 +34,7 @@ const STAGE_LABEL: Record<string, string> = {
   negotiation: "Negotiation",
   won:         "Closed Won",
   lost:        "On Hold",
+  aborted:     "Aborted",
 };
 
 const STAGE_COLORS: Record<string, { dot: string; glow: string; bg: string }> = {
@@ -41,6 +44,7 @@ const STAGE_COLORS: Record<string, { dot: string; glow: string; bg: string }> = 
   "Negotiation":     { dot: "#c9a040", glow: "rgba(201,160,64,0.45)", bg: "rgba(201,160,64,0.05)" },
   "Closed Won":      { dot: "#34d399", glow: "rgba(52,211,153,0.45)", bg: "rgba(52,211,153,0.05)" },
   "On Hold":         { dot: "#4a4a6a", glow: "transparent",           bg: "transparent" },
+  "Aborted":         { dot: "#f87171", glow: "transparent",           bg: "transparent" },
 };
 
 function fitScoreClass(score: number): string {
@@ -91,7 +95,7 @@ type ActiveIntro = {
   counterpart_role: string | null;
   counterpart_sector: string | null;
   fit_score: number | null;
-  status: "accepted" | "introduced";
+  status: "pending" | "accepted" | "introduced" | "declined";
   project_id?: string | null;
 };
 
@@ -179,7 +183,7 @@ export default function DealBoardPage() {
     const existingMatchIds = new Set(next.map(c => c.match_id).filter(Boolean));
 
     const intros = rawMatches.filter((m) =>
-      ["accepted", "introduced"].includes(m.status) && !existingMatchIds.has(m.id)
+      ["pending", "accepted", "introduced", "declined"].includes(m.status) && !existingMatchIds.has(m.id)
     );
 
     const cpIds = [...new Set(intros.map((m) =>
@@ -219,7 +223,7 @@ export default function DealBoardPage() {
           counterpart_role: cp?.role ?? null,
           counterpart_sector: cp?.sector ?? null,
           fit_score: m.fit_score ?? null,
-          status: m.status as "accepted" | "introduced",
+          status: m.status as "pending" | "accepted" | "introduced" | "declined",
           project_id: m.project_id,
         };
       }),
@@ -486,9 +490,17 @@ export default function DealBoardPage() {
           <div className="mt-3 flex gap-2 flex-wrap">
             {grouped.map(({ stage, cards: stageCards }) => {
               const col = STAGE_COLORS[stage];
-              const count =
-                stageCards.length +
-                (stage === "Intro & Scoping" ? displayedIntros.length : 0);
+              const isQualifiedCol = stage === "Qualified";
+              const isIntroCol = stage === "Intro & Scoping";
+              const isAbortedCol = stage === "Aborted";
+              
+              const colIntros = displayedIntros.filter(i => {
+                 if (isQualifiedCol) return i.status === "pending";
+                 if (isIntroCol) return i.status === "accepted" || i.status === "introduced";
+                 if (isAbortedCol) return i.status === "declined";
+                 return false;
+              });
+              const count = stageCards.length + colIntros.length;
               if (count === 0) return null;
               return (
                 <div
@@ -542,8 +554,18 @@ export default function DealBoardPage() {
         <div className="db-board-inner">
           {grouped.map(({ stage, cards: stageCards }) => {
             const col = STAGE_COLORS[stage];
-            const hasIntros = stage === "Intro & Scoping" && displayedIntros.length > 0;
-            const totalInColumn = stageCards.length + (hasIntros ? displayedIntros.length : 0);
+            const isQualifiedCol = stage === "Qualified";
+            const isIntroCol = stage === "Intro & Scoping";
+            const isAbortedCol = stage === "Aborted";
+            
+            const colIntros = displayedIntros.filter(i => {
+               if (isQualifiedCol) return i.status === "pending";
+               if (isIntroCol) return i.status === "accepted" || i.status === "introduced";
+               if (isAbortedCol) return i.status === "declined";
+               return false;
+            });
+            const hasIntros = colIntros.length > 0;
+            const totalInColumn = stageCards.length + colIntros.length;
             const colVars = {
               "--db-dot": col.dot,
               "--db-glow": totalInColumn > 0 ? col.glow : "transparent",
@@ -574,7 +596,7 @@ export default function DealBoardPage() {
                   onDrop={(e) => handleDrop(e, stage)}
                 >
                   {/* Active intros rendered as uniform cards */}
-                  {hasIntros && displayedIntros.map((intro) => (
+                  {hasIntros && colIntros.map((intro) => (
                     <article
                       key={intro.id}
                       draggable
@@ -593,7 +615,7 @@ export default function DealBoardPage() {
                           {intro.fit_score != null ? `${intro.fit_score}% fit` : "— fit"}
                         </span>
                         <span className="db-intro-stage-badge">
-                          {intro.status === "accepted" ? "Accepted" : "Introduced"}
+                          {intro.status === "accepted" ? "Accepted" : intro.status === "introduced" ? "Introduced" : intro.status === "declined" ? "Declined" : "Pending"}
                         </span>
                       </div>
 
@@ -602,7 +624,11 @@ export default function DealBoardPage() {
                         <p className="db-next-text">
                           {intro.status === "accepted"
                             ? "Introduction accepted · ready to connect"
-                            : "Introduction sent · awaiting response"}
+                            : intro.status === "introduced"
+                            ? "Introduction sent · awaiting response"
+                            : intro.status === "declined"
+                            ? "Connection declined"
+                            : "Connection request pending"}
                         </p>
                       </div>
 
@@ -670,6 +696,16 @@ export default function DealBoardPage() {
                               <span className="db-conf-badge" style={confidenceVars(card.confidence)}>
                                 {card.confidence}
                               </span>
+                              {isStale && !isEscalation && (
+                                <span className="rounded-full bg-(--color-primary)/10 border border-(--color-primary)/20 text-(--color-primary) px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider">
+                                  Stale
+                                </span>
+                              )}
+                              {isEscalation && (
+                                <span className="rounded-full bg-[#c9a040]/10 border border-[#c9a040]/20 text-[#c9a040] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider">
+                                  Escalated
+                                </span>
+                              )}
                             </div>
 
                             <div className="db-next-action">
@@ -686,12 +722,6 @@ export default function DealBoardPage() {
                                 ) : (
                                   <>
                                     <span className="db-age">{ageDays}d ago</span>
-                                    {isEscalation && (
-                                      <span className="db-status-chip db-status-chip--escalation">Escalation</span>
-                                    )}
-                                    {!isEscalation && isStale && (
-                                      <span className="db-status-chip db-status-chip--stale">Stale</span>
-                                    )}
                                   </>
                                 )}
                               </div>

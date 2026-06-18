@@ -82,6 +82,7 @@ export default function DashboardPage() {
     pendingMatches: 0,
     activeDeals: 0,
     credits: 0,
+    creditStatus: { totalBalance: 0, expiringPools: [] as { amount: number; expires_at: string }[] },
     profile: null as null | DashboardProfile,
     recentMatches: [] as DashboardMatch[],
     sectorAvgDeals: 0,
@@ -434,19 +435,29 @@ export default function DashboardPage() {
                 <span className="font-mono text-xl font-bold text-(--color-primary)">
                   {isLoading ? "..." : summary.credits}
                 </span>
+                {!isLoading && summary.creditStatus?.expiringPools?.length > 0 && (
+                  <span className="text-[10px] font-medium text-amber-500 mt-1 block">
+                    {summary.creditStatus.expiringPools[0].amount} expiring in {Math.max(0, Math.ceil((new Date(summary.creditStatus.expiringPools[0].expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}d
+                  </span>
+                )}
               </div>
-              <Link
-                href="/payments"
-                className="gn-btn-primary !h-10 !text-xs !px-5"
-              >
-                Top up Credits
-              </Link>
-              <Link
-                href="/payments?request=true"
-                className="gn-btn-secondary !h-10 !text-xs !px-5"
-              >
-                Request Credits
-              </Link>
+              <div className="flex flex-col gap-1 items-start">
+                <button
+                  type="button"
+                  disabled
+                  className="gn-btn-primary !h-10 !text-xs !px-5 opacity-50 cursor-not-allowed"
+                >
+                  Top up (Coming Soon)
+                </button>
+              </div>
+              <div className="flex flex-col gap-1 items-start">
+                <Link
+                  href="/payments?request=true"
+                  className="gn-btn-secondary !h-10 !text-xs !px-5"
+                >
+                  Request Credits
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -487,7 +498,7 @@ export default function DashboardPage() {
                 />
                 {!isInvestor && (
                   <MetricCard
-                    label="Inv. matches"
+                    label="Matches"
                     value={
                       isLoading
                         ? "..."

@@ -55,7 +55,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ alreadyExists: true });
     }
 
-    // Intros are now free, no credit deduction required
+    const { authorizeRequest } = await import("@/lib/auth-engine");
+    const { InsufficientCreditsError } = await import("@/lib/credits");
+    
+    const { data: memberProfile } = await admin
+      .from("profiles")
+      .select("member_role")
+      .eq("id", user.id)
+      .single();
+
+    try {
+      await authorizeRequest(admin, user.id, memberProfile?.member_role ?? "startup", "community_request");
+    } catch (err) {
+      if (err instanceof InsufficientCreditsError) {
+        return NextResponse.json({ error: err.message, code: "INSUFFICIENT_CREDITS" }, { status: 402 });
+      }
+      return NextResponse.json({ error: err instanceof Error ? err.message : "Authorization failed" }, { status: 400 });
+    }
 
     const { error: insertError } = await admin
       .from("matches")

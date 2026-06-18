@@ -6,10 +6,12 @@ export default function PieScore({
   score,
   size = 32,
   large = false,
+  color,
 }: {
   score: number;
   size?: number;
   large?: boolean;
+  color?: string;
 }) {
   const stroke = large ? 5 : 4;
   const s = Math.max(12, size);
@@ -45,7 +47,7 @@ export default function PieScore({
           cy={s / 2}
           r={radius}
           strokeWidth={stroke}
-          stroke="var(--color-primary)"
+          stroke={color || "var(--color-primary)"}
           strokeLinecap="round"
           strokeDasharray={`${circumference} ${circumference}`}
           strokeDashoffset={offset}

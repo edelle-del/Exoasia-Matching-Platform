@@ -181,7 +181,7 @@ export async function fetchDashboardSummary(
       .in("status", ["accepted", "introduced"]),
     supabase
       .from("ad_credit_ledger")
-      .select("change_amount")
+      .select("change_amount, created_at, expires_at")
       .eq("member_id", userId),
     supabase
       .from("profiles")
@@ -198,11 +198,9 @@ export async function fetchDashboardSummary(
       .limit(20),
   ]);
 
-  const rawCredits = (creditRows ?? []).reduce(
-    (sum, row) => sum + Number(row.change_amount ?? 0),
-    0,
-  );
-  const credits = Math.max(0, rawCredits);
+  const { calculateCreditStatus } = await import("@/lib/credits-util");
+  const creditStatus = calculateCreditStatus(creditRows ?? []);
+  const credits = creditStatus.totalBalance;
 
   // Attach counterpart names to recent matches
   const matches = rawMatches ?? [];
@@ -252,6 +250,7 @@ export async function fetchDashboardSummary(
     pendingMatches: pendingMatches ?? 0,
     activeDeals: (dealCardCount ?? 0) + (acceptedMatchCount ?? 0),
     credits,
+    creditStatus,
     profile: (profile ?? null) as DashboardProfile | null,
     recentMatches,
     sectorAvgDeals,
@@ -292,7 +291,7 @@ export async function fetchUserMatches(
       "id, member_a_id, member_b_id, project_id, fit_score, summary, status, member_a_status, member_b_status, created_at",
     )
     .or(`member_a_id.eq.${userId},member_b_id.eq.${userId}`)
-    .in("status", ["pending", "approved", "accepted", "introduced"])
+    .in("status", ["pending", "approved", "accepted", "introduced", "declined"])
     .order("created_at", { ascending: false });
 
   if (error || !matches) {

@@ -34,6 +34,7 @@ export async function POST(
       member_id: targetUserId,
       change_amount: amount,
       reason: reason || "Admin Grant",
+      expires_at: amount > 0 ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null,
     });
 
     if (insertError) {

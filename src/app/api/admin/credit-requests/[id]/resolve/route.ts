@@ -61,6 +61,7 @@ export async function POST(
         member_id: request.user_id,
         change_amount: request.amount,
         reason: `Approved request: ${request.reason || "Admin Approved"}`,
+        expires_at: request.amount > 0 ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null,
       });
       if (insertError) {
         // We probably should handle partial failure better, but throw for now

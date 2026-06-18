@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { calculateCurrentBalance } from "./credits-util";
 
 // ─── Bypass switch ────────────────────────────────────────────────────────────
 // TEMPORARY — payment gateway integration is on hold for this deployment cycle.
@@ -76,10 +77,10 @@ export async function getBalance(memberId: string): Promise<number> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("ad_credit_ledger")
-    .select("change_amount")
+    .select("change_amount, created_at, expires_at")
     .eq("member_id", memberId);
-  const rawBalance = (data ?? []).reduce((sum, r) => sum + Number(r.change_amount ?? 0), 0);
-  return Math.max(0, rawBalance);
+    
+  return calculateCurrentBalance(data ?? []);
 }
 
 export async function isPayingSubscriber(memberId: string): Promise<boolean> {

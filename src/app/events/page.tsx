@@ -81,6 +81,7 @@ export default function EventsPage() {
     location:    "SMX Convention Center Manila",
     description: "Join FOUNDERS ARENA at the Philippine Blockchain Week — connect with investors, founders, and ecosystem partners shaping the future of blockchain in Southeast Asia.",
     max_attendees: "",
+    postAsAnnouncement: false,
   });
 
   const load = async () => {
@@ -145,6 +146,7 @@ export default function EventsPage() {
         location:    form.location || undefined,
         description: form.description || undefined,
         max_attendees: form.max_attendees ? Number(form.max_attendees) : undefined,
+        postAsAnnouncement: form.postAsAnnouncement,
       };
 
       const res = await fetch("/api/admin/events", {
@@ -287,8 +289,19 @@ export default function EventsPage() {
                   value={form.max_attendees}
                   onChange={(e) => setForm((f) => ({ ...f, max_attendees: e.target.value }))}
                   className="w-full rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) outline-none focus:border-(--color-primary)"
-                  placeholder="Unlimited"
                 />
+              </div>
+              <div className="sm:col-span-2 flex items-center gap-3 mt-2">
+                <input
+                  id="ev-announce"
+                  type="checkbox"
+                  checked={form.postAsAnnouncement}
+                  onChange={(e) => setForm((f) => ({ ...f, postAsAnnouncement: e.target.checked }))}
+                  className="h-4 w-4 rounded border-(--color-hairline) text-(--color-primary) focus:ring-(--color-primary)"
+                />
+                <label htmlFor="ev-announce" className="text-sm font-medium text-(--color-ink)">
+                  Also post as an Announcement to the platform feed
+                </label>
               </div>
             </div>
             {createError && <p className="text-sm text-rose-400">{createError}</p>}
@@ -413,6 +426,36 @@ export default function EventsPage() {
                           RSVP
                         </a>
                       )}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-(--color-hairline) flex items-center gap-4">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Share</span>
+                      <div className="flex items-center gap-3 text-xs font-semibold">
+                        <a
+                          href={`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent("https://exoasia.org/foundersarena")}&title=${encodeURIComponent(event.title)}&summary=${encodeURIComponent(`Join me at ${event.title} on ${formatDate(event.starts_at)}!`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-(--color-muted) hover:text-[#0A66C2] transition-colors"
+                        >
+                          LinkedIn
+                        </a>
+                        <a
+                          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me at ${event.title} on ${formatDate(event.starts_at)}!`)}&url=${encodeURIComponent("https://exoasia.org/foundersarena")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-(--color-muted) hover:text-[#1DA1F2] transition-colors"
+                        >
+                          Twitter
+                        </a>
+                        <a
+                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent("https://exoasia.org/foundersarena")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-(--color-muted) hover:text-[#1877F2] transition-colors"
+                        >
+                          Facebook
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </article>

@@ -241,19 +241,16 @@ export default function TopHeader() {
 
       {isMemberView && (
         <>
-          <SectionLabel>Me:</SectionLabel>
-          <NavLink href="/profile" label="My Profile" icon={ICONS.profile} />
 
           <SectionLabel>Program:</SectionLabel>
-          <NavLink href="/deal-board" label="Deal board" icon={ICONS.dealBoard} />
           <NavLink href="/matches" label="Matches" icon={ICONS.matches} />
+          <NavLink href="/deal-board" label="Deal board" icon={ICONS.dealBoard} />
           <RequestsNavItem />
           <NavLink href="/data-room" label="Data Room" icon={ICONS.dataRoom} />
 
           <SectionLabel>Culture:</SectionLabel>
           <NavLink href="/community" label="Community" icon={ICONS.community} />
           <NavLink href="/events" label="Events" icon={ICONS.events} />
-          <NavLink href="/announcements" label="Announcements" icon={ICONS.announcements} />
 
         </>
       )}
@@ -318,38 +315,41 @@ export default function TopHeader() {
     </>
   );
 
+  const ProfileCard = () => {
+    if (!signedIn) return null;
+    return (
+      <Link
+        href="/profile"
+        className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white mb-2 mx-2`}
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-semibold text-white">
+          {initials || "?"}
+        </div>
+        <div className="flex flex-col opacity-100 min-w-0 flex-1">
+          <span className="font-bold text-white text-sm truncate" title={displayName}>{firstName}</span>
+          <span className="text-[10px] font-semibold text-[#FF6B1F] uppercase tracking-wider truncate">
+            {getDisplayRole()}
+          </span>
+        </div>
+      </Link>
+    );
+  };
+
   const BottomProfile = () => (
     <div className="space-y-1 border-t border-white/20 px-2 py-3 mt-auto">
       {signedIn && (
-        <>
-          <Link
-            href="/profile"
-            className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white mb-2`}
-          >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-semibold text-white">
-              {initials || "?"}
-            </div>
-            <div className="flex flex-col whitespace-nowrap opacity-100">
-              <span className="font-bold text-white text-sm">{displayName}</span>
-              <span className="text-[10px] font-semibold text-[#FF6B1F] uppercase tracking-wider">
-                {getDisplayRole()}
-              </span>
-            </div>
-          </Link>
-
-          <button
-            type="button"
-            onClick={async () => {
-              setIsSigningOut(true);
-              await signOut();
-              window.location.href = "/";
-            }}
-            className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white`}
-          >
-            <Icon name={ICONS.signOut} className="shrink-0" />
-            <Label>Sign out</Label>
-          </button>
-        </>
+        <button
+          type="button"
+          onClick={async () => {
+            setIsSigningOut(true);
+            await signOut();
+            window.location.href = "/";
+          }}
+          className={`${NAV_ITEM_CLASS} text-white/70 hover:bg-white/10 hover:text-white`}
+        >
+          <Icon name={ICONS.signOut} className="shrink-0" />
+          <Label>Sign out</Label>
+        </button>
       )}
 
       {!signedIn && (
@@ -378,7 +378,8 @@ export default function TopHeader() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-14 z-40 bg-[#0a0a0f] overflow-y-auto pb-6">
+        <div className="md:hidden fixed inset-0 top-14 z-40 bg-[#0a0a0f] overflow-y-auto pb-6 pt-4">
+          <ProfileCard />
           <nav className="p-4 space-y-2">
             <NavLinks />
           </nav>
@@ -397,8 +398,10 @@ export default function TopHeader() {
           </Link>
         </div>
 
+        <ProfileCard />
+
         {/* Nav */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-2 mt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <NavLinks />
         </nav>
 

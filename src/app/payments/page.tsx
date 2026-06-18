@@ -218,9 +218,11 @@ export default function PaymentsPage() {
     () => async (uid: string) => {
       const { data: rows } = await supabase
         .from("ad_credit_ledger")
-        .select("change_amount")
+        .select("change_amount, created_at, expires_at")
         .eq("member_id", uid);
-      return (rows ?? []).reduce((sum, r) => sum + Number(r.change_amount ?? 0), 0);
+      
+      const { calculateCurrentBalance } = await import("@/lib/credits-util");
+      return calculateCurrentBalance(rows ?? []);
     },
     [supabase],
   );
@@ -264,14 +266,14 @@ export default function PaymentsPage() {
 
   const handleRequestCredits = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!requestCreditsAmount || !requestCreditsReason) return;
+    if (!requestCreditsReason) return;
     setSubmittingRequest(true);
     setRequestError("");
     try {
       const res = await fetch("/api/user/credit-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(requestCreditsAmount), reason: requestCreditsReason }),
+        body: JSON.stringify({ amount: 100, reason: requestCreditsReason }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit request.");
@@ -377,21 +379,16 @@ export default function PaymentsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-[24px] bg-[#1A0B2E] border border-white/10 p-7 shadow-2xl relative">
             <h3 className="font-display text-xl text-white">Request Custom Top-up</h3>
-            <p className="mt-2 text-sm text-white/50 mb-6 leading-relaxed">
+            <p className="mt-2 text-sm text-white/50 mb-1 leading-relaxed">
               Submit a request to the network administrators for additional credits.
             </p>
+            <p className="text-xs text-[#FF6B1F] font-semibold mb-6">
+              100 credits fixed request subject to approval
+            </p>
             <form onSubmit={handleRequestCredits} className="flex flex-col gap-4">
-              <div>
-                <label className="block fa-eyebrow text-[0.65rem] text-white/50 mb-1.5">AMOUNT NEEDED</label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 50"
-                  value={requestCreditsAmount}
-                  onChange={(e) => { setRequestCreditsAmount(e.target.value === "" ? "" : Number(e.target.value)); setRequestError(""); }}
-                  className="w-full rounded-[12px] bg-white/[0.03] border border-white/10 px-4 py-3 text-white placeholder-white/20 focus:border-[#FF6B1F] focus:outline-none transition-colors"
-                  required
-                />
+              <div className="rounded-[12px] bg-white/[0.03] border border-white/10 px-4 py-3 mb-2 flex items-center justify-between">
+                <span className="text-white font-medium">100 Credits</span>
+                <span className="fa-eyebrow text-[0.6rem] bg-[#FF6B1F]/15 text-[#FF6B1F] rounded-full px-2 py-0.5">FIXED AMOUNT</span>
               </div>
               <div>
                 <label className="block fa-eyebrow text-[0.65rem] text-white/50 mb-1.5">REASON / RATIONALE</label>
@@ -585,20 +582,24 @@ export default function PaymentsPage() {
                 </div>
               </div>
               <div className="flex gap-3 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => document.getElementById("credit-packs")?.scrollIntoView({ behavior: "smooth" })}
-                  className="fa-gradient-primary rounded-[10px] px-5 py-2.5 text-sm font-bold text-white border-none cursor-pointer hover:opacity-90 transition-opacity"
-                >
-                  Top up credits
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRequestCredits(true)}
-                  className="rounded-[10px] px-5 py-2.5 text-sm font-bold bg-white/5 text-white/80 border border-white/10 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-                >
-                  Request custom top-up
-                </button>
+                <div className="flex flex-col gap-1 items-start">
+                  <button
+                    type="button"
+                    disabled
+                    className="fa-gradient-primary rounded-[10px] px-5 py-2.5 text-sm font-bold text-white border-none cursor-not-allowed opacity-50"
+                  >
+                    Top up (Coming Soon)
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1 items-start">
+                  <button
+                    type="button"
+                    onClick={() => setShowRequestCredits(true)}
+                    className="rounded-[10px] px-5 py-2.5 text-sm font-bold bg-white/5 text-white/80 border border-white/10 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Request custom top-up
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => document.getElementById("plans")?.scrollIntoView({ behavior: "smooth" })}
@@ -969,7 +970,7 @@ export default function PaymentsPage() {
           ) : (
             <>
               <div className="rounded-[16px] overflow-hidden border border-white/[0.07]">
-                {(showAllHistory ? creditHistory : creditHistory.slice(0, 10)).map((tx, i, arr) => (
+                {(showAllHistory ? creditHistory : creditHistory.slice(0, 5)).map((tx, i, arr) => (
                   <div
                     key={tx.id}
                     className={[
@@ -1001,7 +1002,7 @@ export default function PaymentsPage() {
                   </div>
                 ))}
               </div>
-              {creditHistory.length > 10 && (
+              {creditHistory.length > 5 && (
                 <div className="mt-4 text-center">
                   <button
                     type="button"

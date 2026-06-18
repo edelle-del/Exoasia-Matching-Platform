@@ -417,6 +417,7 @@ export default function ProjectDetailPage({
   const [dataRoomDownloadingId, setDataRoomDownloadingId] = useState<
     string | null
   >(null);
+  const [isMutuallyMatched, setIsMutuallyMatched] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -562,6 +563,21 @@ export default function ProjectDetailPage({
       setSnapshotChecked(true);
       return;
     }
+
+    // Check match status for non-owners
+    supabase
+      .from("matches")
+      .select("status, member_a_status, member_b_status")
+      .eq("project_id", id)
+      .or(`member_a_id.eq.${user.id},member_b_id.eq.${user.id}`)
+      .maybeSingle()
+      .then(({ data: matchData }) => {
+        const mutuallyMatched =
+          matchData?.status === "introduced" ||
+          (matchData?.member_a_status === "accepted" && matchData?.member_b_status === "accepted");
+        setIsMutuallyMatched(!!mutuallyMatched);
+      });
+
     // Check if investor has data room access
     fetch(`/api/data-room/${project.owner_id}/request`)
       .then((r) => r.json())
@@ -1169,7 +1185,16 @@ export default function ProjectDetailPage({
               {/* Investor: score badge + button in header (hidden from team members) */}
               {!isTeamMember && (
                 <div className="flex items-center gap-2">
-                  {myScore && <PieScore score={myScore.fit_score} large />}
+                  {myScore && (
+                    <>
+                      <p className={`text-xl font-bold leading-none ${myScore.fit_score >= 80 ? "text-emerald-600" : myScore.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}`}>
+                        {myScore.fit_score}%
+                      </p>
+                      <div className={myScore.fit_score >= 80 ? "text-emerald-600" : myScore.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}>
+                        <PieScore score={myScore.fit_score} large color="currentColor" />
+                      </div>
+                    </>
+                  )}
                   <button
                     type="button"
                     disabled={scoring}
@@ -2088,19 +2113,30 @@ export default function ProjectDetailPage({
               )}
               {dataRoomStatus === "none" && (
                 <>
-                  <p className="mt-1 text-sm text-(--color-body)">
-                    Request access to view this startup&apos;s data room documents.
-                  </p>
-                  <div className="mt-4">
-                    <button
-                      type="button"
-                      disabled={dataRoomRequesting}
-                      onClick={() => void handleDataRoomRequest()}
-                      className="gn-btn-primary text-sm disabled:opacity-50"
-                    >
-                      {dataRoomRequesting ? "Sending…" : "Request access"}
-                    </button>
-                  </div>
+                  {!isMutuallyMatched ? (
+                    <div className="mt-4 flex items-center gap-3 rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-4 py-3">
+                      <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      <p className="text-sm text-(--color-muted)">You can request access to the data room once both parties mutually accept the connection.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-sm text-(--color-body)">
+                        Request access to view this startup&apos;s data room documents.
+                      </p>
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          disabled={dataRoomRequesting}
+                          onClick={() => void handleDataRoomRequest()}
+                          className="gn-btn-primary text-sm disabled:opacity-50"
+                        >
+                          {dataRoomRequesting ? "Sending…" : "Request access"}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
               {dataRoomStatus === "pending" && (
@@ -2191,19 +2227,38 @@ export default function ProjectDetailPage({
           {/* ── Investor: my score detail ── */}
           {!isTeamMember && myScore && (
             <div
-              className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-(--color-primary)/30 bg-(--color-primary)/10" : myScore.fit_score >= 65 ? "border-blue-500/30 bg-blue-500/10" : myScore.fit_score >= 50 ? "border-amber-500/30 bg-amber-500/10" : "border-red-500/30 bg-red-500/10"}`}
+              className={`mb-6 rounded-xl border p-4 ${myScore.fit_score >= 80 ? "border-emerald-500/30 bg-emerald-500/10" : myScore.fit_score >= 65 ? "border-indigo-500/30 bg-indigo-500/10" : "border-amber-500/30 bg-amber-500/10"}`}
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-(--color-ink)">
-                  Your match score
-                </h2>
-                <PieScore score={myScore.fit_score} large />
+                <div>
+                  <h2 className="text-sm font-semibold text-(--color-ink)">
+                    Your match score
+                  </h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className={`text-xl font-bold leading-none ${myScore.fit_score >= 80 ? "text-emerald-600" : myScore.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}`}>
+                      {myScore.fit_score}%
+                    </p>
+                  </div>
+                  <div className={myScore.fit_score >= 80 ? "text-emerald-600" : myScore.fit_score >= 65 ? "text-indigo-600" : "text-amber-600"}>
+                    <PieScore score={myScore.fit_score} large color="currentColor" />
+                  </div>
+                </div>
               </div>
-              <p className="mt-3 text-xs text-(--color-muted)">
-                Generated {new Date(myScore.generated_at).toLocaleDateString()}{" "}
-                · Exoasia Intelligence summary available on the compatibility
-                breakdown
-              </p>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-xs text-(--color-muted)">
+                  Generated {new Date(myScore.generated_at).toLocaleDateString()}{" "}
+                  · Exoasia Intelligence summary available on the compatibility
+                  breakdown
+                </p>
+                <Link
+                  href={`/matches/breakdown?a=${user?.id ?? ""}&b=${project.owner_id}&score=${myScore.fit_score}&project=${project.id}`}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-500/15 px-4 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-500/25 transition-colors"
+                >
+                  View compatibility breakdown
+                </Link>
+              </div>
             </div>
           )}
 

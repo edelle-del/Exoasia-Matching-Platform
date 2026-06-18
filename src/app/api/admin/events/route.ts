@@ -62,6 +62,7 @@ export async function POST(req: Request) {
     location?: string;
     description?: string;
     max_attendees?: number;
+    postAsAnnouncement?: boolean;
   };
 
   if (!body.title || !body.starts_at) {
@@ -83,5 +84,22 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (body.postAsAnnouncement) {
+    const formattedDate = new Date(body.starts_at).toLocaleDateString("en-US", {
+      weekday: "long", month: "long", day: "numeric", year: "numeric",
+    });
+    let content = body.description ? body.description + "\n\n" : "";
+    content += `**Date:** ${formattedDate}\n`;
+    if (body.location) content += `**Location:** ${body.location}\n`;
+    
+    await admin.from("announcements").insert({
+      author_id: user.id,
+      title: `Upcoming Event: ${body.title}`,
+      content: content.trim(),
+      is_featured: false,
+    });
+  }
+
   return NextResponse.json({ id: data.id });
 }

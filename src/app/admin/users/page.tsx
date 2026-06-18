@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/providers";
-import { Search, ChevronLeft, ChevronRight, Edit2, Trash2, X, AlertTriangle, ShieldAlert, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Edit2, Trash2, X, AlertTriangle, ShieldAlert, ChevronDown, ChevronUp, RefreshCw, MoreVertical } from "lucide-react";
 
 type AdminUser = {
   id: string;
@@ -59,6 +59,7 @@ export default function AdminUsersPage() {
   const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [dropdownOpenId, setDropdownOpenId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -112,6 +113,15 @@ export default function AdminUsersPage() {
   useEffect(() => {
     void fetchUsers();
   }, [fetchUsers]);
+
+  // Handle outside click for dropdown
+  useEffect(() => {
+    const handleClickOutside = () => setDropdownOpenId(null);
+    if (dropdownOpenId) {
+      window.addEventListener('click', handleClickOutside);
+    }
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [dropdownOpenId]);
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
@@ -756,33 +766,48 @@ export default function AdminUsersPage() {
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => setGrantUser(u)}
-                            className="p-2 rounded-lg text-(--color-muted) hover:text-(--color-primary) hover:bg-(--color-primary)/10 transition-colors text-xs font-semibold uppercase tracking-widest mr-2"
-                            title="Grant Credits"
-                          >
-                            Grant Credits
-                          </button>
-                          <button
                             onClick={() => setExpandedRow(expandedRow === u.id ? null : u.id)}
                             className="p-2 rounded-lg text-(--color-muted) hover:text-(--color-primary) hover:bg-(--color-primary)/10 transition-colors"
                             title={expandedRow === u.id ? "Collapse Details" : "Expand Details"}
                           >
                             {expandedRow === u.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </button>
-                          <button
-                            onClick={() => setEditUser(u)}
-                            className="p-2 rounded-lg text-(--color-muted) hover:text-(--color-primary) hover:bg-(--color-primary)/10 transition-colors"
-                            title="Edit User"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => { setConfirmDelete(u); setDeleteError(""); }}
-                            className="p-2 rounded-lg text-(--color-muted) hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                            title="Delete User"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          
+                          <div className="relative" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDropdownOpenId(dropdownOpenId === u.id ? null : u.id);
+                              }}
+                              className="p-2 rounded-lg text-(--color-muted) hover:text-(--color-primary) hover:bg-(--color-primary)/10 transition-colors"
+                              title="More Actions"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                            
+                            {dropdownOpenId === u.id && (
+                              <div className="absolute right-0 mt-2 w-48 rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) shadow-lg z-50 py-1 flex flex-col text-left">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setGrantUser(u); setDropdownOpenId(null); }}
+                                  className="w-full text-left px-4 py-2 text-sm text-(--color-ink) hover:bg-(--color-primary)/10 hover:text-(--color-primary) transition-colors flex items-center gap-2 font-medium"
+                                >
+                                  Grant Credits
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setEditUser(u); setDropdownOpenId(null); }}
+                                  className="w-full text-left px-4 py-2 text-sm text-(--color-ink) hover:bg-(--color-primary)/10 hover:text-(--color-primary) transition-colors flex items-center gap-2 font-medium"
+                                >
+                                  <Edit2 className="h-4 w-4" /> Edit User
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(u); setDeleteError(""); setDropdownOpenId(null); }}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 font-medium"
+                                >
+                                  <Trash2 className="h-4 w-4" /> Delete User
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>

@@ -46,6 +46,15 @@ export function QuotaStatusWidget({ quotas, isLoading }: QuotaStatusWidgetProps)
     }
   };
 
+  const getSchedule = (action: string) => {
+    switch (action) {
+      case "request_community_intro": return "Wed & Sat";
+      case "request_intro_investor": return "Mon & Thu";
+      case "request_intro_startup": return "Mon & Thu";
+      default: return null;
+    }
+  };
+
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -67,11 +76,17 @@ export function QuotaStatusWidget({ quotas, isLoading }: QuotaStatusWidgetProps)
           displayQuotas.map(q => {
             const isUnlimited = q.isPaid || q.limit === Infinity;
             const pct = isUnlimited ? 0 : Math.min(100, Math.max(0, (q.used / q.limit) * 100));
+            const schedule = getSchedule(q.action);
             
             return (
               <div key={q.action} className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-(--color-ink)">{getLabel(q.action)}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-(--color-ink)">{getLabel(q.action)}</span>
+                    {!isUnlimited && schedule && (
+                      <span className="text-[10px] text-amber-500/80">Free on {schedule}</span>
+                    )}
+                  </div>
                   <span className="font-semibold text-(--color-primary)">
                     {isUnlimited ? "Unlimited" : `${q.remaining} of ${q.limit} left`}
                   </span>
@@ -319,7 +334,7 @@ export function PipelineSummaryCard({
             {isLoading ? "…" : investorMatches > 0 ? investorMatches : "—"}
           </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">
-            {isInvestor ? "Score cards" : "Inv. matches"}
+            {isInvestor ? "Score cards" : "Matches"}
           </p>
         </div>
         <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-strong) p-3 text-center">
@@ -366,11 +381,11 @@ export function PipelineSummaryCard({
 export function PartnerPortfolioCard() {
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
-      <div className="mb-4 flex items-start justify-between">
-        <p className="text-sm font-semibold text-(--color-ink)">Deal flow</p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-semibold text-(--color-ink)">Pipeline</p>
         <Link
-          href="/ecosystem"
-          className="text-xs font-semibold text-(--color-primary) hover:underline"
+          href="/board"
+          className="text-xs font-medium text-(--color-primary) hover:underline"
         >
           Ecosystem →
         </Link>
@@ -587,7 +602,7 @@ export function DealBoardSnapshotCard({
   return (
     <div className="flex flex-col rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-6">
       <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm font-semibold text-(--color-ink)">Projects by stage</p>
+        <p className="text-sm font-semibold text-(--color-ink)">Pipeline</p>
         <Link
           href="/deal-board"
           className="inline-flex items-center text-xs font-semibold text-(--color-primary) hover:underline"

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "../providers";
 import logo from "../logo.png";
 import { FullPageLoader } from "./FullPageLoader";
+import { NotificationBell } from "./NotificationBell";
 
 const ICONS = {
   dashboard: "ri-dashboard-line",
@@ -387,13 +388,16 @@ export default function TopHeader() {
         <Link href="/">
           <LogoContent />
         </Link>
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 -mr-2 text-white/80 hover:text-white focus:outline-none"
-          aria-label="Toggle menu"
-        >
-          <Icon name={isMobileMenuOpen ? "ri-close-line" : "ri-menu-3-line"} className="text-2xl" />
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell currentUserId={user?.id ?? null} />
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 -mr-2 text-white/80 hover:text-white focus:outline-none"
+            aria-label="Toggle menu"
+          >
+            <Icon name={isMobileMenuOpen ? "ri-close-line" : "ri-menu-3-line"} className="text-2xl" />
+          </button>
+        </div>
       </header>
 
       {/* Mobile Menu Overlay */}

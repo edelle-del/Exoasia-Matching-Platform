@@ -14,6 +14,7 @@ import {
   type DashboardProfile,
   type ProjectPipelineStats,
 } from "@/lib/app-data";
+import { NotificationBell } from "../_components/NotificationBell";
 import {
   PartnerDealOverviewCard,
   DealBoardSnapshotCard,
@@ -399,9 +400,14 @@ export default function DashboardPage() {
         {/* Row 0: Greeting (profile strength inline next to name) */}
         <section className="rounded-[20px] border border-(--color-hairline) bg-(--color-surface-soft) p-5 sm:p-8">
           <div className="min-w-0">
-            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${portalColorClass}`}>
-              {isLoading ? "Member Portal" : portalLabel}
-            </span>
+            <div className="flex items-center justify-between">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${portalColorClass}`}>
+                {isLoading ? "Member Portal" : portalLabel}
+              </span>
+              {!isLoading && user?.id && (
+                <NotificationBell currentUserId={user.id} />
+              )}
+            </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <h1 className="text-balance text-2xl font-semibold text-(--color-ink) sm:text-3xl">
                 Hello,{" "}

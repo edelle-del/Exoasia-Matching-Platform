@@ -50,6 +50,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (body.trim().length > 1000) return NextResponse.json({ error: "Max 1000 characters." }, { status: 400 });
 
   const admin = adminClient();
+  
+  // Insert reply
   const { data, error } = await admin
     .from("thread_replies")
     .insert({ thread_id: id, author_id: session.user.id, body: body.trim() })
@@ -63,6 +65,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .select("id, full_name, member_role")
     .eq("id", session.user.id)
     .single();
+
+  // Send notifications
+  // 1. Thread Author notification
+  const { data: thread } = await admin
+    .from("threads")
+    .select("author_id")
+    .eq("id", id)
+    .single();
+
+  const authorName = profile?.full_name || "Someone";
+  const replySnippet = body.trim().length > 50 ? body.trim().substring(0, 50) + "..." : body.trim();
+  const notifiedUserIds = new Set<string>();
+
+  if (thread && thread.author_id !== session.user.id) {
+    notifiedUserIds.add(thread.author_id);
+    await admin.from("notifications").insert({
+      user_id: thread.author_id,
+      title: "New Reply on your Thread",
+      message: `${authorName} replied: "${replySnippet}"`,
+      link: `/community?thread=${id}`
+    });
+  }
+
+  // 2. Mentions parsing
+  // Matches @[Full Name](user-id) pattern
+  const mentionRegex = /@\[(.*?)\]\((.*?)\)/g;
+  let match;
+  while ((match = mentionRegex.exec(body.trim())) !== null) {
+    const mentionedUserId = match[2];
+    if (mentionedUserId && mentionedUserId !== session.user.id && !notifiedUserIds.has(mentionedUserId)) {
+      notifiedUserIds.add(mentionedUserId);
+      await admin.from("notifications").insert({
+        user_id: mentionedUserId,
+        title: "You were mentioned",
+        message: `${authorName} mentioned you in a thread reply.`,
+        link: `/community?thread=${id}`
+      });
+    }
+  }
 
   return NextResponse.json({ ...data, author: profile ?? null });
 }

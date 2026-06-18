@@ -91,5 +91,23 @@ export async function POST(req: NextRequest) {
     .eq("id", session.user.id)
     .single();
 
+  const authorName = profile?.full_name || "Someone";
+  const notifiedUserIds = new Set<string>();
+  const mentionRegex = /@\[(.*?)\]\((.*?)\)/g;
+  let match;
+  while ((match = mentionRegex.exec(body.trim())) !== null) {
+    const mentionedUserId = match[2];
+    if (mentionedUserId && mentionedUserId !== session.user.id && !notifiedUserIds.has(mentionedUserId)) {
+      notifiedUserIds.add(mentionedUserId);
+      await admin.from("notifications").insert({
+        user_id: mentionedUserId,
+        title: "You were mentioned",
+        message: `${authorName} mentioned you in a new thread.`,
+        link: `/community?thread=${data.id}`
+      });
+    }
+  }
+
   return NextResponse.json({ ...data, author: profile ?? null, like_count: 0, reply_count: 0, liked_by_me: false });
 }
+

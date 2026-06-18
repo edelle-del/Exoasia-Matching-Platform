@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { MentionTextarea } from "./MentionTextarea";
 
 type Author = { id: string; full_name: string | null; member_role: string | null } | null;
 
@@ -36,12 +38,27 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function initials(name: string | null | undefined) {
+function initials(name?: string | null) {
   return (name ?? "?")
     .split(" ")
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("") || "?";
+}
+
+function renderBodyWithMentions(body: string) {
+  const parts = body.split(/(@\[.*?\]\(.*?\))/g);
+  return parts.map((part, i) => {
+    const match = /^@\[(.*?)\]\((.*?)\)$/.exec(part);
+    if (match) {
+      return (
+        <span key={i} className="font-semibold text-(--color-primary) bg-(--color-primary)/10 px-1 rounded">
+          @{match[1]}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 }
 
 function roleColor(role: string | null | undefined) {
@@ -80,7 +97,9 @@ function ReplyItem({ reply }: { reply: Reply }) {
           )}
           <span className="text-xs text-(--color-muted)">{timeAgo(reply.created_at)}</span>
         </div>
-        <p className="mt-0.5 text-sm text-(--color-body) leading-relaxed whitespace-pre-wrap break-words">{reply.body}</p>
+        <p className="mt-0.5 text-sm text-(--color-body) leading-relaxed whitespace-pre-wrap break-words">
+          {renderBodyWithMentions(reply.body)}
+        </p>
       </div>
     </div>
   );
@@ -133,7 +152,10 @@ function ThreadCard({
   };
 
   return (
-    <article className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-4 transition-shadow hover:shadow-sm">
+    <article 
+      id={`thread-${thread.id}`}
+      className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-4 transition-shadow hover:shadow-sm"
+    >
       <div className="flex gap-3">
         <Avatar author={thread.author} />
         <div className="min-w-0 flex-1">
@@ -146,7 +168,9 @@ function ThreadCard({
             )}
             <span className="text-xs text-(--color-muted)">{timeAgo(thread.created_at)}</span>
           </div>
-          <p className="mt-1.5 text-sm text-(--color-body) leading-relaxed whitespace-pre-wrap break-words">{thread.body}</p>
+          <p className="mt-1.5 text-sm text-(--color-body) leading-relaxed whitespace-pre-wrap break-words">
+            {renderBodyWithMentions(thread.body)}
+          </p>
 
           <div className="mt-3 flex items-center gap-4">
             {/* Like */}
@@ -191,11 +215,10 @@ function ThreadCard({
 
           {currentUserId && (
             <div className="flex gap-2 pt-3">
-              <textarea
-                ref={textareaRef}
+              <MentionTextarea
                 value={replyBody}
-                onChange={(e) => setReplyBody(e.target.value)}
-                placeholder="Write a reply…"
+                onChange={setReplyBody}
+                placeholder="Write a reply (type @ to mention)..."
                 rows={2}
                 className="flex-1 resize-none rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-3 py-2 text-sm text-(--color-ink) outline-none placeholder:text-(--color-muted) focus:border-(--color-primary)"
                 onKeyDown={(e) => {
@@ -225,6 +248,9 @@ export default function ThreadsFeed({ currentUserId }: { currentUserId: string |
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
 
+  const searchParams = useSearchParams();
+  const threadId = searchParams.get("thread");
+
   useEffect(() => {
     fetch("/api/threads")
       .then((r) => r.json())
@@ -232,6 +258,19 @@ export default function ThreadsFeed({ currentUserId }: { currentUserId: string |
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!loading && threadId && threads.length > 0) {
+      setTimeout(() => {
+        const el = document.getElementById(`thread-${threadId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-(--color-primary)", "transition-all", "duration-1000");
+          setTimeout(() => el.classList.remove("ring-2", "ring-(--color-primary)"), 3000);
+        }
+      }, 500); // Wait a tiny bit for render
+    }
+  }, [loading, threads, threadId]);
 
   const handlePost = async () => {
     if (!body.trim() || posting) return;
@@ -272,10 +311,10 @@ export default function ThreadsFeed({ currentUserId }: { currentUserId: string |
       {/* Compose */}
       {currentUserId && (
         <div className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-4 space-y-3">
-          <textarea
+          <MentionTextarea
             value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Share something with the community…"
+            onChange={setBody}
+            placeholder="Share something with the community (type @ to mention)..."
             rows={3}
             className="w-full resize-none rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) px-3 py-2.5 text-sm text-(--color-ink) outline-none placeholder:text-(--color-muted) focus:border-(--color-primary)"
             onKeyDown={(e) => {

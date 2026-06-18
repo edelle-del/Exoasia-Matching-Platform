@@ -316,6 +316,8 @@ export default function DealBoardPage() {
   const handleDragStart = (e: React.DragEvent, type: "card" | "intro", id: string) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("application/json", JSON.stringify({ type, id }));
+    // Safari requires text/plain to be set for drag-and-drop to work properly
+    e.dataTransfer.setData("text/plain", id);
     if (type === "card") setDraggingCardId(id);
     else setDraggingIntroId(id);
   };

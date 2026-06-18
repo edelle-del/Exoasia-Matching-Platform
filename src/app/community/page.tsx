@@ -49,6 +49,7 @@ export default function CommunityPage() {
   const [filterVerification, setFilterVerification] = useState("all");
   const [selectedMember, setSelectedMember] = useState<CommunityMemberRecord | null>(null);
   const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
+  const [weeklyUnlocks, setWeeklyUnlocks] = useState({ used: 0, limit: 5 });
 
   useEffect(() => {
     void (async () => {
@@ -66,7 +67,7 @@ export default function CommunityPage() {
         user
           ? supabase
               .from("ad_credit_ledger")
-              .select("reason")
+              .select("reason, created_at")
               .eq("member_id", user.id)
               .or("reason.ilike.Unlock community profile:%,reason.ilike.Unlock investor profile:%")
           : Promise.resolve({ data: null }),
@@ -84,8 +85,16 @@ export default function CommunityPage() {
       setConnectionMap(map);
 
       if (user && ledgerResult.data && ledgerResult.data.length > 0) {
+        let thisWeekCount = 0;
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday start
+
         const ids = new Set(
           ledgerResult.data.map((r) => {
+            if (r.created_at && new Date(r.created_at) >= startOfWeek) {
+              thisWeekCount++;
+            }
             const reason = r.reason as string;
             return reason
               .replace("Unlock community profile: ", "")
@@ -94,6 +103,7 @@ export default function CommunityPage() {
           }),
         );
         setUnlockedProfiles(ids);
+        setWeeklyUnlocks({ used: thisWeekCount, limit: 5 });
       }
 
       setIsLoading(false);
@@ -301,6 +311,7 @@ export default function CommunityPage() {
           currentUserId={currentUserId}
           connectionStatus={connectionMap.get(selectedMember.id) ?? null}
           isUnlocked={selectedMember.id === currentUserId || unlockedProfiles.has(selectedMember.id)}
+          weeklyUnlocks={weeklyUnlocks}
           onUnlocked={handleProfileUnlocked}
           onInsufficientCredits={setInsufficientCredits}
           onClose={() => setSelectedMember(null)}
@@ -454,6 +465,7 @@ function MemberDetailModal({
   currentUserId,
   connectionStatus,
   isUnlocked: initialUnlocked,
+  weeklyUnlocks,
   onUnlocked,
   onInsufficientCredits,
   onClose,
@@ -462,6 +474,7 @@ function MemberDetailModal({
   currentUserId: string | null;
   connectionStatus: ConnectionStatus;
   isUnlocked: boolean;
+  weeklyUnlocks: { used: number; limit: number };
   onUnlocked: (memberId: string) => void;
   onInsufficientCredits: (data: { needed: number; balance: number }) => void;
   onClose: () => void;
@@ -649,8 +662,14 @@ function MemberDetailModal({
               )}
               {m.sector && (
                 <div className="rounded-xl border border-(--color-hairline) bg-(--color-surface-soft) p-2.5">
-                  <p className="text-[10px] font-bold uppercase text-(--color-muted)">Sector</p>
-                  <p className="mt-0.5 font-medium text-(--color-ink)">{m.sector}</p>
+                  <p className="text-[10px] font-bold uppercase text-(--color-muted) mb-1.5">Sector</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.sector.split(",").map((s) => s.trim()).filter(Boolean).map((sector) => (
+                      <span key={sector} className="rounded-[6px] border border-(--color-hairline) bg-(--color-canvas) px-2 py-0.5 text-xs text-(--color-ink)">
+                        {sector}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -674,7 +693,7 @@ function MemberDetailModal({
                 disabled={unlocking}
                 className="w-full rounded-xl bg-(--color-primary) px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {unlocking ? "Unlocking…" : "Unlock for free (beta)"}
+                {unlocking ? "Unlocking…" : `Unlock full profile (${weeklyUnlocks.used}/${weeklyUnlocks.limit} unlocks this week)`}
               </button>
             </div>
           )}
@@ -863,7 +882,7 @@ function MemberDetailModal({
                       disabled={introStatus === "loading"}
                       className="w-full rounded-xl bg-(--color-primary) px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e55919] disabled:opacity-60"
                     >
-                      {introStatus === "error" ? "Failed — try again" : "Request for free (beta)"}
+                      {introStatus === "error" ? "Failed — try again" : "Request intro to connect"}
                     </button>
                   )}
                 </div>

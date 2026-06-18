@@ -33,6 +33,7 @@ const ICONS = {
   announcements: "ri-notification-3-line",
   creditRequests: "ri-bank-card-line",
   messages: "ri-message-3-line",
+  bugReport: "ri-bug-line",
   guide: "ri-compass-3-line",
   track: "ri-route-line",
   leaderboard: "ri-trophy-line",
@@ -237,7 +238,6 @@ export default function TopHeader() {
             label="Community"
             icon={ICONS.community}
           />
-          <NavLink href="/feature-requests" label="Feature Requests" icon={ICONS.featureRequests} />
         </>
       )}
 
@@ -253,7 +253,6 @@ export default function TopHeader() {
           <SectionLabel>Culture:</SectionLabel>
           <NavLink href="/community" label="Community" icon={ICONS.community} />
           <NavLink href="/events" label="Events" icon={ICONS.events} />
-          <NavLink href="/feature-requests" label="Feature Requests" icon={ICONS.featureRequests} />
 
         </>
       )}
@@ -299,6 +298,11 @@ export default function TopHeader() {
                 icon={ICONS.members}
               />
               <NavLink
+                href="/admin/deal-boards"
+                label="Deal Boards"
+                icon={ICONS.dealBoard}
+              />
+              <NavLink
                 href="/admin/credit-requests"
                 label="Credit Requests"
                 icon={ICONS.creditRequests}
@@ -309,11 +313,24 @@ export default function TopHeader() {
       )}
 
       {signedIn && (
-        <NavLink
-          href="/docs"
-          label="Help Center"
-          icon={ICONS.docs}
-        />
+        <>
+          <SectionLabel>Support</SectionLabel>
+          <NavLink
+            href="/feature-requests"
+            label="Request a Feature"
+            icon={ICONS.featureRequests}
+          />
+          <NavLink
+            href="/account-settings"
+            label="Report a Bug"
+            icon={ICONS.bugReport}
+          />
+          <NavLink
+            href="/docs"
+            label="Help Center"
+            icon={ICONS.docs}
+          />
+        </>
       )}
     </>
   );

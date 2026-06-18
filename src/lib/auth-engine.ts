@@ -46,8 +46,13 @@ export async function authorizeRequest(
   const currentDay = dayMap[phtDayOfWeekStr];
 
   // Helper to process daily usage and deduct credits
-  const processUsage = async (isValidDay: boolean, actionStr: "REQUEST_INTRO_INVESTOR" | "REQUEST_FOUNDER_INTRO" | "REQUEST_COMMUNITY_INTRO") => {
+  const processUsage = async (
+    isValidDay: boolean,
+    actionStr: "REQUEST_INTRO_INVESTOR" | "REQUEST_FOUNDER_INTRO" | "REQUEST_COMMUNITY_INTRO",
+    allowedLimit: number = 1
+  ) => {
     let useFreeCredit = false;
+    let currentCount = 0;
 
     if (isValidDay) {
       // Check user_daily_usage
@@ -59,7 +64,8 @@ export async function authorizeRequest(
         .eq("date_pht", datePht)
         .maybeSingle();
 
-      if (!usage || usage.count === 0) {
+      currentCount = usage?.count || 0;
+      if (currentCount < allowedLimit) {
         useFreeCredit = true;
       }
     }
@@ -73,7 +79,7 @@ export async function authorizeRequest(
             user_id: userId,
             action_type: requestType,
             date_pht: datePht,
-            count: 1, // We only increment from 0 to 1
+            count: currentCount + 1,
             updated_at: new Date().toISOString(),
           },
           { onConflict: "user_id,action_type,date_pht" }
@@ -92,13 +98,18 @@ export async function authorizeRequest(
   if (requestType === "intro_request") {
     // Days 1 (Mon) and 4 (Thu)
     const isValidDay = currentDay === 1 || currentDay === 4;
-    // Founder -> REQUEST_INTRO_INVESTOR (2 cr)
-    // Investor -> REQUEST_FOUNDER_INTRO (3 cr)
+    
+    let allowedLimit = 1; // Default for startups
+    if (userRole === "investor") {
+      if (currentDay === 1) allowedLimit = 3;
+      if (currentDay === 4) allowedLimit = 2;
+    }
+
     const actionStr = userRole === "startup" ? "REQUEST_INTRO_INVESTOR" : "REQUEST_FOUNDER_INTRO";
-    await processUsage(isValidDay, actionStr);
+    await processUsage(isValidDay, actionStr, allowedLimit);
   } else if (requestType === "community_request") {
     // Days 3 (Wed) and 6 (Sat)
     const isValidDay = currentDay === 3 || currentDay === 6;
-    await processUsage(isValidDay, "REQUEST_COMMUNITY_INTRO");
+    await processUsage(isValidDay, "REQUEST_COMMUNITY_INTRO", 1);
   }
 }

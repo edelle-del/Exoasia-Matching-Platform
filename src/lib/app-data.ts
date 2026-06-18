@@ -493,7 +493,7 @@ export async function promoteIntroToDeal(
     .insert({
       title,
       stage: "proposal",
-      confidence: "medium",
+      confidence: "Medium",
       buyer_member_id: userId,
       provider_member_id: counterpartId,
       match_id: matchId,
@@ -1060,4 +1060,75 @@ export async function fetchAdvisorIntroductionQueue(
     member_a: profileMap.get(m.member_a_id) ?? null,
     member_b: profileMap.get(m.member_b_id) ?? null,
   }));
+}
+export async function fetchAllDealCards(supabase: SupabaseClient, memberIdFilter?: string) {
+  let query = supabase
+    .from("deal_cards")
+    .select(
+      "id, title, stage, fit_score, confidence, impact_projection, next_action, next_action_due, blocker, close_reason_code, last_updated_at, buyer_member_id, provider_member_id, match_id, project_id, buyer:profiles!buyer_member_id(full_name, business_name, member_role), provider:profiles!provider_member_id(full_name, business_name, member_role)",
+    )
+    .order("last_updated_at", { ascending: false });
+
+  if (memberIdFilter && memberIdFilter !== "all") {
+    query = query.or(`buyer_member_id.eq.${memberIdFilter},provider_member_id.eq.${memberIdFilter}`);
+  }
+
+  const { data, error } = await query;
+  if (error) return [];
+
+  const cards = data ?? [];
+  const projectIds = [...new Set(cards.map((c) => c.project_id).filter(Boolean))] as string[];
+  const latestScoresMap = new Map<string, number>();
+
+  if (projectIds.length > 0) {
+    const { data: scores } = await supabase
+      .from("project_match_scores")
+      .select("project_id, investor_profile_id, fit_score")
+      .in("project_id", projectIds);
+
+    if (scores) {
+      scores.forEach((s) => {
+        latestScoresMap.set(`${s.project_id}_${s.investor_profile_id}`, s.fit_score);
+      });
+    }
+  }
+
+  return cards.map((card) => {
+    const buyer = card.buyer as { full_name?: string | null; business_name?: string | null; member_role?: string | null } | null;
+    const provider = card.provider as { full_name?: string | null; business_name?: string | null; member_role?: string | null } | null;
+    
+    // For admin view, counterpart logic might not apply perfectly if viewing all,
+    // but if filtering by member, counterpart is the OTHER person.
+    const referenceUserId = memberIdFilter && memberIdFilter !== "all" ? memberIdFilter : card.buyer_member_id;
+    const counterpart = card.buyer_member_id === referenceUserId ? provider : buyer;
+    
+    const counterpart_name = counterpart?.business_name || counterpart?.full_name || "Unknown";
+    const counterpart_full_name = counterpart?.full_name ?? null;
+    const counterpart_business = counterpart?.business_name ?? null;
+    const counterpart_role = counterpart?.member_role ?? null;
+    const { buyer: _b, provider: _p, ...rest } = card;
+
+    let currentFitScore = card.fit_score;
+    if (card.project_id) {
+      const scoreAsBuyer = latestScoresMap.get(`${card.project_id}_${card.buyer_member_id}`);
+      const scoreAsProvider = latestScoresMap.get(`${card.project_id}_${card.provider_member_id}`);
+      if (scoreAsBuyer !== undefined) {
+        currentFitScore = scoreAsBuyer;
+      } else if (scoreAsProvider !== undefined) {
+        currentFitScore = scoreAsProvider;
+      }
+    }
+
+    // Add raw buyer/provider names for the admin view
+    return {
+      ...rest,
+      counterpart_name,
+      counterpart_full_name,
+      counterpart_business,
+      counterpart_role,
+      buyer_name: buyer?.full_name || buyer?.business_name || "Unknown",
+      provider_name: provider?.full_name || provider?.business_name || "Unknown",
+      fit_score: currentFitScore,
+    };
+  });
 }

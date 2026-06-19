@@ -51,6 +51,7 @@ export default function CommunityPage() {
   const [insufficientCredits, setInsufficientCredits] = useState<{ needed: number; balance: number } | null>(null);
   const [weeklyUnlocks, setWeeklyUnlocks] = useState({ used: 0, limit: 2 });
   const [introQuota, setIntroQuota] = useState<{ remaining: number, total: number, isPaid: boolean } | null>(null);
+  const [communityIntroFreeToday, setCommunityIntroFreeToday] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -111,6 +112,7 @@ export default function CommunityPage() {
           setIntroQuota(reqQuota);
         }
       }
+      setCommunityIntroFreeToday(Boolean(quotaResult?.communityIntroFreeToday));
 
       setIsLoading(false);
     })();
@@ -319,6 +321,7 @@ export default function CommunityPage() {
           isUnlocked={selectedMember.id === currentUserId || unlockedProfiles.has(selectedMember.id)}
           weeklyUnlocks={weeklyUnlocks}
           introQuota={introQuota}
+          communityIntroFreeToday={communityIntroFreeToday}
           onUnlocked={handleProfileUnlocked}
           onInsufficientCredits={setInsufficientCredits}
           onClose={() => setSelectedMember(null)}
@@ -474,6 +477,7 @@ function MemberDetailModal({
   isUnlocked: initialUnlocked,
   weeklyUnlocks,
   introQuota,
+  communityIntroFreeToday,
   onUnlocked,
   onInsufficientCredits,
   onClose,
@@ -484,6 +488,7 @@ function MemberDetailModal({
   isUnlocked: boolean;
   weeklyUnlocks: { used: number; limit: number };
   introQuota?: { remaining: number; total: number; isPaid: boolean } | null;
+  communityIntroFreeToday?: boolean;
   onUnlocked: (memberId: string) => void;
   onInsufficientCredits: (data: { needed: number; balance: number }) => void;
   onClose: () => void;
@@ -577,13 +582,11 @@ function MemberDetailModal({
     }
   }, [m.id]);
 
-  const isFreeCommunityIntroToday = useMemo(() => {
-    const phtDay = new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Manila",
-      weekday: "short",
-    }).format(new Date());
-    return phtDay === "Wed" || phtDay === "Sat";
-  }, []);
+  const hasCommunityIntroFreeToday = introQuota
+    ? introQuota.isPaid || introQuota.total === Infinity
+      ? true
+      : Boolean(communityIntroFreeToday && introQuota.remaining > 0)
+    : Boolean(communityIntroFreeToday);
 
   let v2: Record<string, unknown> | null = null;
   try {
@@ -876,7 +879,7 @@ function MemberDetailModal({
                   ) : introConfirm ? (
                     <div className="rounded-2xl border border-(--color-hairline) bg-(--color-surface-soft) p-4 flex flex-col gap-3">
                       <p className="text-sm text-(--color-body)">
-                        Send a connection request to this member. Free during beta.
+                        Send a connection request to this member. {hasCommunityIntroFreeToday ? "Free today — no credit required." : "This will cost 1 credit."}
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -905,7 +908,7 @@ function MemberDetailModal({
                     >
                       {introStatus === "error" ? "Failed — try again" : introQuota ? (
                         introQuota.isPaid || introQuota.total === Infinity ? "Request intro to connect (Unlimited)" : 
-                        isFreeCommunityIntroToday && introQuota.remaining > 0 ? `Request intro to connect (${introQuota.remaining} free left)` :
+                        hasCommunityIntroFreeToday ? "Request intro to connect (Free today)" :
                         "Request intro to connect (Cost: 1 Credit)"
                       ) : "Request intro to connect (Cost: 1 Credit)"}
                     </button>

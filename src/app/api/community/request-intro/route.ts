@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { BYPASS_CREDIT_GATES } from "@/lib/credits";
+import { authorizeRequest } from "@/lib/auth-engine";
+import { InsufficientCreditsError } from "@/lib/credits";
 
 function canonicalizePair(idA: string, idB: string) {
   return idA < idB
@@ -55,9 +56,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ alreadyExists: true });
     }
 
-    const { authorizeRequest } = await import("@/lib/auth-engine");
-    const { InsufficientCreditsError } = await import("@/lib/credits");
-    
     const { data: memberProfile } = await admin
       .from("profiles")
       .select("member_role")
@@ -66,9 +64,14 @@ export async function POST(req: Request) {
 
     try {
       await authorizeRequest(admin, user.id, memberProfile?.member_role ?? "startup", "community_request");
-    } catch (err) {
-      if (err instanceof InsufficientCreditsError) {
-        return NextResponse.json({ error: err.message, code: "INSUFFICIENT_CREDITS" }, { status: 402 });
+    } catch (err: any) {
+      if (err instanceof InsufficientCreditsError || err.name === "InsufficientCreditsError") {
+        return NextResponse.json({ 
+          error: err.message, 
+          code: "INSUFFICIENT_CREDITS",
+          needed: err.required,
+          balance: err.balance
+        }, { status: 402 });
       }
       return NextResponse.json({ error: err instanceof Error ? err.message : "Authorization failed" }, { status: 400 });
     }

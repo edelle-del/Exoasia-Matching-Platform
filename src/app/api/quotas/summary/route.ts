@@ -50,7 +50,14 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ quotas, isPaid });
+    const phtDay = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Manila",
+      weekday: "short",
+    }).format(new Date());
+    const communityIntroQuota = quotas.find((q) => q.action === "request_community_intro");
+    const communityIntroFreeToday = !isPaid && ["Wed", "Sat"].includes(phtDay) && Boolean(communityIntroQuota && communityIntroQuota.remaining > 0);
+
+    return NextResponse.json({ quotas, isPaid, communityIntroFreeToday });
   } catch (err: any) {
     console.error("Quotas Summary Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

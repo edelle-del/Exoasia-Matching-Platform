@@ -12,9 +12,16 @@ const GEMINI_ENDPOINT =
 
 // Keys inside asks_summary that are admin/platform metadata and should not
 // be included in the AI payload — they add noise without improving match quality.
-const ASKS_NOISE_KEYS = ["referrals", "pitch_deck_url", "anp_affiliated", "demo_day_judge"];
+const ASKS_NOISE_KEYS = [
+  "referrals",
+  "pitch_deck_url",
+  "anp_affiliated",
+  "demo_day_judge",
+];
 
-function cleanAsksForAI(raw: string | null | undefined): Record<string, unknown> | null {
+function cleanAsksForAI(
+  raw: string | null | undefined,
+): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(raw ?? "");
     if (!parsed || parsed._v !== 2) return null;
@@ -51,13 +58,12 @@ async function callOpenRouter(systemInstruction: string, payload: unknown) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "openrouter/owl-alpha",
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: JSON.stringify(payload) },
       ],
       temperature: 0.0,
-      max_tokens: 1200,
     }),
   });
 
@@ -154,17 +160,20 @@ export async function POST(
     }
 
     if (isRescore) {
-      const { deductCredits, InsufficientCreditsError } = await import("@/lib/credits");
+      const { deductCredits, InsufficientCreditsError } =
+        await import("@/lib/credits");
       try {
         await deductCredits(user.id, "RESCORE_MATCH", projectId);
       } catch (e: any) {
         if (e.name === "InsufficientCreditsError") {
-          return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+          return NextResponse.json(
+            { error: "Insufficient credits" },
+            { status: 402 },
+          );
         }
         throw e;
       }
     }
-
 
     const { data: callerProfile } = await supabase
       .from("profiles")
@@ -206,7 +215,10 @@ export async function POST(
         project: {
           ...project,
           owner: ownerProfile
-            ? { ...ownerProfile, asks_summary: cleanAsksForAI(ownerProfile.asks_summary) }
+            ? {
+                ...ownerProfile,
+                asks_summary: cleanAsksForAI(ownerProfile.asks_summary),
+              }
             : ownerProfile,
         },
       };
@@ -215,7 +227,12 @@ export async function POST(
         GEMINI_INVESTOR_SCORES_PROJECT_INSTRUCTIONS,
         payload,
       );
-      type CategoryScores = { sector_vertical?: number; stage_fit?: number; investment_thesis?: number; geographic_fit?: number };
+      type CategoryScores = {
+        sector_vertical?: number;
+        stage_fit?: number;
+        investment_thesis?: number;
+        geographic_fit?: number;
+      };
       type InvestorScoreResult = {
         project_id: string;
         fit_score: number;
@@ -230,14 +247,25 @@ export async function POST(
         Math.min(100, Math.round(Number(result.fit_score) || 0)),
       );
 
-      const clampScore = (v: unknown) => typeof v === "number" ? Math.max(0, Math.min(100, Math.round(v))) : undefined;
+      const clampScore = (v: unknown) =>
+        typeof v === "number"
+          ? Math.max(0, Math.min(100, Math.round(v)))
+          : undefined;
       const cs = result.category_scores;
       const rationale = {
         ...(result.rationale ?? {}),
-        ...(cs?.sector_vertical    != null ? { _cs_sector_vertical:    clampScore(cs.sector_vertical)    } : {}),
-        ...(cs?.stage_fit          != null ? { _cs_stage_fit:          clampScore(cs.stage_fit)          } : {}),
-        ...(cs?.investment_thesis  != null ? { _cs_investment_thesis:  clampScore(cs.investment_thesis)  } : {}),
-        ...(cs?.geographic_fit     != null ? { _cs_geographic_fit:     clampScore(cs.geographic_fit)     } : {}),
+        ...(cs?.sector_vertical != null
+          ? { _cs_sector_vertical: clampScore(cs.sector_vertical) }
+          : {}),
+        ...(cs?.stage_fit != null
+          ? { _cs_stage_fit: clampScore(cs.stage_fit) }
+          : {}),
+        ...(cs?.investment_thesis != null
+          ? { _cs_investment_thesis: clampScore(cs.investment_thesis) }
+          : {}),
+        ...(cs?.geographic_fit != null
+          ? { _cs_geographic_fit: clampScore(cs.geographic_fit) }
+          : {}),
       };
 
       const { error: upsertError } = await admin
@@ -300,19 +328,28 @@ export async function POST(
 
       if (!BYPASS_CREDIT_GATES && balance < REGEN_COST) {
         return NextResponse.json(
-          { error: `Insufficient credits. You need ${REGEN_COST} credits but have ${balance}.`, needed: REGEN_COST, balance },
+          {
+            error: `Insufficient credits. You need ${REGEN_COST} credits but have ${balance}.`,
+            needed: REGEN_COST,
+            balance,
+          },
           { status: 402 },
         );
       }
 
-      const { error: deductError } = await admin.from("ad_credit_ledger").insert({
-        member_id: user.id,
-        change_amount: -REGEN_COST,
-        reason: `Regenerate match report: ${projectId}`,
-      });
+      const { error: deductError } = await admin
+        .from("ad_credit_ledger")
+        .insert({
+          member_id: user.id,
+          change_amount: -REGEN_COST,
+          reason: `Regenerate match report: ${projectId}`,
+        });
 
       if (deductError) {
-        return NextResponse.json({ error: deductError.message }, { status: 500 });
+        return NextResponse.json(
+          { error: deductError.message },
+          { status: 500 },
+        );
       }
     }
 
@@ -340,7 +377,10 @@ export async function POST(
       project: {
         ...project,
         owner: ownerProfile
-          ? { ...ownerProfile, asks_summary: cleanAsksForAI(ownerProfile.asks_summary) }
+          ? {
+              ...ownerProfile,
+              asks_summary: cleanAsksForAI(ownerProfile.asks_summary),
+            }
           : ownerProfile,
       },
       investors: investors.map((inv) => ({
@@ -353,7 +393,12 @@ export async function POST(
       GEMINI_STARTUP_FINDS_INVESTORS_INSTRUCTIONS,
       payload,
     );
-    type CategoryScores = { sector_vertical?: number; stage_fit?: number; investment_thesis?: number; geographic_fit?: number };
+    type CategoryScores = {
+      sector_vertical?: number;
+      stage_fit?: number;
+      investment_thesis?: number;
+      geographic_fit?: number;
+    };
     type InvestorRec = {
       investor_id: string;
       fit_score: number;
@@ -362,6 +407,7 @@ export async function POST(
       rationale: Record<string, string>;
     };
     type InvestorRecsResult = { recommendations: InvestorRec[] };
+    console.log("Gemini raw response:", json);
     const result = JSON.parse(json) as InvestorRecsResult;
 
     if (!Array.isArray(result.recommendations)) {
@@ -371,7 +417,10 @@ export async function POST(
       );
     }
 
-    const clampCS = (v: unknown) => typeof v === "number" ? Math.max(0, Math.min(100, Math.round(v))) : undefined;
+    const clampCS = (v: unknown) =>
+      typeof v === "number"
+        ? Math.max(0, Math.min(100, Math.round(v)))
+        : undefined;
 
     const validInvestorIds = new Set(investors.map((i) => i.id));
     const rows = result.recommendations
@@ -381,15 +430,26 @@ export async function POST(
         const cs = r.category_scores;
         const rationale = {
           ...(r.rationale ?? {}),
-          ...(cs?.sector_vertical   != null ? { _cs_sector_vertical:   clampCS(cs.sector_vertical)   } : {}),
-          ...(cs?.stage_fit         != null ? { _cs_stage_fit:         clampCS(cs.stage_fit)         } : {}),
-          ...(cs?.investment_thesis != null ? { _cs_investment_thesis: clampCS(cs.investment_thesis) } : {}),
-          ...(cs?.geographic_fit    != null ? { _cs_geographic_fit:    clampCS(cs.geographic_fit)    } : {}),
+          ...(cs?.sector_vertical != null
+            ? { _cs_sector_vertical: clampCS(cs.sector_vertical) }
+            : {}),
+          ...(cs?.stage_fit != null
+            ? { _cs_stage_fit: clampCS(cs.stage_fit) }
+            : {}),
+          ...(cs?.investment_thesis != null
+            ? { _cs_investment_thesis: clampCS(cs.investment_thesis) }
+            : {}),
+          ...(cs?.geographic_fit != null
+            ? { _cs_geographic_fit: clampCS(cs.geographic_fit) }
+            : {}),
         };
         return {
           project_id: projectId,
           investor_profile_id: r.investor_id,
-          fit_score: Math.max(0, Math.min(100, Math.round(Number(r.fit_score) || 0))),
+          fit_score: Math.max(
+            0,
+            Math.min(100, Math.round(Number(r.fit_score) || 0)),
+          ),
           summary: String(r.summary || ""),
           rationale,
           generated_at: new Date().toISOString(),
@@ -413,7 +473,9 @@ export async function POST(
     // client never ends up with an empty list when the AI produces no new rows.
     const { data: allScoreRows } = await admin
       .from("project_match_scores")
-      .select("project_id, investor_profile_id, fit_score, summary, rationale, generated_at")
+      .select(
+        "project_id, investor_profile_id, fit_score, summary, rationale, generated_at",
+      )
       .eq("project_id", projectId)
       .order("fit_score", { ascending: false });
 
@@ -435,9 +497,11 @@ export async function POST(
         investor_asks_summary: inv?.asks_summary ?? null,
       };
     });
+    console.log("Generated scores:", scores);
 
     return NextResponse.json({ mode: "startup_finds_investors", scores });
   } catch (error) {
+    console.error("Error in generate-match route:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },

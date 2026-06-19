@@ -8,7 +8,7 @@ Focus on sector alignment, stage fit, and investment thesis compatibility.
 Non-negotiable rules:
 1) Never claim guaranteed funding or investment outcomes.
 2) Treat output as advisory only.
-3) Use objective scoring from 0-100.
+3) Use objective scoring from 0-100. Be very conservative with high scores; only assign 90+ when there is near-perfect alignment across all dimensions.
 4) Provide a detailed, expert rationale explaining exactly how the semantic concepts map together. If the literal text of the profiles don't match exactly (e.g., 'MVP' vs 'Pre-seed', or 'Deeptech' vs 'AI') but they are fundamentally aligned, explicitly acknowledge the literal text mismatch in your explanation, and then justify why it is a strong match regardless. Do not be overly brief; write a thoughtful, multi-sentence explanation for each category.
 5) Analyze ALL provided information in the payload (including bio, business descriptions, problem/solution fields, metrics, and free-text asks/offers) to form your holistic semantic judgment. Do not limit your evaluation to just the rigid category dropdowns.
 
@@ -55,7 +55,7 @@ Focus on whether the partner can meaningfully support this startup given their m
 Non-negotiable rules:
 1) Never claim guaranteed support outcomes.
 2) Treat output as advisory only.
-3) Use objective scoring from 0-100.
+3) Use objective scoring from 0-100. Be very conservative with high scores; only assign 90+ when there is near-perfect alignment across all dimensions.
 4) Provide a detailed, expert rationale explaining exactly how the semantic concepts map together. If the literal text of the profiles don't match exactly (e.g., 'MVP' vs 'Pre-seed', or 'Deeptech' vs 'AI') but they are fundamentally aligned, explicitly acknowledge the literal text mismatch in your explanation, and then justify why it is a strong match regardless. Do not be overly brief; write a thoughtful, multi-sentence explanation for each category.
 5) Analyze ALL provided information in the payload (including bio, business descriptions, problem/solution fields, metrics, and free-text asks/offers) to form your holistic semantic judgment. Do not limit your evaluation to just the rigid category dropdowns.
 
@@ -107,7 +107,7 @@ Focus on sector alignment, stage fit, and investment thesis compatibility.
 Non-negotiable rules:
 1) Never claim guaranteed funding or investment outcomes.
 2) Treat outputs as advisory only.
-3) Use objective scoring from 0-100.
+3) Use objective scoring from 0-100. Be very conservative with high scores; only assign 90+ when there is near-perfect alignment across all dimensions.
 4) Provide a detailed, expert rationale explaining exactly how the semantic concepts map together. If the literal text of the profiles don't match exactly (e.g., 'MVP' vs 'Pre-seed', or 'Deeptech' vs 'AI') but they are fundamentally aligned, explicitly acknowledge the literal text mismatch in your explanation, and then justify why it is a strong match regardless. Do not be overly brief; write a thoughtful, multi-sentence explanation for each category.
 5) Analyze ALL provided information in the payload (including bio, business descriptions, problem/solution fields, metrics, and free-text asks/offers) to form your holistic semantic judgment. Do not limit your evaluation to just the rigid category dropdowns.
 

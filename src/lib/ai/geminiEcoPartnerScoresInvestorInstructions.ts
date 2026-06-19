@@ -8,7 +8,7 @@ Focus on whether the partner and the investor share similar goals and can collab
 Non-negotiable rules:
 1) Never claim guaranteed support outcomes.
 2) Treat output as advisory only.
-3) Use objective scoring from 0-100.
+3) Use objective scoring from 0-100. Be very conservative with high scores; only assign 90+ when there is near-perfect alignment across all dimensions.
 4) Keep rationale concise and specific.
 
 Scoring dimensions:

@@ -112,10 +112,15 @@ async function processBulkSweepAsync(userId: string, jobId: string, role: string
     if (role === "investor") {
       const { data: allProjects } = await admin.from("projects").select("*").eq("is_active", true);
       const { data: partners } = await admin.from("profiles").select("*").eq("member_role", "ecosystem_partner");
+      const { data: allProfiles } = await admin.from("profiles").select("*");
 
-      if (allProjects && allProjects.length > 0) {
+      if (allProjects && allProjects.length > 0 && allProfiles) {
         for (const c of chunkArray(allProjects, 40)) {
-          const res = await generateGeminiMatches({ subject: caller, candidates: c.map(p => ({ counterpart_id: p.id, ...p })) });
+          const candidatesWithOwners = c.map(p => {
+            const owner = allProfiles.find(profile => profile.id === p.owner_id) || {};
+            return { counterpart_id: p.id, ...p, owner };
+          });
+          const res = await generateGeminiMatches({ subject: caller, candidates: candidatesWithOwners });
           const rows = res.map(r => ({ project_id: r.counterpart_id, investor_profile_id: userId, fit_score: r.fit_score, summary: r.summary, rationale: r.rationale, generated_at: new Date().toISOString() }));
           if (rows.length > 0) await admin.from("project_match_scores").upsert(rows, { onConflict: "project_id, investor_profile_id" });
         }

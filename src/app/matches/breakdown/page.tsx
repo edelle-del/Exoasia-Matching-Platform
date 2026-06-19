@@ -26,7 +26,10 @@ type Profile = {
 type ParamStatus = "matched" | "partial" | "mismatch";
 type Param = { name: string; myVal: string; theirVal: string; status: ParamStatus };
 type ContextItem = { name: string; value: string };
-type Category = { id: string; label: string; score: number; color: string; params: Param[]; isEstimated: boolean; context?: ContextItem[] };
+type Category = { id: string; label: string; score: number; color: string; params: Param[];  isEstimated: boolean;
+  context?: ContextItem[];
+  rationale?: string;
+};
 
 // ─── Canvas radar ─────────────────────────────────────────────────────────────
 
@@ -139,6 +142,25 @@ const SEMANTIC_CLUSTERS: Record<string, string> = {
   "tech support":                           "technology",
   "product development":                   "technology",
 
+  // Sectors & Industries
+  "deeptech":                              "deeptech",
+  "deep tech":                             "deeptech",
+  "ai":                                    "deeptech",
+  "artificial intelligence":               "deeptech",
+  "enterprise & ai":                       "deeptech",
+  "fintech":                               "finance",
+  "financial technology":                  "finance",
+
+  // Stages
+  "mvp":                                   "pre-seed",
+  "idea":                                  "pre-seed",
+  "idea stage":                            "pre-seed",
+  "pre-revenue":                           "pre-seed",
+  "pre-revenue startups":                  "pre-seed",
+  "seed":                                  "seed",
+  "early traction":                        "seed",
+  "post-revenue":                          "seed",
+  
   // Mentorship / Advisory
   "mentorship / advisory":                 "mentorship",
   "advisory":                              "mentorship",
@@ -213,9 +235,10 @@ function semanticMatch(a: string, b: string): boolean {
 }
 
 function parseV2(raw: string | null | undefined): Record<string, unknown> | null {
+  if (!raw) return null;
   try {
-    const p = JSON.parse(raw ?? "");
-    if (p?._v === 2) return p;
+    const p = JSON.parse(raw);
+    return typeof p === "object" && p !== null ? p : null;
   } catch { /* */ }
   return null;
 }
@@ -240,7 +263,11 @@ function computeCategories(
   fitScore: number,
   projectStage: string | null = null,
   aiScores: AICategoryScores = {},
+  aiRationale: Record<string, string> = {}
 ): Category[] {
+  // A mismatch should be shown if there is explicitly zero overlap when data exists.
+  // If one side has data and the other side is completely empty, it is still effectively a mismatch 
+  // (we can't confirm a match, so it's a failure to align).
   const ps = (m: boolean, p: boolean): ParamStatus => m ? "matched" : p ? "partial" : "mismatch";
 
   const myV2    = parseV2(mine?.asks_summary);
@@ -268,7 +295,7 @@ function computeCategories(
   const startupIndustries: string[] = (startupV2?.target_industries as string[] | null) ?? [];
   const allStartupIndustries = [startupSector, ...startupIndustries].filter(Boolean).map(s => s.toLowerCase());
   const industryHits = investorIndustries.filter(i =>
-    allStartupIndustries.some(s => s.includes(i.toLowerCase()) || i.toLowerCase().includes(s))
+    allStartupIndustries.some(s => semanticMatch(s, i))
   ).length;
 
   const sectorParams: Param[] = [
@@ -276,7 +303,7 @@ function computeCategories(
       name: "Primary sector",
       myVal: mine?.sector ?? "Not specified",
       theirVal: theirs?.sector ?? "Not specified",
-      status: ps(sectorMatch, !!(mine?.sector || theirs?.sector)),
+      status: ps(mine?.sector != null && theirs?.sector != null && semanticMatch(mine.sector, theirs.sector), !!(mine?.sector || theirs?.sector)),
     },
     {
       name: "Target industries",
@@ -306,10 +333,7 @@ function computeCategories(
     ? false
     : targetStages.length === 0
       ? true   // matchmaker is flexible on stage
-      : targetStages.some(s =>
-          s.toLowerCase().includes(fundraisingStage.toLowerCase()) ||
-          fundraisingStage.toLowerCase().includes(s.toLowerCase())
-        );
+      : targetStages.some(s => semanticMatch(s, fundraisingStage));
 
   const stageParams: Param[] = [
     {
@@ -415,6 +439,7 @@ function computeCategories(
       score: sectorScore, color: "#6366F1",
       params: sectorParams,
       isEstimated: aiScores.sector_vertical == null,
+      rationale: aiRationale.sector_alignment ?? aiRationale.sector_match,
     },
     {
       id: "stage", label: "Stage Fit",
@@ -422,18 +447,21 @@ function computeCategories(
       params: stageParams,
       isEstimated: aiScores.stage_fit == null,
       context: stageContext,
+      rationale: aiRationale.stage_fit ?? aiRationale.stage_maturity,
     },
     {
       id: "thesis", label: isEcoPartner ? "Support Type Alignment" : "Investment Thesis",
       score: thesisScore, color: "#8B5CF6",
       params: thesisParams,
       isEstimated: aiScores.investment_thesis == null,
+      rationale: isEcoPartner ? aiRationale.support_type_alignment : (aiRationale.thesis_alignment ?? aiRationale.ask_offer_fit),
     },
     {
       id: "geographic", label: "Geographic Fit",
       score: geoScore, color: "#F59E0B",
       params: geoParams,
       isEstimated: aiScores.geographic_fit == null,
+      rationale: aiRationale.geographic_fit,
     },
   ];
 }
@@ -555,7 +583,7 @@ function BreakdownPage() {
     })();
   }, [supabase, user?.id, profileAId, profileBId, projectId]);
 
-  const categories  = useMemo(() => computeCategories(mine, theirs, fitScore, projectStage, aiCatScores), [mine, theirs, fitScore, projectStage, aiCatScores]);
+  const categories  = useMemo(() => computeCategories(mine, theirs, fitScore, projectStage, aiCatScores, aiRationale), [mine, theirs, fitScore, projectStage, aiCatScores, aiRationale]);
   const catScores   = categories.map((c) => c.score);
   const catAxes     = categories.map((c) => c.label);
 
@@ -879,6 +907,12 @@ function BreakdownPage() {
                         </button>
                         {isOpen && (
                           <div className="border-t border-[#2A2A3E] px-4 py-3 space-y-3">
+                            {!cat.isEstimated && cat.rationale && (
+                              <div className="rounded-lg bg-[#1A1A26] border border-[#2A2A3E] p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7] mb-1.5">Exoasia Intelligence Rationale</p>
+                                <p className="text-xs text-[#C4C4D4] leading-relaxed">{cat.rationale}</p>
+                              </div>
+                            )}
                             <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-widest text-[#8B8BA7] pb-1 border-b border-[#2A2A3E]">
                               <span>Evidence</span>
                               <div>

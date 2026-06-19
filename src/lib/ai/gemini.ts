@@ -5,10 +5,13 @@ type MatchingPayload = {
   candidates: Array<Record<string, unknown>>;
 };
 
+type CategoryScores = { sector_vertical?: number; stage_fit?: number; investment_thesis?: number; geographic_fit?: number };
+
 type GeminiRecommendation = {
   counterpart_id: string;
   fit_score: number;
   summary: string;
+  category_scores?: CategoryScores;
   rationale: Record<string, string>;
 };
 
@@ -92,7 +95,6 @@ export async function generateGeminiMatches(payload: MatchingPayload) {
 
   return parsed.recommendations
     .filter((rec) => !!rec.counterpart_id)
-    .slice(0, 5)
     .map((rec) => ({
       counterpart_id: rec.counterpart_id,
       fit_score: Math.max(
@@ -100,6 +102,12 @@ export async function generateGeminiMatches(payload: MatchingPayload) {
         Math.min(100, Math.round(Number(rec.fit_score) || 0)),
       ),
       summary: String(rec.summary || "Strategic compatibility"),
-      rationale: rec.rationale ?? {},
+      rationale: {
+        ...(rec.rationale ?? {}),
+        ...(rec.category_scores?.sector_vertical != null ? { _cs_sector_vertical: Math.max(0, Math.min(100, Math.round(rec.category_scores.sector_vertical))) } : {}),
+        ...(rec.category_scores?.stage_fit != null ? { _cs_stage_fit: Math.max(0, Math.min(100, Math.round(rec.category_scores.stage_fit))) } : {}),
+        ...(rec.category_scores?.investment_thesis != null ? { _cs_investment_thesis: Math.max(0, Math.min(100, Math.round(rec.category_scores.investment_thesis))) } : {}),
+        ...(rec.category_scores?.geographic_fit != null ? { _cs_geographic_fit: Math.max(0, Math.min(100, Math.round(rec.category_scores.geographic_fit))) } : {})
+      },
     }));
 }

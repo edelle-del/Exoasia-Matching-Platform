@@ -18,10 +18,8 @@ export const WEEKLY_LIMITS: Record<string, Partial<Record<QuotaAction, number>>>
     request_community_intro: 2,
   },
   investor: {
-    unlock_community_profile: 5,
+    unlock_community_profile: 10,
     request_community_intro: 2,
-    view_pitch_deck: 1,
-    view_financials: 1,
     request_intro_startup: 5,
   },
   ecosystem_partner: {

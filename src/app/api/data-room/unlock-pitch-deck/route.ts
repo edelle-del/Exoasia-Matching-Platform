@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { BYPASS_CREDIT_GATES } from "@/lib/credits";
-
-const UNLOCK_COST = 3;
+import { deductCredits } from "@/lib/credits";
 
 export async function POST(request: Request) {
   try {
@@ -29,44 +27,56 @@ export async function POST(request: Request) {
 
     const pitchDeckUrl = (project as { pitch_deck_url?: string | null } | null)?.pitch_deck_url ?? null;
 
-    // Idempotent — already unlocked, return URL for free
+    // Check if already explicitly unlocked via fallback credits
     const { data: existing } = await admin
       .from("ad_credit_ledger")
       .select("id")
       .eq("member_id", user.id)
-      .eq("reason", `Unlock pitch deck: ${projectId}`)
+      .eq("reason", `View startup pitch deck (fallback): ${projectId}`)
       .maybeSingle();
 
     if (existing) {
       return NextResponse.json({ success: true, alreadyUnlocked: true, pitchDeckUrl });
     }
 
-    // Check balance
-    const { data: ledgerRows } = await admin
-      .from("ad_credit_ledger")
-      .select("change_amount")
-      .eq("member_id", user.id);
+    // Check if there is an unblurred match (inherent top 10 or manually unblurred)
+    const { count: unlockedCount } = await admin
+      .from("user_unlocked_assets")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("asset_type", "match")
+      .eq("asset_id", projectId);
 
-    const balance = (ledgerRows ?? []).reduce(
-      (sum, r) => sum + Number(r.change_amount ?? 0),
-      0,
-    );
+    let isUnblurredMatch = (unlockedCount ?? 0) > 0;
 
-    if (!BYPASS_CREDIT_GATES && balance < UNLOCK_COST) {
-      return NextResponse.json(
-        { error: `Insufficient credits. You need ${UNLOCK_COST} credits but have ${balance}.`, needed: UNLOCK_COST, balance },
-        { status: 402 },
-      );
+    if (!isUnblurredMatch) {
+      // Check if it's in the top 10 active matches
+      const { data: topScores } = await admin
+        .from("project_match_scores")
+        .select("project_id")
+        .eq("investor_profile_id", user.id)
+        .order("fit_score", { ascending: false })
+        .limit(10);
+      
+      isUnblurredMatch = topScores?.some(s => s.project_id === projectId) ?? false;
     }
 
-    const { error: deductError } = await admin.from("ad_credit_ledger").insert({
-      member_id: user.id,
-      change_amount: -UNLOCK_COST,
-      reason: `Unlock pitch deck: ${projectId}`,
-    });
+    // If it's an unblurred match, it's completely free, return immediately
+    if (isUnblurredMatch) {
+      return NextResponse.json({ success: true, alreadyUnlocked: true, pitchDeckUrl });
+    }
 
-    if (deductError) {
-      return NextResponse.json({ error: deductError.message }, { status: 500 });
+    // Otherwise, deduct fallback credits
+    try {
+      await deductCredits(user.id, "VIEW_PITCH_DECK", projectId);
+    } catch (e: any) {
+      if (e.name === "InsufficientCreditsError") {
+        return NextResponse.json(
+          { error: `Insufficient credits. You need ${e.required} credits but have ${e.balance}.`, needed: e.required, balance: e.balance },
+          { status: 402 }
+        );
+      }
+      throw e;
     }
 
     return NextResponse.json({ success: true, alreadyUnlocked: false, pitchDeckUrl });

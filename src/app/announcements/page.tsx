@@ -14,7 +14,19 @@ export default async function AnnouncementsPage() {
 
   const { data: { session } } = await supabase.auth.getSession();
   const role = getRoleFromAccessToken(session?.access_token);
-  const canCreate = role === "admin" || role === "advisor";
+  let canManage = role === "admin" || role === "advisor";
+
+  if (!canManage && session?.user.id) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("member_role")
+      .eq("id", session.user.id)
+      .single();
+      
+    if (profile?.member_role === "ecosystem_partner") {
+      canManage = true;
+    }
+  }
 
   // Fetch announcements with their likes
   const { data: announcements, error } = await supabase
@@ -42,7 +54,7 @@ export default async function AnnouncementsPage() {
           <h1 className="text-3xl font-black uppercase tracking-tight text-(--color-ink)">Announcements</h1>
           <p className="mt-2 text-sm text-(--color-muted)">Platform updates, feature releases, and community news.</p>
         </div>
-        {canCreate && <CreateAnnouncementForm />}
+        {canManage && <CreateAnnouncementForm />}
       </div>
 
       {!announcements || announcements.length === 0 ? (
@@ -57,7 +69,8 @@ export default async function AnnouncementsPage() {
               <AnnouncementCard
                 announcement={mainAnnouncement}
                 currentUserId={user.id}
-                canDelete={canCreate}
+                canDelete={canManage}
+                canEdit={canManage}
                 initialLikes={mainAnnouncement.announcement_likes?.length || 0}
                 initialLiked={mainAnnouncement.announcement_likes?.some((like: any) => like.user_id === user.id) || false}
                 isMain={true}
@@ -81,7 +94,8 @@ export default async function AnnouncementsPage() {
                     key={announcement.id}
                     announcement={announcement}
                     currentUserId={user.id}
-                    canDelete={canCreate}
+                    canDelete={canManage}
+                    canEdit={canManage}
                     initialLikes={initialLikes}
                     initialLiked={initialLiked}
                   />

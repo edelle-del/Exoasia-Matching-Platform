@@ -47,10 +47,23 @@ export async function POST(req: NextRequest) {
       ? "BULK_MATCH_SWEEP_PARTNER" 
       : "BULK_MATCH_SWEEP_STARTUP";
       
+    // Check if this is the first execution
+    const { count } = await admin
+      .from("background_jobs")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("job_type", "BULK_MATCH_SWEEP");
+
+    const isFirstExecution = (count === 0);
+
     let deductedCost = 0;
     try {
-      const { deducted } = await deductCredits(userId, actionType);
-      deductedCost = deducted;
+      if (profile.member_role === "startup" && isFirstExecution) {
+        deductedCost = 0; // Free for the first execution
+      } else {
+        const { deducted } = await deductCredits(userId, actionType as any);
+        deductedCost = deducted;
+      }
     } catch (e: any) {
       if (e.name === "InsufficientCreditsError") {
         return NextResponse.json(

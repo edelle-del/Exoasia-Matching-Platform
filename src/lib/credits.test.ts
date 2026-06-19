@@ -64,7 +64,6 @@ describe("CREDIT_COSTS structure", () => {
   it("all FREE_FOR_PAID_SUBSCRIBERS investor actions have base 1", () => {
     expect(CREDIT_COSTS.VIEW_PITCH_DECK.base).toBe(1);
     expect(CREDIT_COSTS.VIEW_FINANCIALS.base).toBe(1);
-    expect(CREDIT_COSTS.EXPORT_PIPELINE_REPORT.base).toBe(1);
   });
 
   it("all FREE_FOR_PAID_SUBSCRIBERS ecosystem actions have base 1", () => {

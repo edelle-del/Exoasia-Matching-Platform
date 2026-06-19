@@ -33,7 +33,7 @@ export const CREDIT_COSTS = {
   VIEW_PITCH_DECK:          { base: 1,  reason: "View startup pitch deck (fallback)" },
   VIEW_FINANCIALS:          { base: 1,  reason: "View startup financial snapshot (fallback)" },
   REQUEST_FOUNDER_INTRO:    { base: 3,  reason: "Intro request to founder (fallback)" },
-  EXPORT_PIPELINE_REPORT:   { base: 1,  reason: "Deal pipeline export" }, // Requires Paid Plan actually, but cost handled by UI usually
+  EXPORT_PIPELINE_REPORT:   { base: 0,  reason: "Deal pipeline export (Paid only)" },
 
   // ── Ecosystem Partner allowances ─────────────────────────────────────────
   POST_OPPORTUNITY:         { base: 1,  reason: "Post opportunity/program call" },

@@ -308,6 +308,11 @@ export default function TopHeader() {
                 label="Credit Requests"
                 icon={ICONS.creditRequests}
               />
+              <NavLink
+                href="/events"
+                label="Events"
+                icon={ICONS.events}
+              />
             </>
           )}
         </>

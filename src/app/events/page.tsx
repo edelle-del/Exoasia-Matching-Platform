@@ -60,7 +60,7 @@ const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
 
 export default function EventsPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   const [upcoming, setUpcoming]           = useState<UpcomingEvent[]>([]);
   const [past, setPast]                   = useState<PastEvent[]>([]);
@@ -100,10 +100,11 @@ export default function EventsPage() {
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
-        const isAdvisor = data?.stage === "4";
+        const isAdvisor = data?.stage === "4" || role === "advisor";
         const isPartner = data?.member_role === "ecosystem_partner";
-        setCanCreateEvent(isAdvisor || isPartner);
-        setIsEcosystemPartner(isPartner && !isAdvisor);
+        const isAdmin = role === "admin";
+        setCanCreateEvent(isAdvisor || isPartner || isAdmin);
+        setIsEcosystemPartner(isPartner && !isAdvisor && !isAdmin);
       });
   }, [user?.id]);
 

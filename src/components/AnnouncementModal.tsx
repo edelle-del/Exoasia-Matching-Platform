@@ -17,12 +17,13 @@ function AnnouncementItem({
   announcement,
   userId,
   isMain = false,
+  onSelect,
 }: {
   announcement: Announcement;
   userId: string | null;
   isMain?: boolean;
+  onSelect?: (a: Announcement) => void;
 }) {
-  const [isExpanded, setIsExpanded] = useState(isMain);
   const postLikes = announcement.announcement_likes || [];
   const [likes, setLikes] = useState(postLikes.length);
   const [liked, setLiked] = useState(
@@ -59,10 +60,16 @@ function AnnouncementItem({
     }
   };
 
+  const handleClick = () => {
+    if (!isMain && onSelect) {
+      onSelect(announcement);
+    }
+  };
+
   return (
     <div className={`border-b border-(--color-hairline) last:border-0 ${isMain ? 'h-full flex flex-col' : ''}`}>
       <button
-        onClick={() => !isMain && setIsExpanded(!isExpanded)}
+        onClick={handleClick}
         className={`w-full py-4 text-left flex items-start justify-between gap-4 ${!isMain ? 'group' : 'cursor-default'}`}
       >
         <div className="flex-1">
@@ -91,19 +98,21 @@ function AnnouncementItem({
             </p>
           </div>
         </div>
-        {!isMain && (
-          <div className="text-(--color-muted) shrink-0 mt-1">
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        )}
       </button>
 
-      {isExpanded && (
-        <div className="pb-5 pt-1">
-          <div className={`text-sm text-(--color-body) whitespace-pre-wrap leading-relaxed ${isMain ? 'text-base flex-1' : ''}`}>
+      {isMain && (
+        <div className="pb-5 pt-1 flex flex-col flex-1">
+          <div className="text-base text-(--color-body) whitespace-pre-wrap leading-relaxed flex-1">
             {announcement.content}
           </div>
-          <div className={`mt-4 flex justify-end ${isMain ? 'border-t border-(--color-hairline) pt-4' : ''}`}>
+          {announcement.title.toLowerCase().includes("upcoming event") && (
+            <div className="mt-4">
+              <a href="/events" className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity">
+                View in Events Page
+              </a>
+            </div>
+          )}
+          <div className="mt-4 flex justify-end border-t border-(--color-hairline) pt-4">
             <button
               onClick={handleLike}
               disabled={isLiking || !userId || liked}
@@ -133,6 +142,7 @@ export default function AnnouncementModal() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   useEffect(() => {
     const fetchRecentAnnouncements = async () => {
@@ -207,7 +217,7 @@ export default function AnnouncementModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-5xl overflow-hidden rounded-2xl bg-(--color-canvas) shadow-xl max-h-[85vh] flex flex-col">
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl bg-(--color-canvas) shadow-xl max-h-[85vh] flex flex-col relative">
         <div className="p-6 shrink-0 border-b border-(--color-hairline) flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <h3 className="text-xs font-black uppercase tracking-widest text-(--color-ink)">
@@ -252,6 +262,7 @@ export default function AnnouncementModal() {
                     key={announcement.id}
                     announcement={announcement}
                     userId={userId}
+                    onSelect={setSelectedAnnouncement}
                   />
                 ))
               )}
@@ -267,6 +278,29 @@ export default function AnnouncementModal() {
             Got it
           </button>
         </div>
+        
+        {/* Nested Modal for Selected Announcement */}
+        {selectedAnnouncement && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 sm:p-10">
+            <div className="w-full max-w-2xl bg-(--color-canvas) rounded-2xl shadow-2xl flex flex-col max-h-full overflow-hidden border border-(--color-hairline)">
+              <div className="p-6 overflow-y-auto flex-1">
+                <AnnouncementItem
+                  announcement={selectedAnnouncement}
+                  userId={userId}
+                  isMain={true}
+                />
+              </div>
+              <div className="p-4 border-t border-(--color-hairline) bg-(--color-surface-soft) flex justify-end">
+                <button
+                  onClick={() => setSelectedAnnouncement(null)}
+                  className="rounded-xl bg-(--color-ink) px-5 py-2.5 text-sm font-bold text-(--color-canvas) hover:opacity-90 transition-opacity"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

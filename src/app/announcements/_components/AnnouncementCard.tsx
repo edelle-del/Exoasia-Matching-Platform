@@ -32,7 +32,6 @@ export function AnnouncementCard({
   defaultExpanded = false,
 }: AnnouncementProps) {
   const router = useRouter();
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded || isMain);
   const [likes, setLikes] = useState(initialLikes);
   const [liked, setLiked] = useState(initialLiked);
   const [isLiking, setIsLiking] = useState(false);
@@ -199,99 +198,172 @@ export function AnnouncementCard({
     );
   }
 
+  const [showModal, setShowModal] = useState(false);
+
   return (
-    <div className={`rounded-2xl border ${isMain ? 'border-(--color-primary)/20 bg-(--color-surface-soft) p-6' : 'border-(--color-hairline) bg-(--color-canvas) p-3 sm:p-4'} h-fit`}>
-      <div className="flex items-start justify-between gap-4">
-        <button
-          onClick={() => !isMain && setIsExpanded(!isExpanded)}
-          className={`flex-1 text-left flex items-start gap-4 ${!isMain ? 'group' : 'cursor-default'}`}
-        >
-          <div className="flex-1">
-            <div className="flex flex-col items-start gap-1 sm:gap-1.5">
-              <div className="flex items-start gap-2">
-                {announcement.is_featured && isMain && (
-                  <span className="shrink-0 inline-block rounded-full bg-(--color-primary)/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-(--color-primary) mt-1">
-                    Featured
-                  </span>
-                )}
-                <h2 className={`${isMain ? 'text-2xl font-black tracking-tight' : 'text-sm font-bold leading-tight'} text-(--color-ink) whitespace-normal ${!isMain && 'group-hover:text-(--color-primary)'} transition-colors text-left`}>
+    <>
+      <div className={`rounded-2xl border ${isMain ? 'border-(--color-primary)/20 bg-(--color-surface-soft) p-6' : 'border-(--color-hairline) bg-(--color-canvas) p-3 sm:p-4'} h-fit`}>
+        <div className="flex items-start justify-between gap-4">
+          <button
+            onClick={() => !isMain && setShowModal(true)}
+            className={`flex-1 text-left flex items-start gap-4 ${!isMain ? 'group cursor-pointer' : 'cursor-default'}`}
+          >
+            <div className="flex-1">
+              <div className="flex flex-col items-start gap-1 sm:gap-1.5">
+                <div className="flex items-start gap-2">
+                  {announcement.is_featured && isMain && (
+                    <span className="shrink-0 inline-block rounded-full bg-(--color-primary)/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-(--color-primary) mt-1">
+                      Featured
+                    </span>
+                  )}
+                  <h2 className={`${isMain ? 'text-2xl font-black tracking-tight' : 'text-sm font-bold leading-tight'} text-(--color-ink) whitespace-normal ${!isMain && 'group-hover:text-(--color-primary)'} transition-colors text-left`}>
+                    {announcement.title}
+                  </h2>
+                </div>
+                <p className={`text-xs text-(--color-muted) shrink-0 whitespace-nowrap ${!isMain && 'font-medium'}`}>
+                  {new Date(announcement.created_at).toLocaleDateString(undefined, isMain ? {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  } : {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {canEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}
+                className="text-(--color-muted) hover:text-(--color-primary) transition-colors p-2 rounded-full hover:bg-(--color-primary)/10"
+                title="Edit Announcement"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-(--color-muted) hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 disabled:opacity-50"
+                title="Delete Announcement"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {isMain && (
+          <>
+            <div className="mt-6 text-sm text-(--color-body) whitespace-pre-wrap leading-relaxed">
+              {announcement.content}
+            </div>
+            {announcement.title.toLowerCase().includes("upcoming event") && (
+              <div className="mt-4">
+                <a href="/events" className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity">
+                  View in Events Page
+                </a>
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center justify-end border-t border-(--color-hairline) pt-4">
+              <button
+                onClick={handleLike}
+                disabled={isLiking || liked}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                  liked
+                    ? "bg-(--color-primary)/10 text-(--color-primary) cursor-default"
+                    : "text-(--color-muted) hover:bg-(--color-surface-soft) hover:text-(--color-ink)"
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
+                <span>
+                  {liked 
+                    ? `Acknowledged by ${likes} user${likes !== 1 ? 's' : ''}` 
+                    : (likes > 0 ? `Acknowledge (${likes})` : "Acknowledge")}
+                </span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {showModal && !isMain && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 sm:p-10" onClick={() => setShowModal(false)}>
+          <div className="w-full max-w-2xl bg-(--color-canvas) rounded-2xl shadow-2xl flex flex-col max-h-full overflow-hidden border border-(--color-hairline)" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-(--color-hairline) flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-xl font-bold leading-tight text-(--color-ink)">
                   {announcement.title}
                 </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-(--color-muted) hover:text-(--color-ink) transition-colors p-1 -m-1"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <p className={`text-xs text-(--color-muted) shrink-0 whitespace-nowrap ${!isMain && 'font-medium'}`}>
-                {new Date(announcement.created_at).toLocaleDateString(undefined, isMain ? {
+              <p className="text-xs font-semibold text-(--color-muted)">
+                {new Date(announcement.created_at).toLocaleDateString(undefined, {
                   weekday: "long",
                   year: "numeric",
                   month: "long",
                   day: "numeric",
-                } : {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
                 })}
               </p>
             </div>
-          </div>
-        </button>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="text-base text-(--color-body) whitespace-pre-wrap leading-relaxed">
+                {announcement.content}
+              </div>
+              {announcement.title.toLowerCase().includes("upcoming event") && (
+                <div className="mt-6">
+                  <a href="/events" className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity">
+                    View in Events Page
+                  </a>
+                </div>
+              )}
+            </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {canEdit && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditing(true);
-              }}
-              className="text-(--color-muted) hover:text-(--color-primary) transition-colors p-2 rounded-full hover:bg-(--color-primary)/10"
-              title="Edit Announcement"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-          )}
-          {canDelete && (
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="text-(--color-muted) hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 disabled:opacity-50"
-              title="Delete Announcement"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-          <button
-            onClick={() => !isMain && setIsExpanded(!isExpanded)}
-            className={`text-(--color-muted) p-2 hover:bg-(--color-surface-soft) rounded-full transition-colors ${isMain ? 'invisible' : ''}`}
-          >
-            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-          </button>
+            <div className="p-4 border-t border-(--color-hairline) bg-(--color-surface-soft) flex justify-end gap-4">
+              <button
+                onClick={handleLike}
+                disabled={isLiking || liked}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                  liked
+                    ? "bg-(--color-primary)/10 text-(--color-primary) cursor-default"
+                    : "bg-(--color-canvas) border border-(--color-hairline) text-(--color-muted) hover:text-(--color-ink)"
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
+                <span>
+                  {liked 
+                    ? `Acknowledged by ${likes} user${likes !== 1 ? 's' : ''}` 
+                    : (likes > 0 ? `Acknowledge (${likes})` : "Acknowledge")}
+                </span>
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="rounded-xl bg-(--color-ink) px-5 py-2 text-sm font-bold text-(--color-canvas) hover:opacity-90 transition-opacity"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {isExpanded && (
-        <>
-          <div className="mt-6 text-sm text-(--color-body) whitespace-pre-wrap leading-relaxed">
-            {announcement.content}
-          </div>
-
-          <div className="mt-6 flex items-center justify-end border-t border-(--color-hairline) pt-4">
-            <button
-              onClick={handleLike}
-              disabled={isLiking || liked}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                liked
-                  ? "bg-(--color-primary)/10 text-(--color-primary) cursor-default"
-                  : "text-(--color-muted) hover:bg-(--color-surface-soft) hover:text-(--color-ink)"
-              }`}
-            >
-              <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
-              <span>
-                {liked 
-                  ? `Acknowledged by ${likes} user${likes !== 1 ? 's' : ''}` 
-                  : (likes > 0 ? `Acknowledge (${likes})` : "Acknowledge")}
-              </span>
-            </button>
-          </div>
-        </>
       )}
-    </div>
+    </>
   );
 }

@@ -70,6 +70,7 @@ export default function EventsPage() {
   const [showAddForm, setShowAddForm]     = useState(false);
   const [creating, setCreating]           = useState(false);
   const [createError, setCreateError]     = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<UpcomingEvent | null>(null);
 
   // Pre-filled for Philippine Blockchain Week
   const [form, setForm] = useState({
@@ -339,7 +340,8 @@ export default function EventsPage() {
               return (
                 <article
                   key={event.id}
-                  className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden shrink-0 w-[340px] snap-start flex flex-col"
+                  onClick={() => setSelectedEvent(event)}
+                  className="rounded-2xl border border-(--color-hairline) bg-(--color-canvas) overflow-hidden shrink-0 w-[340px] snap-start flex flex-col cursor-pointer hover:border-(--color-primary)/50 transition-colors"
                 >
                   {/* Top accent strip */}
                   <div className="h-1 w-full bg-gradient-to-r from-violet-500 to-indigo-500" />
@@ -386,9 +388,7 @@ export default function EventsPage() {
                       )}
                     </div>
 
-                    {event.description && (
-                      <p className="mt-4 text-sm text-(--color-body) leading-relaxed">{event.description}</p>
-                    )}
+                    {/* Removed inline description to save space */}
 
                     <div className="mt-auto pt-5 flex flex-wrap gap-3">
                       {event.registered ? (
@@ -402,8 +402,8 @@ export default function EventsPage() {
                           {!event.attended && (
                             <button
                               type="button"
-                              onClick={() => void handleAttendance(event.id)}
-                              className="rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-semibold text-(--color-muted) hover:bg-(--color-surface-soft) transition-colors"
+                              onClick={(e) => { e.stopPropagation(); void handleAttendance(event.id); }}
+                              className="rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-semibold text-(--color-muted) hover:bg-(--color-surface-soft) transition-colors z-10"
                             >
                               Mark as attended
                             </button>
@@ -419,7 +419,8 @@ export default function EventsPage() {
                           href="https://exoasia.org/foundersarena"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity z-10"
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -491,6 +492,58 @@ export default function EventsPage() {
           </section>
         )}
       </div>
+
+      {/* Event Details Modal */}
+      {selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setSelectedEvent(null)}>
+          <div className="w-full max-w-2xl bg-(--color-canvas) rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-(--color-hairline)" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-(--color-hairline) flex items-start justify-between gap-4">
+              <h3 className="text-xl font-bold text-(--color-ink)">{selectedEvent.title}</h3>
+              <button onClick={() => setSelectedEvent(null)} className="text-(--color-muted) hover:text-(--color-ink) transition-colors p-1 -m-1">
+                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="mb-6 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-sm text-(--color-body)">
+                  <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {formatDate(selectedEvent.starts_at)}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-(--color-body)">
+                  <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {formatTimeRange(selectedEvent.starts_at, selectedEvent.ends_at)}
+                </div>
+                {selectedEvent.location && (
+                  <div className="flex items-center gap-2 text-sm text-(--color-body)">
+                    <svg className="h-4 w-4 shrink-0 text-(--color-muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {selectedEvent.location}
+                  </div>
+                )}
+              </div>
+              <div className="text-base text-(--color-body) whitespace-pre-wrap leading-relaxed">
+                {selectedEvent.description || "No description provided."}
+              </div>
+            </div>
+            <div className="p-4 border-t border-(--color-hairline) bg-(--color-surface-soft) flex justify-end">
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="rounded-xl bg-(--color-ink) px-5 py-2.5 text-sm font-bold text-(--color-canvas) hover:opacity-90 transition-opacity"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

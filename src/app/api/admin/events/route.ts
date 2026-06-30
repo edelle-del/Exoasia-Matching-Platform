@@ -68,6 +68,7 @@ export async function POST(req: Request) {
     description?: string;
     max_attendees?: number;
     postAsAnnouncement?: boolean;
+    rsvp_link?: string;
   };
 
   if (!body.title || !body.starts_at) {
@@ -84,6 +85,8 @@ export async function POST(req: Request) {
       location:      body.location ?? null,
       description:   body.description ?? null,
       max_attendees: body.max_attendees ?? null,
+      rsvp_link:     body.rsvp_link ?? null,
+      created_by:    user.id,
     })
     .select("id")
     .single();

@@ -21,6 +21,8 @@ type UpcomingEvent = {
   max_attendees: number | null;
   registered: boolean;
   attended: boolean;
+  rsvp_link?: string | null;
+  created_by?: string | null;
 };
 
 type PastEvent = {
@@ -28,6 +30,8 @@ type PastEvent = {
   title: string;
   type: string;
   starts_at: string;
+  rsvp_link?: string | null;
+  created_by?: string | null;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -71,6 +75,7 @@ export default function EventsPage() {
   const [creating, setCreating]           = useState(false);
   const [createError, setCreateError]     = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<UpcomingEvent | null>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   // Pre-filled for Philippine Blockchain Week
   const [form, setForm] = useState({
@@ -82,6 +87,7 @@ export default function EventsPage() {
     location:    "SMX Convention Center Manila",
     description: "Join FOUNDERS ARENA at the Philippine Blockchain Week — connect with investors, founders, and ecosystem partners shaping the future of blockchain in Southeast Asia.",
     max_attendees: "",
+    rsvp_link: "",
     postAsAnnouncement: false,
   });
 
@@ -148,11 +154,15 @@ export default function EventsPage() {
         location:    form.location || undefined,
         description: form.description || undefined,
         max_attendees: form.max_attendees ? Number(form.max_attendees) : undefined,
+        rsvp_link:   form.rsvp_link || undefined,
         postAsAnnouncement: form.postAsAnnouncement,
       };
 
-      const res = await fetch("/api/admin/events", {
-        method: "POST",
+      const url = editingEventId ? `/api/admin/events/${editingEventId}` : "/api/admin/events";
+      const method = editingEventId ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -161,15 +171,48 @@ export default function EventsPage() {
         if (res.status === 402) {
           setCreateError(`Insufficient credits — you need ${data.needed ?? 5} cr but have ${data.balance ?? 0} cr.`);
         } else {
-          setCreateError(data.error ?? "Failed to create event.");
+          setCreateError(data.error ?? "Failed to save event.");
         }
         return;
       }
       setShowAddForm(false);
+      setEditingEventId(null);
       await load();
     } finally {
       setCreating(false);
     }
+  };
+
+  const openEditForm = (ev: UpcomingEvent) => {
+    const d = new Date(ev.starts_at);
+    // Convert to PHT (UTC+8) for the date picker
+    const tzOffset = 8 * 60; // 8 hours in minutes
+    const localD = new Date(d.getTime() + tzOffset * 60000);
+    const dateStr = localD.toISOString().split("T")[0];
+    const startTimeStr = localD.toISOString().substring(11, 16);
+    
+    let endTimeStr = "";
+    if (ev.ends_at) {
+      const ed = new Date(ev.ends_at);
+      const localEd = new Date(ed.getTime() + tzOffset * 60000);
+      endTimeStr = localEd.toISOString().substring(11, 16);
+    }
+
+    setForm({
+      title: ev.title,
+      type: ev.type,
+      date: dateStr,
+      start_time: startTimeStr,
+      end_time: endTimeStr,
+      location: ev.location || "",
+      description: ev.description || "",
+      max_attendees: ev.max_attendees?.toString() || "",
+      rsvp_link: ev.rsvp_link || "",
+      postAsAnnouncement: false,
+    });
+    setEditingEventId(ev.id);
+    setShowAddForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -184,7 +227,10 @@ export default function EventsPage() {
           {canCreateEvent && (
             <button
               type="button"
-              onClick={() => setShowAddForm((v) => !v)}
+              onClick={() => {
+                setEditingEventId(null);
+                setShowAddForm((v) => !v);
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -201,7 +247,7 @@ export default function EventsPage() {
         {/* Add Event Form (advisors only) */}
         {canCreateEvent && showAddForm && (
           <section className="rounded-2xl border border-(--color-primary)/30 bg-(--color-primary)/5 p-6 space-y-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-(--color-primary)">New Event</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-(--color-primary)">{editingEventId ? "Edit Event" : "New Event"}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label htmlFor="ev-title" className="block text-xs font-semibold text-(--color-muted) mb-1">Title</label>
@@ -293,6 +339,18 @@ export default function EventsPage() {
                   className="w-full rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) outline-none focus:border-(--color-primary)"
                 />
               </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="ev-rsvp" className="block text-xs font-semibold text-(--color-muted) mb-1">RSVP Link (optional)</label>
+                <input
+                  id="ev-rsvp"
+                  type="url"
+                  title="RSVP Link"
+                  value={form.rsvp_link}
+                  onChange={(e) => setForm((f) => ({ ...f, rsvp_link: e.target.value }))}
+                  placeholder="https://..."
+                  className="w-full rounded-xl border border-(--color-hairline) bg-(--color-canvas) px-3 py-2 text-sm text-(--color-ink) outline-none focus:border-(--color-primary)"
+                />
+              </div>
               <div className="sm:col-span-2 flex items-center gap-3 mt-2">
                 <input
                   id="ev-announce"
@@ -314,7 +372,7 @@ export default function EventsPage() {
                 onClick={() => void handleCreate()}
                 className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
-                {creating ? "Creating…" : "Create Event"}
+                {creating ? "Saving…" : (editingEventId ? "Save Changes" : "Create Event")}
               </button>
               <button
                 type="button"
@@ -416,11 +474,15 @@ export default function EventsPage() {
                         </>
                       ) : (
                         <a
-                          href="https://exoasia.org/foundersarena"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-2 rounded-xl bg-(--color-primary) px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity z-10"
+                          href={event.rsvp_link || "#"}
+                          target={event.rsvp_link ? "_blank" : undefined}
+                          rel={event.rsvp_link ? "noopener noreferrer" : undefined}
+                          onClick={(e) => { e.stopPropagation(); if (!event.rsvp_link) e.preventDefault(); }}
+                          className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-opacity z-10 ${
+                            event.rsvp_link 
+                              ? "bg-(--color-primary) hover:opacity-90" 
+                              : "bg-(--color-muted) opacity-50 cursor-not-allowed"
+                          }`}
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -430,34 +492,45 @@ export default function EventsPage() {
                       )}
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-(--color-hairline) flex items-center gap-4">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Share</span>
-                      <div className="flex items-center gap-3 text-xs font-semibold">
-                        <a
-                          href={`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent("https://exoasia.org/foundersarena")}&title=${encodeURIComponent(event.title)}&summary=${encodeURIComponent(`Join me at ${event.title} on ${formatDate(event.starts_at)}!`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-(--color-muted) hover:text-[#0A66C2] transition-colors"
-                        >
-                          LinkedIn
-                        </a>
-                        <a
-                          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me at ${event.title} on ${formatDate(event.starts_at)}!`)}&url=${encodeURIComponent("https://exoasia.org/foundersarena")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-(--color-muted) hover:text-[#1DA1F2] transition-colors"
-                        >
-                          Twitter
-                        </a>
-                        <a
-                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent("https://exoasia.org/foundersarena")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-(--color-muted) hover:text-[#1877F2] transition-colors"
-                        >
-                          Facebook
-                        </a>
+                    <div className="mt-4 pt-4 border-t border-(--color-hairline) flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-(--color-muted)">Share</span>
+                        <div className="flex items-center gap-3 text-xs font-semibold">
+                          <a
+                            href={`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(event.rsvp_link || "https://exoasia.org/foundersarena")}&title=${encodeURIComponent(event.title)}&summary=${encodeURIComponent(`Join me at ${event.title} on ${formatDate(event.starts_at)}!`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-(--color-muted) hover:text-[#0A66C2] transition-colors"
+                          >
+                            LinkedIn
+                          </a>
+                          <a
+                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me at ${event.title} on ${formatDate(event.starts_at)}!`)}&url=${encodeURIComponent(event.rsvp_link || "https://exoasia.org/foundersarena")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-(--color-muted) hover:text-[#1DA1F2] transition-colors"
+                          >
+                            Twitter
+                          </a>
+                          <a
+                            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(event.rsvp_link || "https://exoasia.org/foundersarena")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-(--color-muted) hover:text-[#1877F2] transition-colors"
+                          >
+                            Facebook
+                          </a>
+                        </div>
                       </div>
+                      {(role === "admin" || (user?.id && event.created_by === user.id)) && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); openEditForm(event); }}
+                          className="text-xs font-bold uppercase tracking-wider text-(--color-primary) hover:underline"
+                        >
+                          Edit
+                        </button>
+                      )}
                     </div>
                   </div>
                 </article>

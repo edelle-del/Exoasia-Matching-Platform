@@ -557,14 +557,14 @@ export async function fetchEvents(supabase: SupabaseClient, userId: string) {
       supabase
         .from("events")
         .select(
-          "id, title, type, starts_at, ends_at, location, max_attendees, description",
+          "id, title, type, starts_at, ends_at, location, max_attendees, description, rsvp_link, created_by",
         )
         .gte("starts_at", nowIso)
         .order("starts_at", { ascending: true })
         .limit(20),
       supabase
         .from("events")
-        .select("id, title, type, starts_at")
+        .select("id, title, type, starts_at, rsvp_link, created_by")
         .lt("starts_at", nowIso)
         .order("starts_at", { ascending: false })
         .limit(10),

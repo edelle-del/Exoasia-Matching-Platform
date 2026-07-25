@@ -30,6 +30,7 @@ loadEnv();
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const ADMIN_NOTIFICATION_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -43,8 +44,8 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 // ── email ────────────────────────────────────────────────────────────────────
 
 async function sendTestNotification(user) {
-  if (!RESEND_API_KEY || RESEND_API_KEY === "re_your_api_key_here") {
-    console.warn("⚠  RESEND_API_KEY not set — skipping email send.");
+  if (!RESEND_API_KEY || RESEND_API_KEY === "re_your_api_key_here" || !ADMIN_NOTIFICATION_EMAIL) {
+    console.warn("⚠  RESEND_API_KEY or ADMIN_NOTIFICATION_EMAIL not set — skipping email send.");
     return;
   }
 
@@ -57,7 +58,7 @@ async function sendTestNotification(user) {
 
   const { data, error } = await resend.emails.send({
     from: "onboarding@resend.dev",
-    to: "exoasia.seanjaredsantos@gmail.com",
+    to: ADMIN_NOTIFICATION_EMAIL,
     subject: `[TEST] New signup: ${user.email}`,
     html: `
 <body style="font-family:sans-serif;padding:24px">

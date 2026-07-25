@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 
-const ADMIN_EMAIL = "exoasia.seanjaredsantos@gmail.com";
 const FROM = "onboarding@resend.dev";
 
 function getResend() {
@@ -15,8 +14,9 @@ export async function sendNewSignupNotification(user: {
   browser?: string;
 }) {
   const resend = getResend();
-  if (!resend) {
-    console.warn("Skipping new signup notification: RESEND_API_KEY not found.");
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!resend || !adminEmail) {
+    console.warn("Skipping new signup notification: RESEND_API_KEY or ADMIN_NOTIFICATION_EMAIL not set.");
     return;
   }
 
@@ -29,7 +29,7 @@ export async function sendNewSignupNotification(user: {
   try {
     await resend.emails.send({
       from: FROM,
-      to: ADMIN_EMAIL,
+      to: adminEmail,
       subject: `New signup: ${user.email}`,
       html: `
 <!DOCTYPE html>

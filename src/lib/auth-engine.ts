@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { deductCredits, InsufficientCreditsError } from "./credits";
+import { checkWeeklyQuota, incrementWeeklyQuota } from "./quotas";
 
 export type RequestType = "intro_request" | "community_request";
 
@@ -45,6 +46,10 @@ export async function authorizeRequest(
   };
   const currentDay = dayMap[phtDayOfWeekStr];
 
+  const isMissingDailyUsageTableError = (error: any): boolean => {
+    return error?.code === "PGRST205" && /user_daily_usage/.test(error?.message);
+  };
+
   // Helper to process daily usage and deduct credits
   const processUsage = async (
     isValidDay: boolean,
@@ -53,44 +58,65 @@ export async function authorizeRequest(
   ) => {
     let useFreeCredit = false;
     let currentCount = 0;
+    let tableMissing = false;
 
     if (isValidDay) {
-      // Check user_daily_usage
-      const { data: usage } = await adminClient
-        .from("user_daily_usage")
-        .select("count")
-        .eq("user_id", userId)
-        .eq("action_type", requestType)
-        .eq("date_pht", datePht)
-        .maybeSingle();
+      if (requestType === "community_request") {
+        const { remaining } = await checkWeeklyQuota(userId, "request_community_intro", adminClient);
+        if (remaining > 0) {
+          useFreeCredit = true;
+        }
+      } else {
+        // Check user_daily_usage
+        const { data: usage, error } = await adminClient
+          .from("user_daily_usage")
+          .select("count")
+          .eq("user_id", userId)
+          .eq("action_type", requestType)
+          .eq("date_pht", datePht)
+          .maybeSingle();
 
-      currentCount = usage?.count || 0;
-      if (currentCount < allowedLimit) {
-        useFreeCredit = true;
+        if (error) {
+          if (isMissingDailyUsageTableError(error)) {
+            tableMissing = true;
+            currentCount = 0;
+          } else {
+            throw new Error(`Failed to query daily usage: ${error.message}`);
+          }
+        } else {
+          currentCount = usage?.count || 0;
+        }
+
+        if (currentCount < allowedLimit) {
+          useFreeCredit = true;
+        }
       }
     }
 
     if (useFreeCredit) {
       // Authorize as free and increment
-      const { error } = await adminClient
-        .from("user_daily_usage")
-        .upsert(
-          {
-            user_id: userId,
-            action_type: requestType,
-            date_pht: datePht,
-            count: currentCount + 1,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,action_type,date_pht" }
-        );
-        
-      if (error) {
-        throw new Error(`Failed to update daily usage: ${error.message}`);
+      if (requestType !== "community_request" && !tableMissing) {
+        const { error } = await adminClient
+          .from("user_daily_usage")
+          .upsert(
+            {
+              user_id: userId,
+              action_type: requestType,
+              date_pht: datePht,
+              count: currentCount + 1,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,action_type,date_pht" }
+          );
+
+        if (error) {
+          if (!isMissingDailyUsageTableError(error)) {
+            throw new Error(`Failed to update daily usage: ${error.message}`);
+          }
+          tableMissing = true;
+        }
       }
 
-      // Also increment weekly quota so the dashboard widget stays in sync
-      const { incrementWeeklyQuota } = await import("./quotas");
       let quotaAction: import("./quotas").QuotaAction | null = null;
       if (requestType === "intro_request") {
         quotaAction = userRole === "startup" ? "request_intro_investor" : "request_intro_startup";
@@ -98,9 +124,9 @@ export async function authorizeRequest(
         quotaAction = "request_community_intro";
       }
       if (quotaAction) {
-        await incrementWeeklyQuota(userId, quotaAction);
+        await incrementWeeklyQuota(userId, quotaAction, adminClient);
       }
-      
+
       return; // Authorized for free
     }
 

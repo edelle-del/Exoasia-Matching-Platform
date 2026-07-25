@@ -1,3 +1,4 @@
+import { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPayingSubscriber } from "./credits";
 
@@ -54,17 +55,26 @@ export function getCurrentWeekStart(): Date {
 
 export async function checkWeeklyQuota(
   userId: string,
-  action: QuotaAction
+  action: QuotaAction,
+  adminClient?: SupabaseClient,
 ): Promise<{ remaining: number; total: number; isPaid: boolean }> {
   const isPaid = await isPayingSubscriber(userId);
   if (isPaid) {
     return { remaining: Infinity, total: Infinity, isPaid: true };
   }
 
-  const admin = createAdminClient();
-  const { data: profile } = await admin.from("profiles").select("member_role").eq("id", userId).single();
+  const admin = adminClient ?? createAdminClient();
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("member_role")
+    .eq("id", userId)
+    .single();
+
+  if (profileError) {
+    throw new Error(`Failed to fetch profile for quota check: ${profileError.message}`);
+  }
+
   const role = profile?.member_role || "startup";
-  
   const limit = WEEKLY_LIMITS[role]?.[action] ?? 0;
   if (limit === 0) {
     // If the role has no free allowance for this action, they must use fallback credits
@@ -72,13 +82,17 @@ export async function checkWeeklyQuota(
   }
 
   const weekStart = getCurrentWeekStart().toISOString();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("user_weekly_usage")
     .select("usage_count")
     .eq("user_id", userId)
     .eq("action_type", action)
     .eq("week_start", weekStart)
-    .single();
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to fetch weekly quota usage: ${error.message}`);
+  }
 
   const used = data?.usage_count ?? 0;
   return {
@@ -90,27 +104,40 @@ export async function checkWeeklyQuota(
 
 export async function incrementWeeklyQuota(
   userId: string,
-  action: QuotaAction
+  action: QuotaAction,
+  adminClient?: SupabaseClient,
 ): Promise<void> {
   const isPaid = await isPayingSubscriber(userId);
   if (isPaid) return;
 
   const weekStart = getCurrentWeekStart().toISOString();
-  const admin = createAdminClient();
+  const admin = adminClient ?? createAdminClient();
 
-  const { data: profile } = await admin.from("profiles").select("member_role").eq("id", userId).single();
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("member_role")
+    .eq("id", userId)
+    .single();
+
+  if (profileError) {
+    throw new Error(`Failed to fetch profile for weekly quota increment: ${profileError.message}`);
+  }
+
   const role = profile?.member_role || "startup";
-  
   const limit = WEEKLY_LIMITS[role]?.[action] ?? 0;
   if (limit === 0) return; // Cannot increment if limit is 0 (it requires credits)
 
-  const { data } = await admin
+  const { data, error } = await admin
     .from("user_weekly_usage")
     .select("usage_count, id")
     .eq("user_id", userId)
     .eq("action_type", action)
     .eq("week_start", weekStart)
-    .single();
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to fetch weekly usage row: ${error.message}`);
+  }
 
   if (data) {
     await admin

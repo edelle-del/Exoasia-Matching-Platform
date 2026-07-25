@@ -8,12 +8,12 @@ export const DOC_SECTIONS: DocSection[] = [
     blocks: [
       {
         type: "p",
-        text: "FOUNDERS ARENA is a private, invite-only matching platform for verified startups, investors, and ecosystem partners across the Philippines and Southeast Asia. Here's how to get started in four steps.",
+        text: "The Growth Network is a private, invite-only matching platform for verified startups, investors, and ecosystem partners across the Philippines and Southeast Asia. Here's how to get started in four steps.",
       },
-      { type: "h3", text: "1. Create Your Account" },
+      { type: "h3", text: "1. Create Your Account (Stage 0: Discover)" },
       {
         type: "p",
-        text: "Self-registration is open to everyone. You can sign up directly using your email address or Google account.",
+        text: "Self-registration is open to everyone for Stage 0. You can sign up directly using your email address or Google account.",
       },
       {
         type: "list",
@@ -82,7 +82,7 @@ export const DOC_SECTIONS: DocSection[] = [
       { type: "screenshot", alt: "Onboarding form", caption: "Onboarding — profile basics" },
       {
         type: "p",
-        text: "On submit, your profile is created with pending verification. You receive 10 welcome credits automatically. A Growth Advisor reviews your account before matching features unlock.",
+        text: "On submit, you enter Stage 1 (Ignite) and begin Verification. Light KYC unlocks Stage 2 (Match), requiring NDA-light and non-circumvention. Full KYC unlocks Stage 3 (Commit) for active deal activity. A Growth Advisor reviews all KYC before matching features unlock.",
       },
       {
         type: "tip",
@@ -209,7 +209,7 @@ export const DOC_SECTIONS: DocSection[] = [
     blocks: [
       {
         type: "p",
-        text: "FOUNDERS ARENA uses Exoasia Intelligence (powered by Google Gemini) to score structural compatibility between startup projects and investor profiles. Scores are signals — they do not create introductions on their own.",
+        text: "The Growth Network Matching Agent runs every 2-4 weeks to score structural compatibility between startup projects and investor profiles. Scores are signals — they do not create introductions on their own. No introduction is released to either party without Growth Advisor approval and confirmed bilateral consent.",
       },
       { type: "h3", text: "How Scoring Works" },
       {
@@ -407,7 +407,7 @@ export const DOC_SECTIONS: DocSection[] = [
       },
       {
         type: "p",
-        text: "Promote an intro to a deal from accepted introductions. Update your next action at least every 7 days — stale cards are flagged. Negotiation-stage cards stale for 14+ days escalate to your Growth Advisor. On Hold requires a reason code before archiving.",
+        text: "SLA Hygiene Rules: Update your next action at least every 7 days — stale cards are auto-flagged to the Advisor dashboard. Negotiation-stage cards stale for 14+ days trigger escalation alerts. Closed-Lost requires a reason code before archiving. Closed-Won requires written member consent before the deal is recorded.",
       },
     ],
   },
@@ -646,86 +646,28 @@ export const DOC_SECTIONS: DocSection[] = [
       },
     ],
   },
-  {
+    {
     id: "credits-plans",
-    title: "Credits & Plans",
+    title: "Member Contribution & Ad Credits",
     blocks: [
       {
         type: "p",
-        text: "FOUNDERS ARENA uses a credit economy for premium platform actions. Your balance appears on the dashboard.",
+        text: "The Growth Network uses a Member Contribution Score and an Ad Credit system. Your balance appears on the dashboard.",
       },
       { type: "h3", text: "Earning Credits" },
       {
-        type: "table",
-        headers: ["Source", "Credits", "When"],
-        rows: [
-          ["Welcome bonus", "+10", "Account created after onboarding"],
-          ["Event attendance", "Variable", "Registered event with pitch credit"],
-          ["Starter plan", "+20 / month", "Active subscription"],
-          ["Professional plan", "+60 / month", "Active subscription"],
-          ["Premium plan", "+120 / month", "Active subscription"],
-          ["Credit packages", "+20 / +75 / +200", "One-time purchase"],
-        ],
+        type: "p",
+        text: "Credits are earned through attendance (weekly sessions, monthly dinners), contribution, pitch participation, referrals, and engagement milestones.",
       },
       { type: "h3", text: "Spending Credits" },
       {
-        type: "role-blocks",
-        blocks: {
-          startup: [
-            {
-              type: "table",
-              headers: ["Action", "Cost"],
-              rows: [
-                ["Unlock investor profile", "1 credit"],
-                ["Request intro to investor", "1 credit"],
-                ["Request intro to founder", "1 credit"],
-                ["Regenerate match report", "1 credit"],
-                ["Send co-founder invite", "1 credit"],
-              ],
-            },
-            {
-              type: "p",
-              text: "Manage subscriptions and purchases on Payments (/payments). Welcome credits cover your first few actions.",
-            },
-            { type: "screenshot", alt: "Credits and plans", caption: "Credits & subscription plans" },
-          ],
-          investor: [
-            {
-              type: "table",
-              headers: ["Action", "Cost"],
-              rows: [
-                ["View startup pitch deck", "1 credit"],
-                ["View startup financial snapshot", "1 credit"],
-                ["View compatibility score", "1 credit"],
-                ["Request intro to founder", "1 credit"],
-                ["Export deal pipeline report", "1 credit"],
-              ],
-            },
-            {
-              type: "p",
-              text: "Manage subscriptions on Payments (/payments). Credits are consumed when unlocking data or requesting intros.",
-            },
-            { type: "screenshot", alt: "Credits and plans", caption: "Credits & subscription plans" },
-          ],
-          ecosystem_partner: [
-            {
-              type: "table",
-              headers: ["Action", "Cost"],
-              rows: [
-                ["Post opportunity / program call", "1 credit"],
-                ["Bulk AI match startups to program", "1 credit"],
-                ["Feature startup in digest", "1 credit"],
-                ["Send partnership email invite", "1 credit"],
-                ["View cohort analytics dashboard", "1 credit"],
-              ],
-            },
-            {
-              type: "p",
-              text: "Partners receive credits on signup. Platform access for verified ecosystem partners is free — credits support premium actions.",
-            },
-            { type: "screenshot", alt: "Credits partner", caption: "Partner credits" },
-          ],
-        },
+        type: "p",
+        text: "Credits are spent to promote member businesses within the network — visible to verified capital and operators. The platform facilitates alignment without generic SaaS subscription tiers.",
+      },
+      { type: "h3", text: "Inactivity Rules" },
+      {
+        type: "p",
+        text: "Stage 2 members without attendance or matching activity for 30 days are flagged for Advisor outreach. Not meeting Stage 3 criteria within 90 days triggers a review for retention.",
       },
     ],
   },
@@ -780,7 +722,7 @@ export const DOC_SECTIONS: DocSection[] = [
     blocks: [
       {
         type: "important",
-        text: "FOUNDERS ARENA and The Growth Network do not offer securities, solicit investments, or provide financial advice. All investment decisions and transactions are initiated and executed solely by participating members. The Network provides structured facilitation, infrastructure, and verified introductions only. Participation does not guarantee capital allocation, partnership formation, or transaction completion.",
+        text: "The Growth Network and The Growth Network do not offer securities, solicit investments, or provide financial advice. All investment decisions and transactions are initiated and executed solely by participating members. The Network provides structured facilitation, infrastructure, and verified introductions only. Participation does not guarantee capital allocation, partnership formation, or transaction completion.",
       },
       { type: "h3", text: "Approved Language" },
       {

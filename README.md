@@ -66,6 +66,24 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Running with Docker
+
+You can also run the web app in a Docker container.
+
+1) Build the image:
+
+```bash
+docker build -t exoasia-matching-platform .
+```
+
+2) Run the container:
+
+```bash
+docker run -p 3000:3000 --env-file .env.local exoasia-matching-platform
+```
+
+The app will be available at http://localhost:3000.
+
 ## Useful Commands
 
 ```bash

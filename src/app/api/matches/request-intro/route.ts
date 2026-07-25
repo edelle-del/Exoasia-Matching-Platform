@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { authorizeRequest } from "@/lib/auth-engine";
 import { deductCredits, InsufficientCreditsError } from "@/lib/credits";
 
 function canonicalizePair(idA: string, idB: string) {
@@ -59,9 +60,6 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (!existingMatch) {
-      const { authorizeRequest } = await import("@/lib/auth-engine");
-      const { InsufficientCreditsError } = await import("@/lib/credits");
-      
       const { data: memberProfile } = await admin
         .from("profiles")
         .select("member_role")

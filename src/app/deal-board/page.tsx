@@ -64,6 +64,26 @@ function confidenceVars(confidence: string): React.CSSProperties {
   } as React.CSSProperties;
 }
 
+function buildBreakdownHref(params: { a: string; b: string; score?: number | null; projectId?: string | null }) {
+  const queryParts = [`a=${encodeURIComponent(params.a)}`, `b=${encodeURIComponent(params.b)}`];
+  if (typeof params.score === "number") {
+    queryParts.push(`score=${encodeURIComponent(params.score)}`);
+  }
+  if (params.projectId) {
+    queryParts.push(`project=${encodeURIComponent(params.projectId)}`);
+  }
+  return `/matches/breakdown?${queryParts.join("&")}`;
+}
+
+function canMoveCardToStage(card: DealCard, targetStage: string) {
+  // Qualified / discover cards may be dragged, but they may not advance to Intro
+  // unless the underlying match has been accepted by both parties.
+  if (card.stage === "discover" && targetStage === "intro") {
+    return false;
+  }
+  return true;
+}
+
 type DealCard = {
   id: string;
   title: string;
@@ -112,6 +132,7 @@ export default function DealBoardPage() {
   const [selectedIntro, setSelectedIntro] = useState<ActiveIntro | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [scoringCardId, setScoringCardId] = useState<string | null>(null);
   const [abortingId, setAbortingId] = useState<string | null>(null);
   const [showAbortForm, setShowAbortForm] = useState(false);
   const [abortReason, setAbortReason] = useState("");
@@ -313,6 +334,43 @@ export default function DealBoardPage() {
     });
   };
 
+  const handleScoreCard = async (card: DealCard) => {
+    if (!card.project_id) {
+      window.alert("This deal does not have a linked project to score.");
+      return;
+    }
+
+    setScoringCardId(card.id);
+    try {
+      const res = await fetch(`/api/projects/${card.project_id}/generate-match`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        window.alert(data.error ?? "Unable to score this deal. Please try again.");
+        return;
+      }
+
+      const newFit = data.score?.fit_score ??
+        data.scores?.[0]?.fit_score ??
+        data.scores?.find((item: any) => item.project_id === card.project_id)?.fit_score ??
+        null;
+
+      if (newFit == null) {
+        window.alert("Score generated, but no match score returned. Refresh to see updates.");
+        await load();
+        return;
+      }
+
+      setSelectedCard((prev) => prev && prev.id === card.id ? { ...prev, fit_score: newFit } : prev);
+      setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, fit_score: newFit } : c));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Score generation failed.");
+    } finally {
+      setScoringCardId(null);
+    }
+  };
+
   const handleDragStart = (e: React.DragEvent, type: "card" | "intro", id: string) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("application/json", JSON.stringify({ type, id }));
@@ -332,6 +390,15 @@ export default function DealBoardPage() {
     if (draggingIntroId && stage !== "Proposal") {
       e.dataTransfer.dropEffect = "none";
       return;
+    }
+
+    if (draggingCardId) {
+      const card = cards.find((c) => c.id === draggingCardId);
+      const targetStage = STAGE_DB[stage];
+      if (card && !canMoveCardToStage(card, targetStage)) {
+        e.dataTransfer.dropEffect = "none";
+        return;
+      }
     }
     e.preventDefault(); // Necessary to allow dropping
     e.dataTransfer.dropEffect = "move";
@@ -362,6 +429,16 @@ export default function DealBoardPage() {
         if (!card) return;
         const targetStage = STAGE_DB[stage];
         if (card.stage === targetStage) return; // No change
+
+        if (!canMoveCardToStage(card, targetStage)) {
+          setToast({
+            message: "Qualified deals can only move to Intro after both parties accept.",
+            onUndo: async () => {
+              setToast(null);
+            },
+          });
+          return;
+        }
 
         if (targetStage === "lost") {
           setSelectedCard(card);
@@ -861,14 +938,35 @@ export default function DealBoardPage() {
                   <p className="text-xs text-(--color-muted)">
                     Last updated {Math.floor((Date.now() - new Date(selectedCard.last_updated_at).getTime()) / 86400000)}d ago
                   </p>
-                  {selectedCard.project_id && (
-                    <Link
-                      href={`/matches/breakdown?a=${selectedCard.buyer_member_id}&b=${selectedCard.provider_member_id}&score=${selectedCard.fit_score || 0}&project=${selectedCard.project_id}`}
-                      onClick={() => { setSelectedCard(null); setShowAbortForm(false); setAbortReason(""); }}
-                      className="text-xs font-semibold text-(--color-primary) hover:underline"
-                    >
-                      View match details &rarr;
-                    </Link>
+                  {selectedCard.project_id ? (
+                    selectedCard.fit_score != null ? (
+                      <Link
+                        href={buildBreakdownHref({
+                          a: selectedCard.buyer_member_id,
+                          b: selectedCard.provider_member_id,
+                          score: selectedCard.fit_score,
+                          projectId: selectedCard.project_id,
+                        })}
+                        onClick={() => { setSelectedCard(null); setShowAbortForm(false); setAbortReason(""); }}
+                        className="text-xs font-semibold text-(--color-primary) hover:underline"
+                      >
+                        View match details &rarr;
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void handleScoreCard(selectedCard)}
+                        disabled={scoringCardId === selectedCard.id}
+                        className="text-xs font-semibold text-(--color-primary) hover:underline"
+                      >
+                        {scoringCardId === selectedCard.id ? "Scoring…" : "Score match before viewing details"}
+                      </button>
+                    )
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-xs text-(--color-muted)">This is a community introduction without a linked project.</p>
+                      <p className="text-xs text-(--color-muted)">Create a project or link one to enable AI matching scores.</p>
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -961,8 +1059,13 @@ export default function DealBoardPage() {
                   </svg>
                 )}
               </button>
-              <Link
-                href={`/matches/breakdown?a=${user?.id ?? ''}&b=${selectedIntro.counterpart_id}&score=${selectedIntro.fit_score || 0}&project=${selectedIntro.project_id || ''}`}
+                <Link
+                  href={buildBreakdownHref({
+                    a: user?.id ?? "",
+                    b: selectedIntro.counterpart_id,
+                    score: selectedIntro.fit_score ?? 0,
+                    projectId: selectedIntro.project_id ?? null,
+                  })}
                 onClick={() => setSelectedIntro(null)}
                 className="flex items-center justify-center gap-2 w-full rounded-xl border border-(--color-hairline) px-4 py-2.5 text-sm font-semibold text-(--color-muted) hover:text-(--color-ink) hover:border-(--color-muted) transition-colors"
               >

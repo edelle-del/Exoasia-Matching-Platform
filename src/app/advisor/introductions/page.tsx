@@ -8,6 +8,7 @@ import {
   fetchAdvisorIntroductionQueue,
   type AdvisorIntroQueueRecord,
 } from "@/lib/app-data";
+import { formatAsksSummary } from "@/lib/asks-summary";
 
 function getInitials(name: string | null, business: string | null) {
   const source = name || business || "?";
@@ -147,6 +148,8 @@ export default function AdvisorIntroductionsPage() {
                 "Member B";
               const bizA = memberA?.business_name || "";
               const bizB = memberB?.business_name || "";
+              const asksA = formatAsksSummary(memberA?.asks_summary);
+              const asksB = formatAsksSummary(memberB?.asks_summary);
 
               return (
                 <div
@@ -217,16 +220,16 @@ export default function AdvisorIntroductionsPage() {
                   )}
 
                   {/* ASK/OFFER context */}
-                  {(memberA?.asks_summary || memberB?.offers_summary ||
-                    memberA?.offers_summary || memberB?.asks_summary) && (
+                  {(asksA || memberB?.offers_summary ||
+                    memberA?.offers_summary || asksB) && (
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {memberA && (memberA.asks_summary || memberA.offers_summary) && (
+                      {memberA && (asksA || memberA.offers_summary) && (
                         <div className="rounded-[12px] border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3">
                           <p className="text-xs font-semibold text-(--color-ink)">{nameA}</p>
-                          {memberA.asks_summary && (
+                          {asksA && (
                             <p className="mt-1 text-xs text-(--color-body)">
                               <span className="font-semibold text-blue-700">Asks: </span>
-                              {memberA.asks_summary}
+                              {asksA}
                             </p>
                           )}
                           {memberA.offers_summary && (
@@ -237,13 +240,13 @@ export default function AdvisorIntroductionsPage() {
                           )}
                         </div>
                       )}
-                      {memberB && (memberB.asks_summary || memberB.offers_summary) && (
+                      {memberB && (asksB || memberB.offers_summary) && (
                         <div className="rounded-[12px] border border-(--color-hairline) bg-(--color-surface-soft) px-4 py-3">
                           <p className="text-xs font-semibold text-(--color-ink)">{nameB}</p>
-                          {memberB.asks_summary && (
+                          {asksB && (
                             <p className="mt-1 text-xs text-(--color-body)">
                               <span className="font-semibold text-blue-700">Asks: </span>
-                              {memberB.asks_summary}
+                              {asksB}
                             </p>
                           )}
                           {memberB.offers_summary && (

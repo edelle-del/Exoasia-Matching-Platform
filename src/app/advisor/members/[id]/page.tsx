@@ -10,6 +10,7 @@ import {
   type AdvisorMemberDetailRecord,
 } from "@/lib/app-data";
 import { STAGE_CONFIG, DOCUMENT_TYPES } from "@/types/constants";
+import { formatAsksSummary } from "@/lib/asks-summary";
 
 const STAGE_COLORS: Record<string, string> = {
   "0": "bg-slate-100 text-slate-600",
@@ -242,6 +243,7 @@ export default function AdvisorMemberDetailPage() {
   }
 
   const { profile, asks, offers, matches, documents, creditBalance } = data;
+  const asksSummary = formatAsksSummary(profile.asks_summary);
   const stageLabel =
     STAGE_CONFIG[profile.stage as keyof typeof STAGE_CONFIG]?.label ??
     profile.stage;
@@ -379,9 +381,9 @@ export default function AdvisorMemberDetailPage() {
                   <span className="text-sm text-(--color-muted)">None set</span>
                 )}
               </div>
-              {profile.asks_summary && (
+              {asksSummary && (
                 <p className="mt-3 text-sm text-(--color-body)">
-                  {profile.asks_summary}
+                  {asksSummary}
                 </p>
               )}
             </div>

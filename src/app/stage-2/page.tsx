@@ -49,7 +49,7 @@ import Link from "next/link";
 export default function StageTwoPage() {
   const { role } = useAuth();
   const handleSubmitDocs = () => {
-    console.log("stage-2-submit-docs");
+    window.location.assign("/documents");
   };
 
   return (

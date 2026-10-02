@@ -534,21 +534,6 @@ export async function fetchDocuments(supabase: SupabaseClient, userId: string) {
   return data ?? [];
 }
 
-export async function createPlaceholderDocument(
-  supabase: SupabaseClient,
-  userId: string,
-  documentType: string,
-) {
-  const { error } = await supabase.from("member_documents").insert({
-    member_id: userId,
-    document_type: documentType,
-    status: "submitted",
-    file_path: `pending://${documentType}/${Date.now()}`,
-  });
-
-  return { error: error?.message ?? null };
-}
-
 export async function fetchEvents(supabase: SupabaseClient, userId: string) {
   const nowIso = new Date().toISOString();
 

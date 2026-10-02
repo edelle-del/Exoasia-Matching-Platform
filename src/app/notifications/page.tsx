@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Notification = {
   id: string;
@@ -10,6 +11,7 @@ type Notification = {
   title: string;
   body: string;
   href: string;
+  acknowledgeHref?: string;
   date: string;
 };
 
@@ -56,6 +58,7 @@ const KIND_LABEL: Record<Notification["kind"], string> = {
 };
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -146,6 +149,17 @@ export default function NotificationsPage() {
                       <Link
                         key={n.id}
                         href={n.href}
+                        onClick={async (event) => {
+                          if (!n.acknowledgeHref || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                          event.preventDefault();
+                          try {
+                            await fetch(n.acknowledgeHref, { method: "POST" });
+                          } catch (error) {
+                            console.error("Could not acknowledge notification", error);
+                          } finally {
+                            router.push(n.href);
+                          }
+                        }}
                         className="flex items-start gap-4 rounded-2xl border border-(--color-hairline) bg-(--color-canvas) p-4 transition-shadow hover:shadow-md"
                       >
                         <span

@@ -33,6 +33,13 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+.env*
+!.env.example
+/scratch/live-qa/node_modules/
+/scratch/sql-qa/node_modules/
+/scratch/live-qa/*results.json
+/scratch/live-qa/evidence/
+/scratch/live-qa/role-evidence/
 
 # vercel
 .vercel

@@ -88,11 +88,11 @@ import Link from "next/link";
 export default function StageOnePage() {
   const { role } = useAuth();
   const handleActivate = () => {
-    console.log("stage-1-activate");
+    window.location.assign("/onboarding");
   };
 
   const handleRsvp = (eventName: string) => {
-    console.log("stage-1-rsvp", eventName);
+    window.location.assign("/events");
   };
 
   return (

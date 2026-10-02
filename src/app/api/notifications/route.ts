@@ -260,9 +260,9 @@ export async function GET() {
     const jobNotifications = (bgJobs ?? []).map((job: BgJobRow) => {
       const isCompleted = job.status === "completed";
       let title = isCompleted ? "Matching sweep complete" : "Matching sweep failed";
-      let body = isCompleted 
-        ? "Your AI matching sweep from this morning is complete. Review 3 new unlocked prospects."
-        : "There was an error generating your AI matches. Credits were refunded.";
+      const body = isCompleted
+        ? "Your AI matching sweep is complete. Review your updated matches."
+        : "There was an error generating your AI matches. Check your credit history for any refund.";
       
       return {
         id: `job-${job.id}`,
@@ -270,7 +270,8 @@ export async function GET() {
         type: isCompleted ? "accepted" as const : "declined" as const,
         title,
         body,
-        href: `/api/jobs/${job.id}/acknowledge`, // We'll intercept this on frontend
+        href: "/matches",
+        acknowledgeHref: `/api/jobs/${job.id}/acknowledge`,
         date: job.updated_at ?? job.created_at,
       };
     });

@@ -23,7 +23,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (signedIn && isInvitedAccount && pathname !== "/accept-invite") {
+    if (signedIn && isInvitedAccount && !["/accept-invite", "/accept-nomination"].includes(pathname)) {
       router.replace("/accept-invite");
       return;
     }

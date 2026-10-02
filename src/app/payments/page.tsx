@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/app/providers";
 import { createClient } from "@/lib/supabase/client";
 import { CREDIT_PACKAGES, DURATION_PLANS, type CreditPackage } from "@/types/constants";
+import { hasActiveSubscription } from "@/lib/subscription";
 
 type CreditRole = "startup" | "investor" | "ecosystem_partner";
 
@@ -19,33 +20,6 @@ const CREDIT_COSTS: {
   href: string;
 }[] = [
     // ── Startup (Founder) ───────────────────────────────────────────────────────
-    {
-      action: "Unlock Blurred Investor Match",
-      cost: 3,
-      note: "3 cr per match · applies on all tiers",
-      reason: "On the free tier, you can see up to 3 unblurred investor matches. Any additional matching profiles generated beyond this limit are visually masked. You can permanently unlock any individual blurred card for 3 credits across both free and paid plans.",
-      includedWithPlan: false,
-      roles: ["startup"],
-      href: "/matches",
-    },
-    {
-      action: "Bulk AI Match Sweep",
-      cost: 3,
-      note: "3 cr per sweep · applies on all tiers",
-      reason: "Triggers a heavy database-wide background AI computation worker that processes all existing platform records against your thesis parameters, building a ranked ecosystem shortlist. Runs asynchronously via background pipelines and costs a flat credit fee per execution on all tiers.",
-      includedWithPlan: false,
-      roles: ["startup"],
-      href: "/matches",
-    },
-    {
-      action: "Investor profiles & compatibility breakdowns",
-      cost: 0,
-      note: "Free · applies on all tiers",
-      reason: "Detailed investor profile views and compatibility breakdowns are completely free for all founders. There are no weekly limits or fallback credit costs.",
-      includedWithPlan: true,
-      roles: ["startup"],
-      href: "/matches",
-    },
     {
       action: "Cofounder email invite",
       cost: 0,
@@ -259,7 +233,7 @@ export default function PaymentsPage() {
     void Promise.all([
       supabase
         .from("profiles")
-        .select("subscription_plan")
+        .select("subscription_plan, subscription_ends_at")
         .eq("id", user.id)
         .single(),
       fetchCredits(user.id),
@@ -270,7 +244,7 @@ export default function PaymentsPage() {
         .order("created_at", { ascending: false })
         .limit(30),
     ]).then(([{ data }, total, { data: history }]) => {
-      setSubscriptionPlan(data?.subscription_plan ?? null);
+      setSubscriptionPlan(hasActiveSubscription(data) ? data!.subscription_plan : null);
       setCredits(total);
       setCreditHistory(
         (history ?? []).map((r) => ({

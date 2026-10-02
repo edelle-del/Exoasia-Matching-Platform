@@ -3,10 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // ─── Supabase admin mock ──────────────────────────────────────────────────────
 // We control exactly what each query returns so no real DB is needed.
 const mockLedgerRows: { change_amount: number }[] = [];
-const mockProfileRow: { subscription_plan: string | null; subscription_ends_at: string | null } | null = null;
+type MockProfile = { subscription_plan: string | null; subscription_ends_at: string | null };
+const mockProfileRow: MockProfile | null = null;
 
 let _mockLedgerRows = mockLedgerRows;
-let _mockProfileRow: typeof mockProfileRow = mockProfileRow;
+let _mockProfileRow: MockProfile | null = mockProfileRow;
+let _insertedRows: object[] = [];
 let _mockInsertError: string | null = null;
 
 function buildMockAdmin() {
@@ -22,8 +24,10 @@ function buildMockAdmin() {
             Promise.resolve({ data: _mockProfileRow }),
         }),
       }),
-      insert: (_row: object) =>
-        Promise.resolve({ error: _mockInsertError ? { message: _mockInsertError } : null }),
+      insert: (row: object) => {
+        _insertedRows.push(row);
+        return Promise.resolve({ error: _mockInsertError ? { message: _mockInsertError } : null });
+      },
     }),
   };
 }
@@ -51,14 +55,15 @@ describe("CREDIT_COSTS structure", () => {
     expect(CREDIT_COSTS.UNLOCK_MATCH.base).toBe(3);
   });
 
-  it("all outreach / intro actions cost exactly 1 credit", () => {
-    expect(CREDIT_COSTS.REQUEST_INTRO_INVESTOR.base).toBe(1);
-    expect(CREDIT_COSTS.REQUEST_FOUNDER_INTRO.base).toBe(1);
+  it("intro fallback fees match each role's published policy", () => {
+    expect(CREDIT_COSTS.REQUEST_INTRO_INVESTOR.base).toBe(2);
+    expect(CREDIT_COSTS.REQUEST_FOUNDER_INTRO.base).toBe(3);
     expect(CREDIT_COSTS.REQUEST_COMMUNITY_INTRO.base).toBe(1);
   });
 
-  it("all FREE_FOR_PAID_SUBSCRIBERS startup actions have base 1", () => {
-    expect(CREDIT_COSTS.UNLOCK_INVESTOR_PROFILE.base).toBe(1);
+  it("investor profiles and cofounder invitations are free", () => {
+    expect(CREDIT_COSTS.UNLOCK_INVESTOR_PROFILE.base).toBe(0);
+    expect(CREDIT_COSTS.SEND_COFOUNDER_INVITE.base).toBe(0);
   });
 
   it("all FREE_FOR_PAID_SUBSCRIBERS investor actions have base 1", () => {
@@ -91,8 +96,8 @@ describe("CREDIT_COSTS structure", () => {
 
 // ─── 2. BYPASS_CREDIT_GATES ───────────────────────────────────────────────────
 describe("BYPASS_CREDIT_GATES", () => {
-  it("is true in staging (all gates disabled)", () => {
-    expect(BYPASS_CREDIT_GATES).toBe(true);
+  it("does not bypass credit authorization", () => {
+    expect(BYPASS_CREDIT_GATES).toBe(false);
   });
 });
 
@@ -250,14 +255,14 @@ describe("match visibility gate logic", () => {
 // ─── 8. Match Bundle add-on ───────────────────────────────────────────────────
 describe("Match Bundle add-on ($99)", () => {
   it("100 credits for $99 = $0.99 per credit", () => {
-    const bundle = CREDIT_PACKAGES[0];
+    const bundle = CREDIT_PACKAGES.find(pack => pack.id === "bundle-100")!;
     expect(bundle.credits).toBe(100);
     expect(bundle.price).toBe(99);
     expect(bundle.credits / bundle.price).toBeCloseTo(1.01, 1);
   });
 
-  it("only one credit package exists (no granular packs)", () => {
-    expect(CREDIT_PACKAGES).toHaveLength(1);
+  it("offers the three published credit bundles", () => {
+    expect(CREDIT_PACKAGES.map(pack => pack.credits)).toEqual([30, 50, 100]);
   });
 });
 
@@ -287,33 +292,49 @@ describe("redo assessment", () => {
 //   - deductCredits charges base cost for FREE_FOR_PAID_SUBSCRIBERS actions on free tier
 //   - isPayingSubscriber returns true only for active 6mo/12mo plans
 //   - isPayingSubscriber returns false for expired plans
-describe("deductCredits (BYPASS_CREDIT_GATES = true)", () => {
+describe("deductCredits authorization", () => {
   beforeEach(() => {
     _mockLedgerRows = [{ change_amount: 10 }]; // 10 cr starting balance
     _mockInsertError = null;
+    _mockProfileRow = null;
+    _insertedRows = [];
   });
 
-  it("deducts 0 credits for any action while bypass is active", async () => {
+  it("charges the fallback fee on the free tier", async () => {
     const { deductCredits } = await import("./credits");
     const result = await deductCredits("user-1", "REQUEST_INTRO_INVESTOR");
-    // bypass mode → cost is always 0
-    expect(result.deducted).toBe(0);
+    expect(result).toEqual({ deducted: 2, newBalance: 8 });
   });
 
-  it("balance stays the same after a deduction in bypass mode", async () => {
+  it("free profile views leave the balance unchanged", async () => {
     const { deductCredits } = await import("./credits");
     const { newBalance } = await deductCredits("user-1", "UNLOCK_INVESTOR_PROFILE");
     // inserted change_amount: 0, balance was 10 → still 10
     expect(newBalance).toBe(10);
   });
 
-  it("still writes a ledger row (idempotency preserved)", async () => {
-    const adminMod = await import("@/lib/supabase/admin");
-    const insertSpy = vi.spyOn(buildMockAdmin().from("ad_credit_ledger"), "insert");
+  it("records a real ledger deduction", async () => {
     const { deductCredits } = await import("./credits");
     await deductCredits("user-1", "VIEW_PITCH_DECK");
-    // A 0-amount ledger row should still be written
-    // (actual spy behaviour depends on mock wiring; this asserts no throw)
-    expect(true).toBe(true); // ledger insert completed without error
+    expect(_insertedRows).toEqual([expect.objectContaining({ member_id: "user-1", change_amount: -1 })]);
+  });
+
+  it("rejects insufficient balance before inserting a ledger entry", async () => {
+    _mockLedgerRows = [{ change_amount: 1 }];
+    const { deductCredits } = await import("./credits");
+    await expect(deductCredits("user-1", "REQUEST_INTRO_INVESTOR")).rejects.toBeInstanceOf(InsufficientCreditsError);
+    expect(_insertedRows).toHaveLength(0);
+  });
+
+  it("does not report success if the ledger write fails", async () => {
+    _mockInsertError = "Database unavailable";
+    const { deductCredits } = await import("./credits");
+    await expect(deductCredits("user-1", "REQUEST_INTRO_INVESTOR")).rejects.toThrow("Could not record credit deduction");
+  });
+
+  it("includes eligible outreach for an active subscriber", async () => {
+    _mockProfileRow = { subscription_plan: "6mo", subscription_ends_at: "2099-01-01T00:00:00Z" };
+    const { deductCredits } = await import("./credits");
+    expect((await deductCredits("user-1", "REQUEST_INTRO_INVESTOR")).deducted).toBe(0);
   });
 });

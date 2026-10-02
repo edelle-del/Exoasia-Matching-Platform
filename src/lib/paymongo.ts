@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 const PAYMONGO_BASE_URL = "https://api.paymongo.com/v1";
 
@@ -69,16 +69,18 @@ export async function createCheckoutSession(opts: CheckoutOptions) {
 
 // PayMongo Signature header format: t=<timestamp>,te=<test_sig>,li=<live_sig>
 // Signature = HMAC-SHA256 of `${timestamp}.${rawBody}` using webhook secret
-export function verifyWebhookSignature(rawBody: string, header: string, secret: string): boolean {
-  const parts = Object.fromEntries(header.split(",").map((p) => p.split("=")));
+export function verifyWebhookSignature(rawBody: string, header: string, secret: string, mode = process.env.PAYMONGO_MODE ?? "test", now = Date.now()): boolean {
+  if (!secret || !["test", "live"].includes(mode)) return false;
+  const parts = Object.fromEntries(header.split(",").map((p) => p.trim().split("=")));
   const timestamp = parts["t"];
-  const signature = parts["te"] ?? parts["li"];
+  const signature = parts[mode === "live" ? "li" : "te"];
 
-  if (!timestamp || !signature) return false;
+  if (!timestamp || !/^\d+$/.test(timestamp) || !signature || !/^[a-f0-9]{64}$/i.test(signature)) return false;
+  if (Math.abs(now / 1000 - Number(timestamp)) > 300) return false;
 
   const expected = createHmac("sha256", secret)
     .update(`${timestamp}.${rawBody}`)
     .digest("hex");
 
-  return expected === signature;
+  return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
 }

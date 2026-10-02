@@ -6,6 +6,7 @@ export const PUBLIC_PATHS = [
   "/sign-up",
   "/onboarding",
   "/accept-invite",
+  "/accept-nomination",
   "/get-invited",
   "/not-authorized",
   "/reset-password",

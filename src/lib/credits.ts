@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculateCurrentBalance } from "./credits-util";
+import { hasActiveSubscription } from "./subscription";
 
 // ─── Bypass switch ────────────────────────────────────────────────────────────
 // TEMPORARY — payment gateway integration is on hold for this deployment cycle.
@@ -93,9 +94,7 @@ export async function isPayingSubscriber(memberId: string): Promise<boolean> {
     .eq("id", memberId)
     .single();
 
-  if (!data?.subscription_plan || data.subscription_plan === "free") return false;
-  if (data.subscription_ends_at && new Date(data.subscription_ends_at) < new Date()) return false;
-  return true;
+  return hasActiveSubscription(data);
 }
 
 export async function deductCredits(
@@ -124,11 +123,12 @@ export async function deductCredits(
     throw new InsufficientCreditsError(balance, cost);
   }
 
-  await admin.from("ad_credit_ledger").insert({
+  const { error } = await admin.from("ad_credit_ledger").insert({
     member_id: memberId,
     change_amount: -cost,
     reason: fullReason,
   });
+  if (error) throw new Error("Could not record credit deduction. Please try again.");
 
   return { deducted: cost, newBalance: balance - cost };
 }

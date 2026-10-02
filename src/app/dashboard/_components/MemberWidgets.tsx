@@ -664,6 +664,7 @@ export type NotificationItem = {
   title: string;
   body: string;
   href: string;
+  acknowledgeHref?: string;
   date: string;
 };
 
@@ -697,14 +698,14 @@ export function NotificationsCard({ notifications, isLoading }: NotificationsCar
   const router = useRouter();
 
   const handleNotificationClick = async (e: React.MouseEvent<HTMLAnchorElement>, n: NotificationItem) => {
-    if (n.href.startsWith("/api/jobs/")) {
+    if (n.acknowledgeHref) {
       e.preventDefault();
       try {
-        await fetch(n.href, { method: "POST" });
-        router.push("/matches");
+        await fetch(n.acknowledgeHref, { method: "POST" });
+        router.push(n.href);
       } catch (err) {
         console.error(err);
-        router.push("/matches");
+        router.push(n.href);
       }
     }
   };

@@ -66,14 +66,6 @@ const faq = [
 
 export default function StageThreePage() {
   const { role } = useAuth();
-  const handlePathway = (name: string) => {
-    console.log("stage-3-pathway", name);
-  };
-
-  const handleApplication = () => {
-    console.log("stage-3-apply");
-  };
-
   return (
     <div className="pb-[96px]">
       <section className="relative gn-hero overflow-hidden px-[10%] py-32">
@@ -125,6 +117,7 @@ export default function StageThreePage() {
       <section className="bg-[var(--color-bg-surface)] px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[1280px]">
           <p className="gn-overline">Activation pathways</p>
+          <p className="mt-3 text-sm text-[var(--color-text-secondary)]">Pathway enrollment is coming soon. You can continue reviewing your matches from your dashboard.</p>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
             {pathways.map((item) => (
               <div key={item.title} className="gn-card">
@@ -137,9 +130,9 @@ export default function StageThreePage() {
                 <button
                   className="mt-6 gn-btn-secondary"
                   type="button"
-                  onClick={() => handlePathway(item.title)}
+                  disabled
                 >
-                  Select pathway
+                  Coming soon
                 </button>
               </div>
             ))}
@@ -212,11 +205,11 @@ export default function StageThreePage() {
       <section className="px-4 sm:px-6 py-32">
         <div className="mx-auto w-full max-w-[600px]">
           <p className="gn-overline">Speed to Seed application</p>
+          <p className="mt-3 text-sm text-[var(--color-text-secondary)]">Applications are not open yet. No application information is collected here.</p>
           <form
             className="mt-8 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-8"
             onSubmit={(event) => {
               event.preventDefault();
-              handleApplication();
             }}
           >
             <div className="grid gap-4 md:grid-cols-2">
@@ -248,8 +241,8 @@ export default function StageThreePage() {
                 placeholder="Use of funds"
               />
             </div>
-            <button className="mt-6 w-full gn-btn-primary" type="submit">
-              Submit application -&gt;
+            <button className="mt-6 w-full gn-btn-primary disabled:opacity-50" type="submit" disabled>
+              Applications coming soon
             </button>
           </form>
         </div>

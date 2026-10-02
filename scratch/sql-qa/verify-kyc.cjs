@@ -1,0 +1,35 @@
+const { PGlite } = require('@electric-sql/pglite');
+const fs = require('fs');
+const assert = require('node:assert/strict');
+(async () => {
+  const db = new PGlite();
+  await db.exec(`
+    CREATE ROLE authenticated;
+    CREATE SCHEMA storage; CREATE SCHEMA auth;
+    CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT current_setting('qa.uid')::uuid $$;
+    CREATE FUNCTION authorize(text) RETURNS boolean LANGUAGE sql AS $$ SELECT current_setting('qa.reviewer') = 'true' $$;
+    CREATE TABLE member_documents(id uuid PRIMARY KEY,member_id uuid,status text,file_path text,reviewed_by uuid,reviewed_at timestamptz,reject_reason text);
+    ALTER TABLE member_documents ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "documents owner read" ON member_documents FOR SELECT TO authenticated USING(member_id = auth.uid() OR authorize('profiles.admin'));
+    CREATE POLICY "documents owner insert" ON member_documents FOR INSERT TO authenticated WITH CHECK(member_id = auth.uid());
+    CREATE POLICY "documents owner update" ON member_documents FOR UPDATE TO authenticated USING(member_id = auth.uid());
+    GRANT USAGE ON SCHEMA public,auth TO authenticated;
+    GRANT SELECT,INSERT,UPDATE ON member_documents TO authenticated;
+  `);
+  await db.exec(fs.readFileSync('supabase/migrations/20261003000100_kyc_upload_access.sql', 'utf8'));
+  const bucket = (await db.query('SELECT * FROM storage.buckets')).rows[0];
+  assert.equal(bucket.public, false);
+  assert.equal(Number(bucket.file_size_limit), 10485760);
+  await db.exec("SET qa.uid = '11111111-1111-1111-1111-111111111111'; SET qa.reviewer = 'false'; SET ROLE authenticated;");
+  const uid = '11111111-1111-1111-1111-111111111111';
+  const id = '22222222-2222-2222-2222-222222222222';
+  await db.query("INSERT INTO member_documents(id,member_id,status,file_path) VALUES($1,$2,'submitted',$3)", [id, uid, uid + '/file.pdf']);
+  await assert.rejects(db.query("INSERT INTO member_documents(id,member_id,status,file_path) VALUES('33333333-3333-3333-3333-333333333333',$1,'approved',$2)", [uid, uid + '/file.pdf']));
+  await assert.rejects(db.query("INSERT INTO member_documents(id,member_id,status,file_path) VALUES('44444444-4444-4444-4444-444444444444',$1,'submitted','pending://SEC')", [uid]));
+  assert.equal((await db.query("UPDATE member_documents SET status='approved' WHERE id=$1 RETURNING id", [id])).rows.length, 0);
+  await db.exec("SET qa.reviewer = 'true';");
+  assert.equal((await db.query("UPDATE member_documents SET status='approved' WHERE id=$1 RETURNING id", [id])).rows.length, 1);
+  console.log('PASS: private KYC bucket, upload metadata restrictions, denied member self-approval, and allowed reviewer approval.');
+  await db.close();
+})().catch(error => { console.error(error.message); process.exit(1); });

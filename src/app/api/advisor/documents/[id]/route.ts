@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { KYC_BUCKET } from "@/lib/kyc-documents";
 
 const VALID_ACTIONS = ["approve", "reject", "under-review"] as const;
 type Action = (typeof VALID_ACTIONS)[number];
@@ -62,7 +63,7 @@ export async function PATCH(
     // Fetch the document to get the member_id for stage progression
     const { data: doc, error: fetchError } = await supabase
       .from("member_documents")
-      .select("id, member_id, status")
+      .select("id, member_id, status, file_path")
       .eq("id", docId)
       .single();
 
@@ -71,6 +72,18 @@ export async function PATCH(
         { error: "Document not found." },
         { status: 404 },
       );
+    }
+
+    if (action === "approve") {
+      if (!doc.file_path.startsWith(`${doc.member_id}/`)) {
+        return NextResponse.json({ error: "A real uploaded document is required before approval." }, { status: 409 });
+      }
+      const separator = doc.file_path.lastIndexOf("/");
+      const { data: files, error: storageError } = await createAdminClient().storage.from(KYC_BUCKET)
+        .list(doc.file_path.slice(0, separator), { search: doc.file_path.slice(separator + 1), limit: 100 });
+      if (storageError || !files?.some((file) => file.name === doc.file_path.slice(separator + 1))) {
+        return NextResponse.json({ error: "The uploaded document could not be found. Ask the member to resubmit." }, { status: 409 });
+      }
     }
 
     // Build document update

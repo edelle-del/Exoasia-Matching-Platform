@@ -13,6 +13,7 @@ import {
   type ProjectRecord,
 } from "@/lib/app-data";
 import PieScore from "@/components/PieScore";
+import { hasActiveSubscription } from "@/lib/subscription";
 import type { PortfolioInvite } from "@/app/api/ecosystem/portfolio-invites/route";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -164,10 +165,13 @@ export default function MatchesPage() {
 
       const role = profile?.member_role ?? null;
       setMemberRole(role);
-      setHasActiveSub(
-        !!profile?.subscription_plan &&
-        (!profile.subscription_ends_at || new Date(profile.subscription_ends_at) > new Date()),
-      );
+      setHasActiveSub(hasActiveSubscription(profile));
+
+      if (role === "ecosystem_partner") {
+        router.replace("/ecosystem");
+        setIsLoading(false);
+        return;
+      }
 
       setMatches(matchesRes.matches || []);
 
@@ -253,7 +257,7 @@ export default function MatchesPage() {
     };
 
     load().catch(() => setIsLoading(false));
-  }, [supabase, user?.id, reloadKey]);
+  }, [supabase, user?.id, reloadKey, router]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 

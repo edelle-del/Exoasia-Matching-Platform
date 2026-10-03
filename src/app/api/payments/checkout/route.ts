@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createCheckoutSession, USD_TO_PHP_RATE } from "@/lib/paymongo";
 import { SUBSCRIPTION_PLANS, CREDIT_PACKAGES, DURATION_PLANS } from "@/types/constants";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { randomUUID } from "crypto";
 
 export async function POST(request: Request) {
   try {
@@ -41,6 +43,9 @@ export async function POST(request: Request) {
     };
     let planId: string | null = null;
     let packageId: string | null = null;
+    let grantedCredits = 0;
+    let subscriptionMonths: number | null = null;
+    let purchaseLabel = "";
 
     if (type === "subscription") {
       const durPlan = DURATION_PLANS.find((p) => p.id === id);
@@ -60,6 +65,9 @@ export async function POST(request: Request) {
         quantity: 1,
       };
       planId = id;
+      grantedCredits = plan.credits;
+      subscriptionMonths = durPlan?.months ?? 1;
+      purchaseLabel = planLabel;
     } else {
       const pkg = CREDIT_PACKAGES.find((p) => p.id === id);
       if (!pkg) return NextResponse.json({ error: "Package not found" }, { status: 400 });
@@ -74,11 +82,14 @@ export async function POST(request: Request) {
         quantity: 1,
       };
       packageId = id;
+      grantedCredits = pkg.credits;
+      purchaseLabel = pkg.name;
     }
 
+    const paymentId = randomUUID();
     const { sessionId, checkoutUrl } = await createCheckoutSession({
       lineItems: [lineItem],
-      successUrl: `${siteUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: `${siteUrl}/payments/success?payment_id=${paymentId}`,
       cancelUrl: `${siteUrl}/payments`,
       metadata: {
         member_id: user.id,
@@ -91,7 +102,8 @@ export async function POST(request: Request) {
     });
 
     // Record the pending payment so we can reconcile on webhook
-    await supabase.from("payments").insert({
+    const { error: paymentError } = await createAdminClient().from("payments").insert({
+      id: paymentId,
       member_id: user.id,
       paymongo_session_id: sessionId,
       type,
@@ -99,7 +111,11 @@ export async function POST(request: Request) {
       package_id: packageId,
       amount: lineItem.amount,
       status: "pending",
+      granted_credits: grantedCredits,
+      subscription_months: subscriptionMonths,
+      purchase_label: purchaseLabel,
     });
+    if (paymentError) throw new Error("Could not record checkout. Please try again.");
 
     return NextResponse.json({ checkoutUrl });
   } catch (err) {

@@ -29,11 +29,11 @@ const portalActions = [
 export default function StageFourPage() {
   const { role } = useAuth();
   const handleGate = (route: string) => {
-    console.log("stage-4-gate", route);
+    window.location.assign(route === "return" ? "/stage-3" : "/deal-board");
   };
 
   const handlePortal = (action: string) => {
-    console.log("stage-4-portal", action);
+    if (action === "Review execution protocol") window.location.assign("/docs");
   };
 
   return (
@@ -145,9 +145,10 @@ export default function StageFourPage() {
                 <button
                   className="mt-6 gn-btn-secondary"
                   type="button"
+                  disabled={item !== "Review execution protocol"}
                   onClick={() => handlePortal(item)}
                 >
-                  Open
+                  {item === "Review execution protocol" ? "Open" : "Coming soon"}
                 </button>
               </div>
             ))}

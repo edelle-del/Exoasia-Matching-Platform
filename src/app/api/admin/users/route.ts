@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { adminUserSearchFilter } from "@/lib/admin-user-search";
+import { calculateCurrentBalance } from "@/lib/credits-util";
 
 export async function GET(request: Request) {
   try {
@@ -19,6 +21,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") ?? "1", 10);
     const limit = parseInt(searchParams.get("limit") ?? "50", 10);
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      return NextResponse.json({ error: "Invalid pagination" }, { status: 400 });
+    }
     const search = searchParams.get("search")?.toLowerCase() ?? "";
     const roleFilter = searchParams.get("role") ?? "all";
     const verificationFilter = searchParams.get("verification") ?? "all";
@@ -35,7 +40,7 @@ export async function GET(request: Request) {
     // We fetch everything if there's a text search because ILIKE OR on multiple fields 
     // requires advanced PostgREST syntax which can be tricky. We will use the standard or()
     if (search) {
-      query = query.or(`full_name.ilike.%${search}%,business_name.ilike.%${search}%,email.ilike.%${search}%`);
+      query = query.or(adminUserSearchFilter(search));
     }
 
     const from = (page - 1) * limit;
@@ -60,17 +65,18 @@ export async function GET(request: Request) {
     const rolesMap = new Map(userRoles?.map(ur => [ur.user_id, ur.role]));
 
     // Fetch credits for these profiles
-    const { data: creditsData } = await admin.from("ad_credit_ledger").select("member_id, change_amount").in("member_id", profileIds);
-    const creditsMap = new Map<string, number>();
+    const { data: creditsData } = await admin.from("ad_credit_ledger").select("member_id, change_amount, created_at, expires_at").in("member_id", profileIds);
+    const creditsMap = new Map<string, { change_amount: number; created_at: string; expires_at: string | null }[]>();
     (creditsData || []).forEach(row => {
-      const current = creditsMap.get(row.member_id) ?? 0;
-      creditsMap.set(row.member_id, current + row.change_amount);
+      const entries = creditsMap.get(row.member_id) ?? [];
+      entries.push(row);
+      creditsMap.set(row.member_id, entries);
     });
 
     const users = profiles.map(p => ({
       ...p,
       app_role: rolesMap.get(p.id) ?? "member",
-      credits: creditsMap.get(p.id) ?? 0,
+      credits: calculateCurrentBalance(creditsMap.get(p.id) ?? []),
     }));
 
     return NextResponse.json({

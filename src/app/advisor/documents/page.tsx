@@ -389,7 +389,7 @@ function QueueTab({
                   </span>
                 ) : (
                   <a
-                    href={doc.file_path}
+                    href={`/api/documents/${doc.id}/download`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-blue-600 hover:underline"
